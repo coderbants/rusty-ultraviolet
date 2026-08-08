@@ -35,6 +35,7 @@ use charming_x_ansi::cursor::{REVERSE_INDEX, cursor_backward_tab};
 use charming_x_ansi::mode::{RESET_MODE_AUTO_WRAP, RESET_MODE_INSERT_REPLACE, SET_MODE_AUTO_WRAP, SET_MODE_INSERT_REPLACE};
 use charming_x_ansi::parser::{DEL, US};
 use std::collections::hash_map::DefaultHasher;
+use std::sync::{Mutex, OnceLock};
 use std::io::Write;
 use std::hash::{Hash, Hasher};
 
@@ -225,7 +226,7 @@ fn detect_profile(env: &Environ) -> ColorProfile {
 /// to transition the terminal to the new buffer state.
 pub struct TerminalRenderer {
     /// The writer flushed to (upstream's `w io.Writer`).
-    writer: Option<Box<dyn Write + Send>>,
+    writer: Option<Mutex<Box<dyn Write + Send>>>,
     /// The internal output buffer (Go's `buf *bytes.Buffer`).
     buf: Vec<u8>,
     /// The current buffer, updated after each render.
@@ -293,7 +294,7 @@ impl TerminalRenderer {
     /// terminal capabilities from the `TERM` variable.
     pub fn new(w: Box<dyn Write + Send>, env: &Environ) -> TerminalRenderer {
         let mut r = TerminalRenderer::new_inner(env);
-        r.writer = Some(w);
+        r.writer = Some(Mutex::new(w));
         r
     }
 
@@ -335,7 +336,8 @@ impl TerminalRenderer {
 
     /// Flush flushes the buffer to the writer.
     pub fn flush_public(&mut self) -> std::io::Result<()> {
-        if let Some(w) = &mut self.writer {
+        if let Some(w) = &self.writer {
+            let mut w = w.lock().unwrap();
             if !self.buf.is_empty() {
                 w.write_all(&self.buf)?;
                 self.buf.clear();

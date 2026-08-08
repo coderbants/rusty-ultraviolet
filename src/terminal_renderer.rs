@@ -35,7 +35,7 @@ use charming_x_ansi::cursor::{REVERSE_INDEX, cursor_backward_tab};
 use charming_x_ansi::mode::{RESET_MODE_AUTO_WRAP, RESET_MODE_INSERT_REPLACE, SET_MODE_AUTO_WRAP, SET_MODE_INSERT_REPLACE};
 use charming_x_ansi::parser::{DEL, US};
 use std::collections::hash_map::DefaultHasher;
-use std::sync::{Mutex, OnceLock};
+use std::sync::Mutex;
 use std::io::Write;
 use std::hash::{Hash, Hasher};
 

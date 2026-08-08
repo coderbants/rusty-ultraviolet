@@ -1,5 +1,5 @@
 //! Cleanroom Rust port of upstream Go source file: `cell.go` (Cell, Link)
-//! Upstream Target Tag / Version: `v0.0.0-20251205161215-1948445e3318`
+//! Upstream Target Tag / Version: `v0.0.0-20260703014108-f5a850f9c2b7`
 //!
 //! <public-docs>
 //! The cell model: a single grapheme cluster with a style, optional link, and
@@ -70,6 +70,12 @@ impl Cell {
             && self.style.is_zero()
             && self.link.is_none()
             && self.width == 0
+    }
+
+    /// isWidePlaceholder reports whether the cell is the continuation column
+    /// of a wide cell, marked with a zero display width.
+    pub fn is_wide_placeholder(&self) -> bool {
+        self.width == 0
     }
 
     /// Returns a copy of the cell.

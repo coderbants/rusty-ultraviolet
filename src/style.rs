@@ -1,5 +1,5 @@
 //! Cleanroom Rust port of upstream Go source file: `cell.go` (Style)
-//! Upstream Target Tag / Version: `v0.0.0-20251205161215-1948445e3318`
+//! Upstream Target Tag / Version: `v0.0.0-20260703014108-f5a850f9c2b7`
 //!
 //! <public-docs>
 //! The ultraviolet cell style: attributes, colors, underline styles, and SGR

@@ -11,6 +11,7 @@
 
 use crate::buffer::{RenderBuffer, Screen};
 use crate::cell::{empty_cell, Cell};
+use crate::environ::Environ;
 use crate::console::{FdFile, File};
 use crate::screen::Rectangle;
 use crate::window::{new_window, Window};
@@ -41,65 +42,6 @@ const SET_TAB_EVERY_8_COLUMNS: &str = "\x1b[?5W";
 /// The value of `TERM` that disables color support (upstream
 /// `colorprofile.dumbTerm`).
 const DUMB_TERM: &str = "dumb";
-
-/// Environ is a slice of strings that represents the environment variables
-/// of the program.
-///
-/// NOTE: this is a local port of upstream `environ.go`; it should move to
-/// `src/environ.rs` when that module is ported. The constructor and
-/// renderer take it instead of the process environment so tests can control
-/// it, mirroring the upstream `NewTerminalScreen(w, env)` signature.
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
-pub struct Environ(pub Vec<String>);
-
-impl Environ {
-    /// Getenv returns the value of the environment variable named by the key.
-    /// If the variable is not present in the environment, the value returned
-    /// will be the empty string.
-    pub fn getenv(&self, key: &str) -> String {
-        self.lookup_env(key).unwrap_or_default()
-    }
-
-    /// LookupEnv retrieves the value of the environment variable named by the
-    /// key. If the variable is present in the environment the value (which may
-    /// be empty) is returned; otherwise None.
-    pub fn lookup_env(&self, key: &str) -> Option<String> {
-        let prefix = format!("{key}=");
-        self.0
-            .iter()
-            .rev()
-            .find(|entry| entry.starts_with(&prefix))
-            .map(|entry| entry[prefix.len()..].to_string())
-    }
-}
-
-/// Logger is a simple logger interface.
-///
-/// NOTE: local port of upstream `logger.go` (`Logger.Printf(format, v ...)`);
-/// the variadic args are modeled as a slice of already-formatted strings.
-pub trait Logger {
-    /// Printf logs a formatted message.
-    fn printf(&mut self, format: &str, args: &[String]);
-}
-
-/// A logger writing to a file, used for `UV_DEBUG` output.
-///
-/// NOTE: upstream uses `log.SetOutput(f)` with the Go standard logger, which
-/// prefixes messages with a date/time. The port writes the raw message; the
-/// file is owned by the logger (kept alive by the renderer), mirroring the
-/// process-lifetime global log output upstream.
-struct FileLogger(std::fs::File);
-
-impl Logger for FileLogger {
-    fn printf(&mut self, format: &str, args: &[String]) {
-        let mut msg = format.to_string();
-        for a in args {
-            msg.push(' ');
-            msg.push_str(a);
-        }
-        let _ = writeln!(self.0, "{msg}");
-    }
-}
 
 /// ColorProfile represents the color support level of the terminal.
 ///
@@ -151,7 +93,7 @@ pub(crate) trait TerminalRenderer {
     /// SetColorProfile sets the color profile of the renderer.
     fn set_color_profile(&mut self, profile: ColorProfile);
     /// SetLogger sets the logger of the renderer.
-    fn set_logger(&mut self, logger: Option<Box<dyn Logger>>);
+    fn set_logger(&mut self, logger: Option<Box<dyn crate::logger::Logger>>);
     /// SetTabStops sets the tab stop width of the renderer. A negative value
     /// disables tab stops.
     fn set_tab_stops(&mut self, every: i32);
@@ -273,7 +215,7 @@ pub fn new_terminal_screen<W: Write + 'static>(w: W, env: Environ) -> TerminalSc
             .write(true)
             .open(&debug_file)
         {
-            s.rend.set_logger(Some(Box::new(FileLogger(f))));
+            s.rend.set_logger(Some(Box::new(crate::logger::FileLogger(f))));
         }
     }
 
@@ -1441,7 +1383,7 @@ mod tests {
         fn set_fullscreen(&mut self, _fullscreen: bool) {}
         fn set_relative_cursor(&mut self, _relative: bool) {}
         fn set_color_profile(&mut self, _profile: ColorProfile) {}
-        fn set_logger(&mut self, _logger: Option<Box<dyn Logger>>) {}
+        fn set_logger(&mut self, _logger: Option<Box<dyn crate::logger::Logger>>) {}
         fn set_tab_stops(&mut self, _every: i32) {}
         fn set_backspace(&mut self, _backspace: bool) {}
         fn set_map_newline(&mut self, _map: bool) {}

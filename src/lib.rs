@@ -12,13 +12,20 @@ pub mod buffer;
 pub mod casso;
 pub mod cell;
 pub mod console;
+pub mod decoder;
+pub mod environ;
+pub mod event;
+pub mod key;
 pub mod layout;
+pub mod logger;
 pub mod lru;
+pub mod mouse;
 pub mod poll;
 pub mod screen;
 pub mod screen_context;
 pub mod style;
 pub mod tabstop;
+pub mod utils;
 pub mod terminal_renderer;
 pub mod terminal_screen;
 pub mod window;
@@ -28,7 +35,47 @@ pub use buffer::{
     RenderBuffer, Screen, ScreenBuffer,
 };
 pub use cell::{empty_cell, new_link, Cell, Link};
-pub use console::{Console, ConsoleError, FdFile, File, RawState, Winsize};
+pub use environ::Environ;
+pub use event::{
+    BackgroundColorEvent, BlurEvent, CapabilityEvent, CellSizeEvent, ClipboardEvent,
+    CursorColorEvent, CursorPositionEvent, DarkColorSchemeEvent, FocusEvent,
+    ForegroundColorEvent, KeyboardEnhancementsEvent, KeyPressEvent, KeyReleaseEvent,
+    KittyGraphicsEvent, LightColorSchemeEvent, ModeReportEvent, ModifyOtherKeysEvent,
+    MouseClickEvent, MouseMotionEvent, MouseReleaseEvent, MouseWheelEvent, MultiEvent,
+    PasteEndEvent, PasteEvent, PasteStartEvent, PixelSizeEvent, PrimaryDeviceAttributesEvent,
+    SecondaryDeviceAttributesEvent, Size, TerminalVersionEvent, TertiaryDeviceAttributesEvent,
+    UnknownApcEvent, UnknownCsiEvent, UnknownDcsEvent, UnknownEvent, UnknownOscEvent,
+    UnknownPmEvent, UnknownSosEvent, UnknownSs3Event, WindowOpEvent, WindowSizeEvent,
+    PRIMARY_CLIPBOARD, SYSTEM_CLIPBOARD,
+};
+pub use key::{
+    Key, KeyMod, KEY_BACKSPACE, KEY_BEGIN, KEY_CAPS_LOCK,
+    KEY_DELETE, KEY_DOWN, KEY_END, KEY_ENTER, KEY_ESCAPE, KEY_EXTENDED, KEY_F1, KEY_F10,
+    KEY_F11, KEY_F12, KEY_F13, KEY_F14, KEY_F15, KEY_F16, KEY_F17, KEY_F18, KEY_F19, KEY_F2,
+    KEY_F20, KEY_F21, KEY_F22, KEY_F23, KEY_F24, KEY_F25, KEY_F26, KEY_F27, KEY_F28, KEY_F29,
+    KEY_F3, KEY_F30, KEY_F31, KEY_F32, KEY_F33, KEY_F34, KEY_F35, KEY_F36, KEY_F37, KEY_F38,
+    KEY_F39, KEY_F4, KEY_F40, KEY_F41, KEY_F42, KEY_F43, KEY_F44, KEY_F45, KEY_F46, KEY_F47,
+    KEY_F48, KEY_F49, KEY_F5, KEY_F50, KEY_F51, KEY_F52, KEY_F53, KEY_F54, KEY_F55, KEY_F56,
+    KEY_F57, KEY_F58, KEY_F59, KEY_F6, KEY_F60, KEY_F61, KEY_F62, KEY_F63, KEY_F7, KEY_F8,
+    KEY_F9, KEY_FIND, KEY_HOME, KEY_INSERT, KEY_ISO_LEVEL3_SHIFT, KEY_ISO_LEVEL5_SHIFT,
+    KEY_LEFT, KEY_LEFT_ALT, KEY_LEFT_CTRL, KEY_LEFT_HYPER, KEY_LEFT_META, KEY_LEFT_SHIFT,
+    KEY_LEFT_SUPER, KEY_LOWER_VOL, KEY_MEDIA_FAST_FORWARD, KEY_MEDIA_NEXT, KEY_MEDIA_PAUSE,
+    KEY_MEDIA_PLAY, KEY_MEDIA_PLAY_PAUSE, KEY_MEDIA_PREV, KEY_MEDIA_RECORD, KEY_MEDIA_REVERSE,
+    KEY_MEDIA_STOP, KEY_MENU, KEY_MUTE, KEY_NUM_LOCK, KEY_PAUSE, KEY_PG_DOWN, KEY_PG_UP,
+    KEY_PRINT_SCREEN, KEY_RAISE_VOL, KEY_RETURN, KEY_RIGHT, KEY_RIGHT_ALT, KEY_RIGHT_CTRL,
+    KEY_RIGHT_HYPER, KEY_RIGHT_META, KEY_RIGHT_SHIFT, KEY_RIGHT_SUPER, KEY_SCROLL_LOCK,
+    KEY_SELECT, KEY_SPACE, KEY_TAB, KEY_UP, MOD_ALT, MOD_CAPS_LOCK, MOD_CTRL, MOD_HYPER,
+    MOD_META, MOD_NUM_LOCK, MOD_SCROLL_LOCK, MOD_SHIFT, MOD_SUPER,
+};
+pub use logger::{FileLogger, Logger};
+pub use console::Winsize;
+pub use mouse::{
+    mouse_pixel_to_cell, Mouse, MouseEncoding, MouseMode, MOUSE_BACKWARD, MOUSE_BUTTON_10,
+    MOUSE_BUTTON_11, MOUSE_FORWARD, MOUSE_LEFT, MOUSE_MIDDLE, MOUSE_NONE, MOUSE_RIGHT,
+    MOUSE_WHEEL_DOWN, MOUSE_WHEEL_LEFT, MOUSE_WHEEL_RIGHT, MOUSE_WHEEL_UP,
+};
+pub use console::{Console, ConsoleError, FdFile, File, RawState};
+pub use decoder::{DecodedEvent, EventDecoder, LegacyKeyEncoding};
 pub use layout::{
     horizontal, new as new_layout, pad, vertical, Constraint, Direction, Flex, Layout, Padding,
     Splitted,
@@ -37,7 +84,7 @@ pub use poll::{new_fallback_reader, new_poll_reader, PollError, PollReader};
 pub use screen::{clear, clear_area, clone_area, fill, fill_area, rect, Rectangle};
 pub use screen_context::{new_context, new_context_with_width_method, Context};
 pub use style::{style_diff, Attr, Style};
-pub use terminal_screen::{new_terminal_screen, ColorProfile, Environ, Logger, TerminalScreen};
+pub use terminal_screen::{new_terminal_screen, ColorProfile, TerminalScreen};
 pub use window::{new_window, pos, Window};
 
 use std::io::{self, Write};
@@ -196,39 +243,6 @@ pub fn new_progress_bar(state: ProgressBarState, value: i32) -> ProgressBar {
         state,
         value: clamp(value, 0, 100),
     }
-}
-
-/// MouseMode represents the mouse tracking mode.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum MouseMode {
-    /// MouseModeNone disables mouse tracking.
-    MouseModeNone,
-    /// MouseModePress is press only (DEC mode 9). Reports button press
-    /// events.
-    MouseModePress,
-    /// MouseModeClick is click tracking (DEC mode 1000). Reports button
-    /// press and release.
-    MouseModeClick,
-    /// MouseModeDrag is drag tracking (DEC mode 1002). Reports press,
-    /// release, and drag.
-    MouseModeDrag,
-    /// MouseModeMotion is motion tracking (DEC mode 1003). Reports all mouse
-    /// events including motion.
-    MouseModeMotion,
-}
-
-/// MouseEncoding represents the mouse encoding mode.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum MouseEncoding {
-    /// MouseEncodingLegacy is the legacy X10-compatible encoding. Coordinates
-    /// limited to 223.
-    MouseEncodingLegacy,
-    /// MouseEncodingSGR is the SGR encoding (DEC mode 1006). No coordinate
-    /// limit, distinguishes press/release.
-    MouseEncodingSGR,
-    /// MouseEncodingSGRPixel is the SGR-pixel encoding (DEC mode 1016).
-    /// Reports pixel coordinates.
-    MouseEncodingSGRPixel,
 }
 
 /// KeyboardEnhancements defines different keyboard enhancement features that

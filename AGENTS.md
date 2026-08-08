@@ -19,3 +19,13 @@
    v2.0.8). Port the earliest pin first, then diff-forward (`git diff` between the two
    commits inside `upstream-go/`) to produce the later pin. See
    `/Users/jonny/Projects/charming/DEPENDENCY_PLAN.md` §6.
+
+## Releases
+- GitHub Releases MUST match upstream: every upstream release tag tracked by this port must
+  exist as a `v*` tag and a GitHub release on this repo (the publish workflow creates the
+  release automatically from the tag). If upstream has no tagged releases (pseudo-version
+  pins), no GitHub release is required.
+- To release: push the `v*` tag (e.g. `git tag v2.0.8 && git push origin v2.0.8`); the
+  workflow runs tests, example parity, creates the GitHub Release, and attempts the
+  crates.io publish (non-fatal without a registry token).
+- The crates.io publish step is tag-gated; dev pushes only run tests and parity.

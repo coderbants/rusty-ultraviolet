@@ -1,0 +1,18 @@
+[package]
+name = "charming-ultraviolet"
+version = "0.0.0-20251205161215"
+edition = "2021"
+description = "Cleanroom Rust port of Charmbracelet's Ultraviolet (pin v0.0.0-20251205161215-1948445e3318) terminal rendering library"
+license = "MIT"
+
+[dependencies]
+charming-x-ansi = { path = "../charming-x-ansi" }
+unicode-segmentation = "1.10.1"
+unicode-width = "0.1"
+libc = "0.2"
+
+[dev-dependencies]
+
+[lib]
+name = "charming_ultraviolet"
+path = "src/lib.rs"

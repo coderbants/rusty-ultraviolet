@@ -865,7 +865,16 @@ fn render_line(buf: &mut String, l: &Line) {
         }
 
         // Write the URL escape sequence.
-        if c.link != link {
+        // NOTE: upstream's Link is a value type, so an unset link (None)
+        // compares equal to an empty link (Some(Link::default())); normalize
+        // before comparing.
+        let link_changed = match (&c.link, &link) {
+            (None, None) => false,
+            (Some(a), Some(b)) => a != b,
+            (Some(a), None) => !a.is_zero(),
+            (None, Some(b)) => !b.is_zero(),
+        };
+        if link_changed {
             if let Some(link) = &link {
                 if !link.is_zero() {
                     buf.push_str(reset_hyperlink());

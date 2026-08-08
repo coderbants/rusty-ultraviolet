@@ -25,10 +25,12 @@ jobs:
         run: |
           git clone --quiet https://github.com/charmbracelet/ultraviolet.git upstream-go
           cd upstream-go && git checkout --quiet 1948445e3318
-      - name: Fetch sibling workspace crates (pinned)
-        run: |
-          git clone --quiet https://github.com/coderbants/charming-x-ansi.git ../charming-x-ansi
-          cd ../charming-x-ansi && git checkout --quiet dev
+      - name: Fetch sibling charming-x-ansi (pinned)
+        uses: actions/checkout@v4
+        with:
+          repository: coderbants/charming-x-ansi
+          path: ../charming-x-ansi
+          ref: dev
       - name: Test
         run: cargo test --all-targets
       - name: Verify example parity (upstream Go vs Rust)

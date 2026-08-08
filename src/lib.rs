@@ -8,14 +8,17 @@
 //! renderer.
 //! </public-docs>
 
+pub mod border;
 pub mod buffer;
 pub mod casso;
+pub mod cancelreader;
 pub mod cell;
 pub mod console;
 pub mod decoder;
 pub mod environ;
 pub mod event;
 pub mod key;
+pub mod key_table;
 pub mod layout;
 pub mod logger;
 pub mod lru;
@@ -23,13 +26,22 @@ pub mod mouse;
 pub mod poll;
 pub mod screen;
 pub mod screen_context;
+pub mod styled;
 pub mod style;
 pub mod tabstop;
 pub mod utils;
+pub mod terminal_reader;
 pub mod terminal_renderer;
 pub mod terminal_screen;
+pub mod tty;
 pub mod window;
+pub mod winch;
 
+pub use border::{
+    ascii_border, block_border, double_border, hidden_border, inner_half_block_border,
+    markdown_border, normal_border, outer_half_block_border, rounded_border, thick_border,
+    Border, Side,
+};
 pub use buffer::{
     new_buffer, new_render_buffer, new_screen_buffer, trim_space, Buffer, Line, Lines,
     RenderBuffer, Screen, ScreenBuffer,
@@ -67,6 +79,7 @@ pub use key::{
     KEY_SELECT, KEY_SPACE, KEY_TAB, KEY_UP, MOD_ALT, MOD_CAPS_LOCK, MOD_CTRL, MOD_HYPER,
     MOD_META, MOD_NUM_LOCK, MOD_SCROLL_LOCK, MOD_SHIFT, MOD_SUPER,
 };
+pub use key_table::build_keys_table;
 pub use logger::{FileLogger, Logger};
 pub use console::Winsize;
 pub use mouse::{
@@ -74,6 +87,7 @@ pub use mouse::{
     MOUSE_BUTTON_11, MOUSE_FORWARD, MOUSE_LEFT, MOUSE_MIDDLE, MOUSE_NONE, MOUSE_RIGHT,
     MOUSE_WHEEL_DOWN, MOUSE_WHEEL_LEFT, MOUSE_WHEEL_RIGHT, MOUSE_WHEEL_UP,
 };
+pub use cancelreader::new_cancel_reader;
 pub use console::{Console, ConsoleError, FdFile, File, RawState};
 pub use decoder::{DecodedEvent, EventDecoder, LegacyKeyEncoding};
 pub use layout::{
@@ -82,9 +96,11 @@ pub use layout::{
 };
 pub use poll::{new_fallback_reader, new_poll_reader, PollError, PollReader};
 pub use screen::{clear, clear_area, clone_area, fill, fill_area, rect, Rectangle};
+pub use styled::{new_styled_string, read_link, read_style, StyledString};
 pub use screen_context::{new_context, new_context_with_width_method, Context};
 pub use style::{style_diff, Attr, Style};
 pub use terminal_screen::{new_terminal_screen, ColorProfile, TerminalScreen};
+pub use winch::{new_size_notifier, SizeNotifier};
 pub use window::{new_window, pos, Window};
 
 use std::io::{self, Write};

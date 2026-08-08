@@ -15,10 +15,10 @@ tests, examples, docs, and support files). The full repo history is checked out 
 | `doc.go` | `src/lib.rs` | Package docs |
 | `uv.go` | `src/lib.rs` | Module facade / re-exports |
 | `cell.go` | `src/cell.rs` | Cell model (`Cell`, style/link equality, zero cell) |
-| `border.go` | `src/border.rs` | Border model for cell buffers |
+| `border.go` | `src/border.rs` — **Ported** | Border styles + Draw | Border model for cell buffers |
 | `buffer.go` | `src/buffer.rs` | `Buffer`, `ScreenBuffer`, `Line`, render/trim helpers |
 | `screen/screen.go` | `src/screen.rs` | `Screen`/`Renderable` interfaces, `Rectangle` |
-| `styled.go` | `src/styled.rs` | `StyledString` drawable |
+| `styled.go` | `src/styled.rs` — **Ported** | StyledString + printString + ReadStyle/ReadLink (SGR/hyperlink parsing; Go-verified zero-bounds Lines quirk) | `StyledString` drawable |
 | `style.go` (in `styled.go` context) | `src/style.rs` | SGR `Style` (thin wrapper over `charming-x-ansi`) |
 | `event.go` | `src/event.rs` | `Event` interface and typed event wrappers |
 | `environ.go` | `src/environ.rs` | `Environ` helpers (`Getenv`, `LookupEnv`) |
@@ -31,10 +31,10 @@ tests, examples, docs, and support files). The full repo history is checked out 
 | `tabstop.go` | `src/tabstop.rs` — **Ported** | Tab stops (bitmask, find/next/prev/resize) |
 | `utils.go` | `src/utils.rs` | Shared helpers |
 | `layout.go` | ~~`src/layout.rs`~~ | **DELETED upstream at second pin**; replaced by the `layout/` subpackage (see Second Pin table) which is ported to `src/layout.rs` |
-| `terminal.go` | `src/terminal.rs` | Terminal abstraction |
-| `terminal_reader.go` | `src/terminal_reader.rs` | Terminal input reader |
-| `terminal_reader_other.go` | `src/terminal_reader.rs` | Non-Windows reader implementation |
-| `terminal_reader_windows.go` | `src/terminal_reader.rs` | Windows reader implementation |
+| `terminal.go` | `src/terminal.rs` — **Ported** | Terminal: raw mode, input/event/winch threads, grapheme-width negotiation, winsize reports | Terminal abstraction |
+| `terminal_reader.go` | `src/terminal_reader.rs` — **Ported** | TerminalReader + EventScanner: lookup table, bracketed paste, ESC timeout (reader thread + recv_timeout) | Terminal input reader |
+| `terminal_reader_other.go` | `src/terminal_reader.rs` — **Ported** | Unix reader path | Non-Windows reader implementation |
+| `terminal_reader_windows.go` | `src/terminal_reader.rs` — Deferred (Windows Console API input) | Windows reader implementation |
 | `terminal_renderer.go` | `src/terminal_renderer.rs` — **Ported** | Full renderer: cursor-move optimizer (CUP/local/CR/home + hard tabs + backspace + overwrite), transformLine/putRange/emitRange (ECH/REP), clear optimizations, insert/delete cells, profile-aware pen |
 | `terminal_renderer_hardscroll.go` | `src/terminal_renderer.rs` — **Ported** | scrollOptimize/scrolln/scrollUp/scrollDown/scrollIdl + DECSTBM margins |
 | `terminal_renderer_hashmap.go` | `src/terminal_renderer.rs` — **Ported** | Line hashing + hunk growing/cost-effectiveness for scroll optimization |
@@ -45,15 +45,15 @@ tests, examples, docs, and support files). The full repo history is checked out 
 | `terminal_bsdly.go` | `src/terminal.rs` | BSD terminal behaviour |
 | `terminal_bsdly_other.go` | `src/terminal.rs` | Non-BSD terminal behaviour |
 | `terminal_other.go` | `src/terminal.rs` | Other-platform terminal behaviour |
-| `tty.go` | `src/tty.rs` | TTY abstraction |
-| `tty_unix.go` | `src/tty.rs` | Unix TTY implementation |
-| `tty_windows.go` | `src/tty.rs` | Windows TTY implementation |
-| `tty_other.go` | `src/tty.rs` | Other-platform TTY implementation |
-| `winch.go` | `src/winch.rs` | Window-change (SIGWINCH) notifications |
-| `winch_unix.go` | `src/winch.rs` | Unix window-change implementation |
-| `winch_other.go` | `src/winch.rs` | Other-platform window-change implementation |
-| `cancelreader_other.go` | `src/cancelreader.rs` | Cancellable reader (non-Windows) |
-| `cancelreader_windows.go` | `src/cancelreader.rs` | Cancellable reader (Windows) |
+| `tty.go` | `src/tty.rs` — **Ported** | OpenTTY/Suspend/NotifyWinch (self-pipe + signal handlers) | TTY abstraction |
+| `tty_unix.go` | `src/tty.rs` — **Ported** | Unix /dev/tty + SIGTSTP/SIGWINCH | Unix TTY implementation |
+| `tty_windows.go` | `src/tty.rs` — Deferred (Windows) | Windows TTY implementation |
+| `tty_other.go` | `src/tty.rs` — **Ported** | Non-Unix stubs | Other-platform TTY implementation |
+| `winch.go` | `src/winch.rs` — **Ported** | SizeNotifier | Window-change (SIGWINCH) notifications |
+| `winch_unix.go` | `src/winch.rs` — **Ported** | Unix SIGWINCH + TIOCGWINSZ | Unix window-change implementation |
+| `winch_other.go` | `src/winch.rs` — **Ported** | Non-Unix stubs | Other-platform window-change implementation |
+| `cancelreader_other.go` | `src/cancelreader.rs` — **Ported** | new_cancel_reader → poll reader | Cancellable reader (non-Windows) |
+| `cancelreader_windows.go` | `src/cancelreader.rs` — Deferred (Windows) | Cancellable reader (Windows) |
 
 ## Test Files (`*_test.go` -> `tests/` or module tests)
 

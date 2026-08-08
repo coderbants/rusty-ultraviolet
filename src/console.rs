@@ -176,6 +176,11 @@ impl Console {
         &mut self.input
     }
 
+    /// InputFd returns the file descriptor of the console's input.
+    pub fn input_fd(&self) -> usize {
+        self.input.fd()
+    }
+
     /// Write writes data to the console's output.
     pub fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
         self.output.write(buf)
@@ -271,6 +276,13 @@ pub struct FdFile {
     fd: libc::c_int,
     name: String,
     close_on_drop: bool,
+}
+
+impl FdFile {
+    /// Returns the file descriptor.
+    pub fn fd(&self) -> usize {
+        self.fd as usize
+    }
 }
 
 impl FdFile {
@@ -447,6 +459,29 @@ fn restore_side(fd: usize, state: &RawState) -> Result<(), ConsoleError> {
 
 #[cfg(not(unix))]
 fn restore_side(_fd: usize, _state: &RawState) -> Result<(), ConsoleError> {
+    Err(ConsoleError::PlatformNotSupported)
+}
+
+/// GetWinsizeForFd returns the terminal size of the given file descriptor,
+/// mirroring `termios.GetWinsize` in `winch_unix.go`.
+#[cfg(unix)]
+pub(crate) fn get_winsize_for_fd(fd: usize) -> Result<Winsize, ConsoleError> {
+    let mut ws: libc::winsize = unsafe { std::mem::zeroed() };
+    let r = unsafe { libc::ioctl(fd as libc::c_int, libc::TIOCGWINSZ, &mut ws) };
+    if r == 0 {
+        return Ok(Winsize {
+            row: ws.ws_row,
+            col: ws.ws_col,
+            xpixel: ws.ws_xpixel,
+            ypixel: ws.ws_ypixel,
+        });
+    }
+    Err(ConsoleError::Io(std::io::Error::last_os_error().to_string()))
+}
+
+/// GetWinsizeForFd returns the terminal size of the given file descriptor.
+#[cfg(not(unix))]
+pub(crate) fn get_winsize_for_fd(_fd: usize) -> Result<Winsize, ConsoleError> {
     Err(ConsoleError::PlatformNotSupported)
 }
 

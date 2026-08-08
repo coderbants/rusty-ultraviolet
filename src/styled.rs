@@ -154,7 +154,11 @@ fn print_string(
                 cell.width = width;
                 cell.content = String::from_utf8_lossy(seq).into_owned();
                 cell.style = style.clone();
-                cell.link = Some(link.clone());
+                cell.link = if link.is_zero() {
+                    None
+                } else {
+                    Some(link.clone())
+                };
 
                 match &mut scr {
                     None => {
@@ -184,7 +188,11 @@ fn print_string(
                                 // any.
                                 let mut c = tailc.clone();
                                 c.style = style.clone();
-                                c.link = Some(link.clone());
+                                c.link = if link.is_zero() {
+                                    None
+                                } else {
+                                    Some(link.clone())
+                                };
                                 scr.set_cell(x as usize, y, Some(&c));
                                 x += tailc.width as i64;
                             } else {

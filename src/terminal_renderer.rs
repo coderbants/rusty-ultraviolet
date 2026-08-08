@@ -516,6 +516,17 @@ impl TerminalRenderer {
     /// It is safe to call this function with no buffer; in that case, it
     /// won't use any optimizations that depend on the buffer.
     fn move_to_pos(&mut self, newbuf: Option<&RenderBuffer>, x: i64, y: i64) {
+        if !self.flags.contains(TFlag::FULLSCREEN)
+            && self.flags.contains(TFlag::RELATIVE_CURSOR)
+            && self.cur.x == -1
+            && self.cur.y == -1
+        {
+            // First cursor movement in inline mode, move the cursor to the
+            // first column before moving to the target position.
+            self.push_byte(b'\r');
+            self.cur.x = 0;
+            self.cur.y = 0;
+        }
         // XXX: Make sure we use the max height and width of the buffer in
         // case we're in the middle of a resize operation.
         let mut width = self.curbuf.width() as i64;

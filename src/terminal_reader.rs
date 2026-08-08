@@ -39,7 +39,7 @@ pub struct TerminalReader {
     /// The event scanner.
     scanner: EventScanner,
     /// The logger.
-    logger: Option<Box<dyn Logger>>,
+    logger: Option<Box<dyn Logger + Send>>,
 }
 
 /// NewTerminalReader returns a new input event reader.
@@ -64,7 +64,7 @@ pub fn new_terminal_reader(r: Box<dyn Read + Send>, term_type: &str) -> Terminal
 
 impl TerminalReader {
     /// SetLogger sets the logger to use for debugging.
-    pub fn set_logger(&mut self, logger: Option<Box<dyn Logger>>) {
+    pub fn set_logger(&mut self, logger: Option<Box<dyn Logger + Send>>) {
         self.logger = logger;
     }
 

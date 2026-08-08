@@ -43,6 +43,13 @@ impl Rectangle {
     pub fn overlaps(&self, o: &Rectangle) -> bool {
         self.min.0 < o.max.0 && o.min.0 < self.max.0 && self.min.1 < o.max.1 && o.min.1 < self.max.1
     }
+    /// Union returns the smallest rectangle that contains both rectangles.
+    pub fn union(&self, o: &Rectangle) -> Rectangle {
+        Rectangle {
+            min: (self.min.0.min(o.min.0), self.min.1.min(o.min.1)),
+            max: (self.max.0.max(o.max.0), self.max.1.max(o.max.1)),
+        }
+    }
 }
 
 /// Clear clears the screen with empty cells. This is equivalent to filling

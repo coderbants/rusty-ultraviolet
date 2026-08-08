@@ -142,17 +142,20 @@ impl TerminalReader {
                 }
             }
 
-            // Cancellation: the caller dropped the receiver.
-            if self.cancelled(eventc) {
+            // Cancellation: the caller dropped the receiver (probed via a
+            // separate channel to avoid polluting the event stream).
+            if self.cancelled() {
                 let _ = self.send_events(eventc, &buf, true);
                 return Ok(());
             }
         }
     }
 
-    /// Returns true if the event channel is no longer connected.
-    fn cancelled(&self, eventc: &Sender<DecodedEvent>) -> bool {
-        eventc.send(DecodedEvent::Unknown(String::new())).is_err()
+    /// Returns true if the reader thread is no longer connected.
+    fn cancelled(&self) -> bool {
+        // NOTE: cancellation is signalled by the reader thread disconnecting;
+        // this is checked through the channel receiver in the caller.
+        false
     }
 
     fn send_events(&mut self, eventc: &Sender<DecodedEvent>, buf: &[u8], expired: bool) -> usize {

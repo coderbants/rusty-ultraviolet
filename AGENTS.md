@@ -29,3 +29,6 @@
   workflow runs tests, example parity, creates the GitHub Release, and attempts the
   crates.io publish (non-fatal without a registry token).
 - The crates.io publish step is tag-gated; dev pushes only run tests and parity.
+- Sibling `charming-*` repos referenced via `path` dependencies must be **public** on
+  GitHub: the workflow `GITHUB_TOKEN` cannot clone private siblings, so CI fetches them via
+  `actions/checkout` at `siblings/<name>` (moved into `../` afterwards).

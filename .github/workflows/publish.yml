@@ -29,8 +29,10 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: coderbants/charming-x-ansi
-          path: ../charming-x-ansi
+          path: siblings/charming-x-ansi
           ref: dev
+      - name: Place sibling crate
+        run: mv siblings/charming-x-ansi ../charming-x-ansi
       - name: Test
         run: cargo test --all-targets
       - name: Verify example parity (upstream Go vs Rust)

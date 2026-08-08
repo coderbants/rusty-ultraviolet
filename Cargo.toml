@@ -6,6 +6,7 @@ description = "Cleanroom Rust port of Charmbracelet's Ultraviolet (pin v0.0.0-20
 license = "MIT"
 
 [dependencies]
+charming-colorprofile = { path = "../charming-colorprofile" }
 charming-x-ansi = { path = "../charming-x-ansi" }
 unicode-segmentation = "1.10.1"
 unicode-width = "0.1"

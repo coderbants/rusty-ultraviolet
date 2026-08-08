@@ -99,6 +99,7 @@ pub use screen::{clear, clear_area, clone_area, fill, fill_area, rect, Rectangle
 pub use styled::{new_styled_string, read_link, read_style, StyledString};
 pub use screen_context::{new_context, new_context_with_width_method, Context};
 pub use style::{style_diff, Attr, Style};
+pub use terminal_renderer::TerminalRenderer;
 pub use terminal_screen::{new_terminal_screen, ColorProfile, TerminalScreen};
 pub use winch::{new_size_notifier, SizeNotifier};
 pub use window::{new_window, pos, Window};

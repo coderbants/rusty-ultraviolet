@@ -154,7 +154,7 @@ const NEW_INDEX: i64 = -1;
 pub(crate) fn convert_style(s: &Style, p: ColorProfile) -> Style {
     match p {
         ColorProfile::TrueColor => return s.clone(),
-        ColorProfile::Ascii => {
+        ColorProfile::Unknown | ColorProfile::Ascii => {
             let mut s = s.clone();
             s.fg = None;
             s.bg = None;
@@ -191,7 +191,7 @@ fn convert_color(c: Color, p: ColorProfile) -> Color {
 ///
 /// NOTE: upstream this lives in `cell.go` (ConvertLink); see [convert_style].
 pub(crate) fn convert_link(h: &Link, p: ColorProfile) -> Link {
-    if p == ColorProfile::NoTty {
+    if p == ColorProfile::NoTty || p == ColorProfile::Unknown {
         return Link::default();
     }
     h.clone()
@@ -295,6 +295,12 @@ impl TerminalRenderer {
         let mut r = TerminalRenderer::new_inner(env);
         r.writer = Some(w);
         r
+    }
+
+    /// NewWithoutWriter returns a renderer with no attached writer; use
+    /// [TerminalRenderer::flush_into] to drain the buffer.
+    pub fn new_without_writer(env: &Environ) -> TerminalRenderer {
+        TerminalRenderer::new_inner(env)
     }
 
     fn new_inner(env: &Environ) -> TerminalRenderer {

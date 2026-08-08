@@ -43,37 +43,11 @@ const SET_TAB_EVERY_8_COLUMNS: &str = "\x1b[?5W";
 /// `colorprofile.dumbTerm`).
 const DUMB_TERM: &str = "dumb";
 
-/// ColorProfile represents the color support level of the terminal.
+/// The color profile used for downsampling colors.
 ///
-/// NOTE: local port of `charmbracelet/colorprofile.Profile`; the sibling
-/// `charming-colorprofile` crate is not a dependency of this crate yet.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Default)]
-pub enum ColorProfile {
-    /// NoTTY is a profile with no terminal support.
-    #[default]
-    NoTty,
-    /// Ascii is a profile with no color support.
-    Ascii,
-    /// ANSI is a profile with 16 colors (4-bit).
-    Ansi,
-    /// ANSI256 is a profile with 256 colors (8-bit).
-    Ansi256,
-    /// TrueColor is a profile with 16 million colors (24-bit).
-    TrueColor,
-}
-
-impl ColorProfile {
-    /// String returns the string representation of a Profile.
-    pub fn string(&self) -> &'static str {
-        match self {
-            ColorProfile::TrueColor => "TrueColor",
-            ColorProfile::Ansi256 => "ANSI256",
-            ColorProfile::Ansi => "ANSI",
-            ColorProfile::Ascii => "Ascii",
-            ColorProfile::NoTty => "NoTTY",
-        }
-    }
-}
+/// This is `charming_colorprofile::Profile`; the upstream ultraviolet uses
+/// the colorprofile package directly.
+pub type ColorProfile = charming_colorprofile::Profile;
 
 /// TerminalRenderer is the internal interface of the terminal output
 /// renderer.

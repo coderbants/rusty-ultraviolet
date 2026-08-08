@@ -35,6 +35,7 @@ use charming_x_ansi::cursor::{REVERSE_INDEX, cursor_backward_tab};
 use charming_x_ansi::mode::{RESET_MODE_AUTO_WRAP, RESET_MODE_INSERT_REPLACE, SET_MODE_AUTO_WRAP, SET_MODE_INSERT_REPLACE};
 use charming_x_ansi::parser::{DEL, US};
 use std::collections::hash_map::DefaultHasher;
+use std::io::Write;
 use std::hash::{Hash, Hasher};
 
 /// The marker used for touched lines that have been processed (upstream uses
@@ -223,6 +224,8 @@ fn detect_profile(env: &Environ) -> ColorProfile {
 /// [RenderBuffer] to the terminal with the minimal necessary escape sequences
 /// to transition the terminal to the new buffer state.
 pub struct TerminalRenderer {
+    /// The writer flushed to (upstream's `w io.Writer`).
+    writer: Option<Box<dyn Write + Send>>,
     /// The internal output buffer (Go's `buf *bytes.Buffer`).
     buf: Vec<u8>,
     /// The current buffer, updated after each render.
@@ -261,6 +264,7 @@ pub struct TerminalRenderer {
 pub(crate) fn new_terminal_renderer(env: &Environ) -> Box<dyn crate::terminal_screen::TerminalRenderer> {
     let term = env.getenv("TERM");
     Box::new(TerminalRenderer {
+        writer: None,
         buf: Vec::new(),
         curbuf: crate::new_render_buffer(0, 0),
         tabs: None,
@@ -279,6 +283,210 @@ pub(crate) fn new_terminal_renderer(env: &Environ) -> Box<dyn crate::terminal_sc
         line_had_wide: false,
         profile: detect_profile(env),
     })
+}
+
+impl TerminalRenderer {
+    /// NewTerminalRenderer returns a new [TerminalRenderer] that writes to
+    /// the given writer, mirroring upstream `NewTerminalRenderer(w, env)`.
+    ///
+    /// The renderer detects the color profile from the environment and the
+    /// terminal capabilities from the `TERM` variable.
+    pub fn new(w: Box<dyn Write + Send>, env: &Environ) -> TerminalRenderer {
+        let mut r = TerminalRenderer::new_inner(env);
+        r.writer = Some(w);
+        r
+    }
+
+    fn new_inner(env: &Environ) -> TerminalRenderer {
+        let term = env.getenv("TERM");
+        TerminalRenderer {
+            writer: None,
+            buf: Vec::new(),
+            curbuf: crate::new_render_buffer(0, 0),
+            tabs: None,
+            oldhash: Vec::new(),
+            newhash: Vec::new(),
+            hashtab: Vec::new(),
+            oldnum: Vec::new(),
+            cur: RCursor::new(),
+            saved: RCursor::new(),
+            flags: TFlag::default(),
+            method: WidthMethod::WcWidth,
+            term: term.clone(),
+            clear: false,
+            caps: xterm_caps(&term),
+            at_phantom: false,
+            line_had_wide: false,
+            profile: detect_profile(env),
+        }
+    }
+
+    /// Render renders changes of the screen to the internal buffer. Call
+    /// [TerminalRenderer::flush] to flush pending changes to the writer.
+    pub fn render_public(&mut self, newbuf: &mut RenderBuffer) {
+        self.render_buffer(newbuf);
+    }
+
+    /// Flush flushes the buffer to the writer.
+    pub fn flush_public(&mut self) -> std::io::Result<()> {
+        if let Some(w) = &mut self.writer {
+            if !self.buf.is_empty() {
+                w.write_all(&self.buf)?;
+                self.buf.clear();
+            }
+        }
+        Ok(())
+    }
+
+    /// FlushInto flushes the buffer into the given output buffer (screen
+    /// mode, used when no writer is attached).
+    pub fn flush_into(&mut self, out: &mut Vec<u8>) {
+        out.extend_from_slice(&self.buf);
+        self.buf.clear();
+    }
+
+    /// SetFullscreen sets whether whole screen is being used.
+    pub fn set_fullscreen_public(&mut self, fullscreen: bool) {
+        if fullscreen {
+            self.flags.set(TFlag::FULLSCREEN);
+        } else {
+            self.flags.reset(TFlag::FULLSCREEN);
+        }
+    }
+
+    /// SetRelativeCursor sets whether to use relative cursor movements.
+    pub fn set_relative_cursor_public(&mut self, relative: bool) {
+        if relative {
+            self.flags.set(TFlag::RELATIVE_CURSOR);
+        } else {
+            self.flags.reset(TFlag::RELATIVE_CURSOR);
+        }
+    }
+
+    /// SetColorProfile sets the color profile of the renderer.
+    pub fn set_color_profile_public(&mut self, profile: ColorProfile) {
+        self.profile = profile;
+    }
+
+    /// SetTabStops sets the tab stops for the terminal.
+    pub fn set_tab_stops_public(&mut self, every: i32) {
+        if every < 0 || self.term.starts_with("linux") {
+            self.caps.reset(Capabilities::HT);
+        } else {
+            self.caps.set(Capabilities::HT);
+            let width = self.curbuf.width() as i32;
+            self.tabs = Some(default_tab_stops(if width > 0 { width } else { every }));
+        }
+    }
+
+    /// SetBackspace sets whether to use backspace as a movement
+    /// optimization.
+    pub fn set_backspace_public(&mut self, backspace: bool) {
+        if backspace {
+            self.caps.set(Capabilities::BS);
+        } else {
+            self.caps.reset(Capabilities::BS);
+        }
+    }
+
+    /// SetMapNewline sets whether the terminal is currently mapping
+    /// newlines to CRLF.
+    pub fn set_map_newline_public(&mut self, map: bool) {
+        if map {
+            self.flags.set(TFlag::MAP_NEWLINE);
+        } else {
+            self.flags.reset(TFlag::MAP_NEWLINE);
+        }
+    }
+
+    /// SetWidthMethod sets the width method the renderer uses.
+    pub fn set_width_method_public(&mut self, method: WidthMethod) {
+        self.method = method;
+    }
+
+    /// SetGraphemeWidth sets whether the terminal measures cell width using
+    /// Unicode grapheme clustering.
+    pub fn set_grapheme_width_public(&mut self, grapheme: bool) {
+        if grapheme {
+            self.flags.set(TFlag::GRAPHEME_WIDTH);
+            self.method = WidthMethod::GraphemeWidth;
+        } else {
+            self.flags.reset(TFlag::GRAPHEME_WIDTH);
+            self.method = WidthMethod::WcWidth;
+        }
+    }
+
+    /// Resize updates the terminal screen tab stops.
+    pub fn resize_public(&mut self, width: usize, _height: usize) {
+        if let Some(tabs) = &mut self.tabs {
+            tabs.resize(width as i32);
+        }
+    }
+
+    /// Erase marks the screen to be fully erased on the next render.
+    pub fn erase_public(&mut self) {
+        self.clear = true;
+    }
+
+    /// SaveCursor saves the current cursor position and styles.
+    pub fn save_cursor_public(&mut self) {
+        self.saved = self.cur.clone();
+    }
+
+    /// RestoreCursor restores the saved cursor position and styles.
+    pub fn restore_cursor_public(&mut self) {
+        self.cur = self.saved.clone();
+    }
+
+    /// Position returns the cursor position in the screen buffer.
+    pub fn position_public(&self) -> (usize, usize) {
+        (self.cur.x.max(0) as usize, self.cur.y.max(0) as usize)
+    }
+
+    /// SetPosition changes the logical cursor position.
+    pub fn set_position_public(&mut self, x: usize, y: usize) {
+        self.cur.x = x as i64;
+        self.cur.y = y as i64;
+    }
+
+    /// MoveTo calculates and writes the shortest sequence to move the cursor
+    /// to the given position.
+    pub fn move_to_public(&mut self, x: i64, y: i64) {
+        self.move_to_pos(None, x, y);
+    }
+
+    /// Buffered returns the number of bytes buffered for the next flush.
+    pub fn buffered_public(&self) -> usize {
+        self.buf.len()
+    }
+
+    /// WriteString writes the given string to the renderer's buffer.
+    pub fn write_string_public(&mut self, s: &str) -> std::io::Result<usize> {
+        let n = s.len();
+        self.push(s);
+        Ok(n)
+    }
+
+    /// SetScrollOptim sets whether to use hard scroll optimizations.
+    pub fn set_scroll_optim_public(&mut self, v: bool) {
+        if v {
+            self.flags.set(TFlag::SCROLL_OPTIM);
+        } else {
+            self.flags.reset(TFlag::SCROLL_OPTIM);
+        }
+    }
+
+    /// Redraw forces a full redraw of the screen.
+    pub fn redraw_public(&mut self, newbuf: &mut RenderBuffer) {
+        self.clear = true;
+        self.render_buffer(newbuf);
+    }
+
+    /// WriteByte writes a single byte to the renderer's buffer.
+    pub fn write_byte_public(&mut self, b: u8) -> std::io::Result<usize> {
+        self.push_byte(b);
+        Ok(1)
+    }
 }
 
 impl TerminalRenderer {

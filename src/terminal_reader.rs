@@ -184,7 +184,7 @@ pub struct EventScanner {
     /// Whether to use the lookup table.
     pub lookup: bool,
     /// The logger.
-    pub logger: Option<Box<dyn Logger>>,
+    pub logger: Option<Box<dyn Logger + Send>>,
 }
 
 impl EventScanner {

@@ -18,6 +18,9 @@ pub mod poll;
 pub mod screen;
 pub mod screen_context;
 pub mod style;
+pub mod tabstop;
+pub mod terminal_renderer;
+pub mod terminal_screen;
 pub mod window;
 
 pub use buffer::{
@@ -34,6 +37,7 @@ pub use poll::{new_fallback_reader, new_poll_reader, PollError, PollReader};
 pub use screen::{clear, clear_area, clone_area, fill, fill_area, rect, Rectangle};
 pub use screen_context::{new_context, new_context_with_width_method, Context};
 pub use style::{style_diff, Attr, Style};
+pub use terminal_screen::{new_terminal_screen, ColorProfile, Environ, Logger, TerminalScreen};
 pub use window::{new_window, pos, Window};
 
 use std::io::{self, Write};

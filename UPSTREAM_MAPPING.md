@@ -28,16 +28,16 @@ tests, examples, docs, and support files). The full repo history is checked out 
 | `mouse.go` | `src/mouse.rs` | Mouse event model |
 | `cursor.go` | `src/cursor.rs` | Cursor model |
 | `decoder.go` | `src/decoder.rs` | Input event decoder |
-| `tabstop.go` | `src/tabstop.rs` | Tab stop handling |
+| `tabstop.go` | `src/tabstop.rs` — **Ported** | Tab stops (bitmask, find/next/prev/resize) |
 | `utils.go` | `src/utils.rs` | Shared helpers |
 | `layout.go` | ~~`src/layout.rs`~~ | **DELETED upstream at second pin**; replaced by the `layout/` subpackage (see Second Pin table) which is ported to `src/layout.rs` |
 | `terminal.go` | `src/terminal.rs` | Terminal abstraction |
 | `terminal_reader.go` | `src/terminal_reader.rs` | Terminal input reader |
 | `terminal_reader_other.go` | `src/terminal_reader.rs` | Non-Windows reader implementation |
 | `terminal_reader_windows.go` | `src/terminal_reader.rs` | Windows reader implementation |
-| `terminal_renderer.go` | `src/terminal_renderer.rs` | Terminal output renderer |
-| `terminal_renderer_hardscroll.go` | `src/terminal_renderer.rs` | Hard-scroll renderer path |
-| `terminal_renderer_hashmap.go` | `src/terminal_renderer.rs` | Hash-map renderer cache |
+| `terminal_renderer.go` | `src/terminal_renderer.rs` — **Ported** | Full renderer: cursor-move optimizer (CUP/local/CR/home + hard tabs + backspace + overwrite), transformLine/putRange/emitRange (ECH/REP), clear optimizations, insert/delete cells, profile-aware pen |
+| `terminal_renderer_hardscroll.go` | `src/terminal_renderer.rs` — **Ported** | scrollOptimize/scrolln/scrollUp/scrollDown/scrollIdl + DECSTBM margins |
+| `terminal_renderer_hashmap.go` | `src/terminal_renderer.rs` — **Ported** | Line hashing + hunk growing/cost-effectiveness for scroll optimization |
 | `terminal_tabdly.go` | `src/terminal.rs` | Tab-delay terminal behaviour |
 | `terminal_tabdly_other.go` | `src/terminal.rs` | Non-Windows tab-delay behaviour |
 | `terminal_unix.go` | `src/terminal.rs` | Unix terminal behaviour |
@@ -70,7 +70,7 @@ tests, examples, docs, and support files). The full repo history is checked out 
 | `tabstop_test.go` | `tests/tabstop_test.rs` | Tab stop tests |
 | `layout_test.go` | `tests/layout_test.rs` | Layout tests |
 | `terminal_test.go` | `tests/terminal_test.rs` | Terminal tests |
-| `terminal_renderer_test.go` | `tests/terminal_renderer_test.rs` | Renderer tests |
+| `terminal_renderer_test.go`, `terminal_renderer_output_test.go` | `src/terminal_renderer.rs` (tests) | Renderer tests: Go-verified byte vectors (initial/modify/revert/wide/erase/leading/repeat/resize scenarios) |
 | `terminal_renderer_output_test.go` | `tests/terminal_renderer_test.rs` | Renderer output golden tests |
 | `cancelreader_test.go` | `tests/cancelreader_test.rs` | Cancellable reader tests |
 | `cursor_test.go` | `tests/cursor_test.rs` | Cursor tests |
@@ -150,7 +150,7 @@ Per the multi-version rule this second pin is published as a separate crate vers
 | `layout/padding.go` | `src/layout.rs` — **Ported** | `Padding` (CSS shorthand via `pad(&[i64])`) applied to the area before solving. |
 | `screen/context.go` | `src/screen_context.rs` — **Ported** | Drawing `Context` (style/link/position, grapheme-aware `draw_string`/`draw_string_wrapped`, `fmt::Write`+`io::Write`). Pending: the ported `Screen` trait lacks `width_method()`/`SetCell` — the Context holds its own `WidthMethod` (default WcWidth) and writes through `cell_at_mut`; switch to the screen's `width_method` when the integrator's `uv.go` port exposes it. |
 | `screen/screen.go` | `src/screen.rs` (first pin) + **delta pending** | The `uv.Screen` interface (Bounds/CellAt/SetCell/WidthMethod) and the `FillArea`/`CloneArea` cell-width stepping delta belong to the `screen.rs`/`buffer.rs` owners; `screen_context.rs` documents the coupling. |
-| `terminal_screen.go` | `src/terminal_screen.rs` — Pending | Moved out of `terminal.go` upstream (was `terminal.go` → `src/terminal.rs` at first pin); needs a new module. |
+| `terminal_screen.go` | `src/terminal_screen.rs` — **Ported** | Moved out of `terminal.go` upstream (was `terminal.go` → `src/terminal.rs` at first pin); the `TerminalScreen` owns the window/render/output buffers, cursor, and terminal state. `TerminalRenderer` calls are isolated behind a local `pub(crate)` trait; the real `terminal_renderer.rs` implements it (byte-verified against Go for render/move scenarios). `Environ`, `Logger`, and `ColorProfile` are implemented locally (upstream `environ.go`, `logger.go`, `colorprofile`); the env-based `Detect` subset is ported (terminfo/tmux upgrades omitted). The Go `sync.Mutex` is dropped: all methods take `&mut self`. |
 | `layout.go` (root, first pin) | **DELETED upstream** | Old root-package layout engine; replaced by the `layout/` subpackage (mapped above). The old `src/layout.rs` entry no longer applies. |
 
 ## Second Pin: Test Files
@@ -162,7 +162,8 @@ Per the multi-version rule this second pin is published as a separate crate vers
 | `internal/casso/casso_test.go` | `src/casso.rs` (module tests) — **Ported** | `TestSymbol`, `TestConstraint`, `TestConstraintRequiringArtificialVariable` ported and passing. |
 | `internal/lru/lru_test.go` | `src/lru.rs` (module tests) — **Ported** | `TestLRU` ported and passing (incl. negative-size panic). |
 | `layout/layout_test.go` | `src/layout.rs` (module tests) — **Ported** | `TestPriorityIsValid`, `TestLength`, `TestPercent`, `TestRatio`, `TestMin`/`Max`/`Len`, `TestFlexConstraint`, `TestFlexSpacing`, `TestEdgeCases` cases ported; Go-verified expectations. |
-| `cell_iszero_test.go`, `grapheme_width_test.go`, `transformline_bug_test.go`, `widecell_placeholder_test.go` | `tests/*_test.rs` — Pending | Second-pin cell/width regression tests; belong to the `cell`/`buffer` owners. |
+| `cell_iszero_test.go`, `grapheme_width_test.go`, `transformline_bug_test.go`, `widecell_placeholder_test.go` | `tests/*_test.rs` — Pending | Second-pin cell/width regression tests; belong to the `cell`/`buffer` owners. `transformline_bug_test.go` and `widecell_placeholder_test.go` are covered by `src/terminal_screen.rs` module tests. |
+| `terminal_screen_test.go` | (none) — N/A | No upstream test file exists for `terminal_screen.go` at this pin; the screen behavior is covered by the module tests in `src/terminal_screen.rs`. |
 
 ## Second Pin: Example Applications
 

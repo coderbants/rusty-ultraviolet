@@ -31,6 +31,11 @@ impl Attr {
     pub const CONCEAL: Attr = Attr(1 << 6);
     /// Strikethrough attribute.
     pub const STRIKETHROUGH: Attr = Attr(1 << 7);
+
+    /// Returns the raw attribute bits.
+    pub fn bits(&self) -> u8 {
+        self.0
+    }
 }
 
 /// Style represents the style of a cell.

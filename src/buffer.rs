@@ -288,12 +288,22 @@ impl Buffer {
 
     /// SetCell sets the cell at the given position. A None cell is treated as
     /// an empty cell with a space character and a width of 1.
+    ///
+    /// This goes through [Line::set] so the wide-cell placeholder handling
+    /// (clearing partially overwritten wide cells) is applied, mirroring
+    /// upstream `Buffer.SetCell` calling `Line.Set`.
     pub fn set_cell(&mut self, x: usize, y: usize, c: Option<&Cell>) {
-        if let Some(cell) = self.cell_at_mut(x, y) {
-            *cell = match c {
-                Some(c) => c.clone(),
-                None => empty_cell(),
-            };
+        if x >= self.width() || y >= self.height() {
+            return;
+        }
+        if let Some(line) = self.lines.get_mut(y) {
+            line.set(
+                x,
+                match c {
+                    Some(c) => c.clone(),
+                    None => empty_cell(),
+                },
+            );
         }
     }
 
@@ -482,6 +492,23 @@ impl RenderBuffer {
     /// Line returns a pointer to the line at the given y position.
     pub fn line(&self, y: usize) -> Option<&Line> {
         self.buffer.line(y)
+    }
+
+    /// SetLine replaces the line at the given y position.
+    pub fn set_line(&mut self, y: usize, line: Line) {
+        if let Some(l) = self.buffer.lines.get_mut(y) {
+            *l = line;
+        }
+    }
+
+    /// CopyLine copies the line at src to the line at dst.
+    pub fn copy_line(&mut self, dst: usize, src: usize) {
+        let src_line = self.buffer.lines.get(src).cloned();
+        if let Some(l) = self.buffer.lines.get_mut(dst) {
+            if let Some(s) = src_line {
+                *l = s;
+            }
+        }
     }
 
     /// CellAt returns the cell at the given position.

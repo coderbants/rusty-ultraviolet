@@ -11,8 +11,8 @@
 
 use crate::buffer::{RenderBuffer, Screen};
 use crate::cell::{empty_cell, Cell};
-use crate::environ::Environ;
 use crate::console::{FdFile, File};
+use crate::environ::Environ;
 use crate::screen::Rectangle;
 use crate::window::{new_window, Window};
 use crate::{
@@ -38,9 +38,6 @@ use std::rc::Rc;
 /// DECST8C: reset terminal tab stops to every 8 columns (upstream
 /// `ansi.SetTabEvery8Columns`).
 const SET_TAB_EVERY_8_COLUMNS: &str = "\x1b[?5W";
-
-/// The value of `TERM` that disables color support (upstream
-/// `colorprofile.dumbTerm`).
 
 /// The color profile used for downsampling colors.
 ///
@@ -185,10 +182,10 @@ pub fn new_terminal_screen<W: Write + 'static>(w: W, env: Environ) -> TerminalSc
         if let Ok(f) = std::fs::OpenOptions::new()
             .create(true)
             .append(true)
-            .write(true)
             .open(&debug_file)
         {
-            s.rend.set_logger(Some(Box::new(crate::logger::FileLogger(f))));
+            s.rend
+                .set_logger(Some(Box::new(crate::logger::FileLogger(f))));
         }
     }
 
@@ -410,7 +407,8 @@ impl TerminalScreen {
     /// mode 2027) so the terminal reports whether it measures cell width using
     /// grapheme clustering. The response arrives as a mode report event.
     pub fn request_grapheme_width(&mut self) {
-        self.buf.push_str(charming_x_ansi::mode::REQUEST_MODE_UNICODE_CORE);
+        self.buf
+            .push_str(charming_x_ansi::mode::REQUEST_MODE_UNICODE_CORE);
     }
 
     /// EnableGraphemeWidth enables Unicode core mode (DEC mode 2027) on the
@@ -427,7 +425,8 @@ impl TerminalScreen {
         if self.width_method_override {
             return;
         }
-        self.buf.push_str(charming_x_ansi::mode::SET_MODE_UNICODE_CORE);
+        self.buf
+            .push_str(charming_x_ansi::mode::SET_MODE_UNICODE_CORE);
         self.set_width_method_internal(WidthMethod::GraphemeWidth);
         self.rend.set_grapheme_width(true);
         let _ = self.flush();
@@ -518,7 +517,7 @@ impl TerminalScreen {
                     Some(c) => {
                         self.rbuf.set_cell(x, y, Some(&c));
                         let mut width = c.width;
-                        if width <= 0 {
+                        if width == 0 {
                             width = 1;
                         }
                         x += width;
@@ -715,9 +714,7 @@ impl TerminalScreen {
         if !self.cursor_position_known {
             return None;
         }
-        self.cursor
-            .as_ref()
-            .map(|c| (c.position.x, c.position.y))
+        self.cursor.as_ref().map(|c| (c.position.x, c.position.y))
     }
 
     /// SetCursorStyle sets the style of the terminal cursor.
@@ -993,7 +990,8 @@ impl TerminalScreen {
         //
         // Note that both the renderer and the screen write to the same output
         // buffer.
-        self.rend.move_to(0, self.height().saturating_sub(1), &mut self.buf);
+        self.rend
+            .move_to(0, self.height().saturating_sub(1), &mut self.buf);
     }
 
     /// Restore restores the terminal screen to its previous state, applying
@@ -1389,7 +1387,13 @@ mod tests {
         let (s, _) = test_screen();
         assert_eq!(s.width(), 0);
         assert_eq!(s.height(), 0);
-        assert_eq!(s.bounds(), Rectangle { min: (0, 0), max: (0, 0) });
+        assert_eq!(
+            s.bounds(),
+            Rectangle {
+                min: (0, 0),
+                max: (0, 0)
+            }
+        );
         assert!(!s.alt_screen());
         assert!(!s.cursor_visible());
         assert_eq!(s.cursor_position(), None);
@@ -1780,7 +1784,11 @@ mod tests {
 
     #[test]
     fn test_environ_lookup() {
-        let env = Environ(vec!["A=1".to_string(), "B=2".to_string(), "A=3".to_string()]);
+        let env = Environ(vec![
+            "A=1".to_string(),
+            "B=2".to_string(),
+            "A=3".to_string(),
+        ]);
         assert_eq!(env.getenv("A"), "3");
         assert_eq!(env.lookup_env("B"), Some("2".to_string()));
         assert_eq!(env.lookup_env("C"), None);

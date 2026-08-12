@@ -131,9 +131,7 @@ pub fn new_console(
 
 /// Returns the process environment as a `KEY=VALUE` list.
 fn vars_env() -> Vec<String> {
-    std::env::vars()
-        .map(|(k, v)| format!("{k}={v}"))
-        .collect()
+    std::env::vars().map(|(k, v)| format!("{k}={v}")).collect()
 }
 
 /// The platform-split console constructor: `console_unix.go` wraps the
@@ -251,9 +249,11 @@ impl Console {
 /// This mirrors `os.OpenFile("/dev/tty", os.O_RDWR, 0)` upstream.
 #[cfg(unix)]
 pub fn open_tty() -> Result<FdFile, ConsoleError> {
-    let fd = unsafe { libc::open(b"/dev/tty\0".as_ptr() as *const libc::c_char, libc::O_RDWR) };
+    let fd = unsafe { libc::open(c"/dev/tty".as_ptr(), libc::O_RDWR) };
     if fd < 0 {
-        return Err(ConsoleError::Io(std::io::Error::last_os_error().to_string()));
+        return Err(ConsoleError::Io(
+            std::io::Error::last_os_error().to_string(),
+        ));
     }
     Ok(FdFile {
         fd,
@@ -317,13 +317,7 @@ impl FdFile {
 #[cfg(unix)]
 impl Read for FdFile {
     fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
-        let n = unsafe {
-            libc::read(
-                self.fd,
-                buf.as_mut_ptr() as *mut libc::c_void,
-                buf.len(),
-            )
-        };
+        let n = unsafe { libc::read(self.fd, buf.as_mut_ptr() as *mut libc::c_void, buf.len()) };
         if n < 0 {
             return Err(std::io::Error::last_os_error());
         }
@@ -430,14 +424,18 @@ fn make_raw_side(
             unsafe {
                 libc::cfmakeraw(&mut termios);
                 if libc::tcsetattr(f.fd() as libc::c_int, libc::TCSANOW, &termios) != 0 {
-                    return Err(ConsoleError::Io(std::io::Error::last_os_error().to_string()));
+                    return Err(ConsoleError::Io(
+                        std::io::Error::last_os_error().to_string(),
+                    ));
                 }
             }
             return Ok(Some(original));
         }
     }
 
-    Err(ConsoleError::Io(std::io::Error::last_os_error().to_string()))
+    Err(ConsoleError::Io(
+        std::io::Error::last_os_error().to_string(),
+    ))
 }
 
 #[cfg(not(unix))]
@@ -452,7 +450,9 @@ fn make_raw_side(
 fn restore_side(fd: usize, state: &RawState) -> Result<(), ConsoleError> {
     let termios = &state.0;
     if unsafe { libc::tcsetattr(fd as libc::c_int, libc::TCSANOW, termios) } != 0 {
-        return Err(ConsoleError::Io(std::io::Error::last_os_error().to_string()));
+        return Err(ConsoleError::Io(
+            std::io::Error::last_os_error().to_string(),
+        ));
     }
     Ok(())
 }
@@ -476,7 +476,9 @@ pub(crate) fn get_winsize_for_fd(fd: usize) -> Result<Winsize, ConsoleError> {
             ypixel: ws.ws_ypixel,
         });
     }
-    Err(ConsoleError::Io(std::io::Error::last_os_error().to_string()))
+    Err(ConsoleError::Io(
+        std::io::Error::last_os_error().to_string(),
+    ))
 }
 
 /// GetWinsizeForFd returns the terminal size of the given file descriptor.
@@ -488,7 +490,10 @@ pub(crate) fn get_winsize_for_fd(_fd: usize) -> Result<Winsize, ConsoleError> {
 /// getWinsize returns the terminal size of the given files, trying each in
 /// turn, mirroring `getWinsize` in `terminal_unix.go`.
 #[cfg(unix)]
-fn get_winsize(in_tty: Option<&dyn File>, out_tty: Option<&dyn File>) -> Result<Winsize, ConsoleError> {
+fn get_winsize(
+    in_tty: Option<&dyn File>,
+    out_tty: Option<&dyn File>,
+) -> Result<Winsize, ConsoleError> {
     let mut err: Option<ConsoleError> = Some(ConsoleError::NotTerminal);
     for f in [in_tty, out_tty].into_iter().flatten() {
         let mut ws: libc::winsize = unsafe { std::mem::zeroed() };
@@ -501,12 +506,17 @@ fn get_winsize(in_tty: Option<&dyn File>, out_tty: Option<&dyn File>) -> Result<
                 ypixel: ws.ws_ypixel,
             });
         }
-        err = Some(ConsoleError::Io(std::io::Error::last_os_error().to_string()));
+        err = Some(ConsoleError::Io(
+            std::io::Error::last_os_error().to_string(),
+        ));
     }
     Err(err.unwrap())
 }
 
 #[cfg(not(unix))]
-fn get_winsize(_in_tty: Option<&dyn File>, _out_tty: Option<&dyn File>) -> Result<Winsize, ConsoleError> {
+fn get_winsize(
+    _in_tty: Option<&dyn File>,
+    _out_tty: Option<&dyn File>,
+) -> Result<Winsize, ConsoleError> {
     Err(ConsoleError::PlatformNotSupported)
 }

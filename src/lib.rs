@@ -10,8 +10,8 @@
 
 pub mod border;
 pub mod buffer;
-pub mod casso;
 pub mod cancelreader;
+pub mod casso;
 pub mod cell;
 pub mod console;
 pub mod decoder;
@@ -26,81 +26,80 @@ pub mod mouse;
 pub mod poll;
 pub mod screen;
 pub mod screen_context;
-pub mod styled;
 pub mod style;
+pub mod styled;
 pub mod tabstop;
-pub mod utils;
 pub mod terminal;
 pub mod terminal_reader;
 pub mod terminal_renderer;
 pub mod terminal_screen;
 pub mod tty;
-pub mod window;
+pub mod utils;
 pub mod winch;
+pub mod window;
 
 pub use border::{
     ascii_border, block_border, double_border, hidden_border, inner_half_block_border,
-    markdown_border, normal_border, outer_half_block_border, rounded_border, thick_border,
-    Border, Side,
+    markdown_border, normal_border, outer_half_block_border, rounded_border, thick_border, Border,
+    Side,
 };
 pub use buffer::{
     new_buffer, new_render_buffer, new_screen_buffer, trim_space, Buffer, Line, Lines,
     RenderBuffer, Screen, ScreenBuffer,
 };
+pub use cancelreader::new_cancel_reader;
 pub use cell::{empty_cell, new_link, Cell, Link};
+pub use console::Winsize;
+pub use console::{Console, ConsoleError, FdFile, File, RawState};
+pub use decoder::{DecodedEvent, EventDecoder, LegacyKeyEncoding};
 pub use environ::Environ;
 pub use event::{
     BackgroundColorEvent, BlurEvent, CapabilityEvent, CellSizeEvent, ClipboardEvent,
-    CursorColorEvent, CursorPositionEvent, DarkColorSchemeEvent, FocusEvent,
-    ForegroundColorEvent, KeyboardEnhancementsEvent, KeyPressEvent, KeyReleaseEvent,
-    KittyGraphicsEvent, LightColorSchemeEvent, ModeReportEvent, ModifyOtherKeysEvent,
-    MouseClickEvent, MouseMotionEvent, MouseReleaseEvent, MouseWheelEvent, MultiEvent,
-    PasteEndEvent, PasteEvent, PasteStartEvent, PixelSizeEvent, PrimaryDeviceAttributesEvent,
-    SecondaryDeviceAttributesEvent, Size, TerminalVersionEvent, TertiaryDeviceAttributesEvent,
-    UnknownApcEvent, UnknownCsiEvent, UnknownDcsEvent, UnknownEvent, UnknownOscEvent,
-    UnknownPmEvent, UnknownSosEvent, UnknownSs3Event, WindowOpEvent, WindowSizeEvent,
-    PRIMARY_CLIPBOARD, SYSTEM_CLIPBOARD,
+    CursorColorEvent, CursorPositionEvent, DarkColorSchemeEvent, FocusEvent, ForegroundColorEvent,
+    KeyPressEvent, KeyReleaseEvent, KeyboardEnhancementsEvent, KittyGraphicsEvent,
+    LightColorSchemeEvent, ModeReportEvent, ModifyOtherKeysEvent, MouseClickEvent,
+    MouseMotionEvent, MouseReleaseEvent, MouseWheelEvent, MultiEvent, PasteEndEvent, PasteEvent,
+    PasteStartEvent, PixelSizeEvent, PrimaryDeviceAttributesEvent, SecondaryDeviceAttributesEvent,
+    Size, TerminalVersionEvent, TertiaryDeviceAttributesEvent, UnknownApcEvent, UnknownCsiEvent,
+    UnknownDcsEvent, UnknownEvent, UnknownOscEvent, UnknownPmEvent, UnknownSosEvent,
+    UnknownSs3Event, WindowOpEvent, WindowSizeEvent, PRIMARY_CLIPBOARD, SYSTEM_CLIPBOARD,
 };
 pub use key::{
-    Key, KeyMod, KEY_BACKSPACE, KEY_BEGIN, KEY_CAPS_LOCK,
-    KEY_DELETE, KEY_DOWN, KEY_END, KEY_ENTER, KEY_ESCAPE, KEY_EXTENDED, KEY_F1, KEY_F10,
-    KEY_F11, KEY_F12, KEY_F13, KEY_F14, KEY_F15, KEY_F16, KEY_F17, KEY_F18, KEY_F19, KEY_F2,
-    KEY_F20, KEY_F21, KEY_F22, KEY_F23, KEY_F24, KEY_F25, KEY_F26, KEY_F27, KEY_F28, KEY_F29,
-    KEY_F3, KEY_F30, KEY_F31, KEY_F32, KEY_F33, KEY_F34, KEY_F35, KEY_F36, KEY_F37, KEY_F38,
-    KEY_F39, KEY_F4, KEY_F40, KEY_F41, KEY_F42, KEY_F43, KEY_F44, KEY_F45, KEY_F46, KEY_F47,
-    KEY_F48, KEY_F49, KEY_F5, KEY_F50, KEY_F51, KEY_F52, KEY_F53, KEY_F54, KEY_F55, KEY_F56,
-    KEY_F57, KEY_F58, KEY_F59, KEY_F6, KEY_F60, KEY_F61, KEY_F62, KEY_F63, KEY_F7, KEY_F8,
-    KEY_F9, KEY_FIND, KEY_HOME, KEY_INSERT, KEY_ISO_LEVEL3_SHIFT, KEY_ISO_LEVEL5_SHIFT,
-    KEY_LEFT, KEY_LEFT_ALT, KEY_LEFT_CTRL, KEY_LEFT_HYPER, KEY_LEFT_META, KEY_LEFT_SHIFT,
-    KEY_LEFT_SUPER, KEY_LOWER_VOL, KEY_MEDIA_FAST_FORWARD, KEY_MEDIA_NEXT, KEY_MEDIA_PAUSE,
-    KEY_MEDIA_PLAY, KEY_MEDIA_PLAY_PAUSE, KEY_MEDIA_PREV, KEY_MEDIA_RECORD, KEY_MEDIA_REVERSE,
-    KEY_MEDIA_STOP, KEY_MENU, KEY_MUTE, KEY_NUM_LOCK, KEY_PAUSE, KEY_PG_DOWN, KEY_PG_UP,
-    KEY_PRINT_SCREEN, KEY_RAISE_VOL, KEY_RETURN, KEY_RIGHT, KEY_RIGHT_ALT, KEY_RIGHT_CTRL,
-    KEY_RIGHT_HYPER, KEY_RIGHT_META, KEY_RIGHT_SHIFT, KEY_RIGHT_SUPER, KEY_SCROLL_LOCK,
-    KEY_SELECT, KEY_SPACE, KEY_TAB, KEY_UP, MOD_ALT, MOD_CAPS_LOCK, MOD_CTRL, MOD_HYPER,
-    MOD_META, MOD_NUM_LOCK, MOD_SCROLL_LOCK, MOD_SHIFT, MOD_SUPER,
+    Key, KeyMod, KEY_BACKSPACE, KEY_BEGIN, KEY_CAPS_LOCK, KEY_DELETE, KEY_DOWN, KEY_END, KEY_ENTER,
+    KEY_ESCAPE, KEY_EXTENDED, KEY_F1, KEY_F10, KEY_F11, KEY_F12, KEY_F13, KEY_F14, KEY_F15,
+    KEY_F16, KEY_F17, KEY_F18, KEY_F19, KEY_F2, KEY_F20, KEY_F21, KEY_F22, KEY_F23, KEY_F24,
+    KEY_F25, KEY_F26, KEY_F27, KEY_F28, KEY_F29, KEY_F3, KEY_F30, KEY_F31, KEY_F32, KEY_F33,
+    KEY_F34, KEY_F35, KEY_F36, KEY_F37, KEY_F38, KEY_F39, KEY_F4, KEY_F40, KEY_F41, KEY_F42,
+    KEY_F43, KEY_F44, KEY_F45, KEY_F46, KEY_F47, KEY_F48, KEY_F49, KEY_F5, KEY_F50, KEY_F51,
+    KEY_F52, KEY_F53, KEY_F54, KEY_F55, KEY_F56, KEY_F57, KEY_F58, KEY_F59, KEY_F6, KEY_F60,
+    KEY_F61, KEY_F62, KEY_F63, KEY_F7, KEY_F8, KEY_F9, KEY_FIND, KEY_HOME, KEY_INSERT,
+    KEY_ISO_LEVEL3_SHIFT, KEY_ISO_LEVEL5_SHIFT, KEY_LEFT, KEY_LEFT_ALT, KEY_LEFT_CTRL,
+    KEY_LEFT_HYPER, KEY_LEFT_META, KEY_LEFT_SHIFT, KEY_LEFT_SUPER, KEY_LOWER_VOL,
+    KEY_MEDIA_FAST_FORWARD, KEY_MEDIA_NEXT, KEY_MEDIA_PAUSE, KEY_MEDIA_PLAY, KEY_MEDIA_PLAY_PAUSE,
+    KEY_MEDIA_PREV, KEY_MEDIA_RECORD, KEY_MEDIA_REVERSE, KEY_MEDIA_STOP, KEY_MENU, KEY_MUTE,
+    KEY_NUM_LOCK, KEY_PAUSE, KEY_PG_DOWN, KEY_PG_UP, KEY_PRINT_SCREEN, KEY_RAISE_VOL, KEY_RETURN,
+    KEY_RIGHT, KEY_RIGHT_ALT, KEY_RIGHT_CTRL, KEY_RIGHT_HYPER, KEY_RIGHT_META, KEY_RIGHT_SHIFT,
+    KEY_RIGHT_SUPER, KEY_SCROLL_LOCK, KEY_SELECT, KEY_SPACE, KEY_TAB, KEY_UP, MOD_ALT,
+    MOD_CAPS_LOCK, MOD_CTRL, MOD_HYPER, MOD_META, MOD_NUM_LOCK, MOD_SCROLL_LOCK, MOD_SHIFT,
+    MOD_SUPER,
 };
 pub use key_table::build_keys_table;
+pub use layout::{
+    horizontal, new as new_layout, pad, vertical, Constraint, Direction, Flex, Layout, Padding,
+    Splitted,
+};
 pub use logger::{FileLogger, Logger};
-pub use console::Winsize;
 pub use mouse::{
     mouse_pixel_to_cell, Mouse, MouseEncoding, MouseMode, MOUSE_BACKWARD, MOUSE_BUTTON_10,
     MOUSE_BUTTON_11, MOUSE_FORWARD, MOUSE_LEFT, MOUSE_MIDDLE, MOUSE_NONE, MOUSE_RIGHT,
     MOUSE_WHEEL_DOWN, MOUSE_WHEEL_LEFT, MOUSE_WHEEL_RIGHT, MOUSE_WHEEL_UP,
 };
-pub use cancelreader::new_cancel_reader;
-pub use console::{Console, ConsoleError, FdFile, File, RawState};
-pub use decoder::{DecodedEvent, EventDecoder, LegacyKeyEncoding};
-pub use layout::{
-    horizontal, new as new_layout, pad, vertical, Constraint, Direction, Flex, Layout, Padding,
-    Splitted,
-};
 pub use poll::{new_fallback_reader, new_poll_reader, PollError, PollReader};
 pub use screen::{clear, clear_area, clone_area, fill, fill_area, rect, Rectangle};
-pub use styled::{new_styled_string, read_link, read_style, StyledString};
 pub use screen_context::{new_context, new_context_with_width_method, Context};
 pub use style::{style_diff, Attr, Style};
-pub use terminal::{default_terminal, controlling_terminal, new_terminal, Options, Terminal};
+pub use styled::{new_styled_string, read_link, read_style, StyledString};
+pub use terminal::{controlling_terminal, default_terminal, new_terminal, Options, Terminal};
 pub use terminal_renderer::TerminalRenderer;
 pub use terminal_screen::{new_terminal_screen, ColorProfile, TerminalScreen};
 pub use winch::{new_size_notifier, SizeNotifier};
@@ -125,8 +124,12 @@ pub trait Drawable {
     fn draw(&mut self, scr: &mut dyn Screen, area: Rectangle);
 }
 
+/// The function type behind [DrawableFunc] (upstream
+/// `type DrawableFunc func(screen Screen, area Rectangle)`).
+type ScreenDrawFn<'a> = Box<dyn FnMut(&mut dyn Screen, Rectangle) + 'a>;
+
 /// DrawableFunc is a function that implements the [Drawable] interface.
-pub struct DrawableFunc<'a>(pub Box<dyn FnMut(&mut dyn Screen, Rectangle) + 'a>);
+pub struct DrawableFunc<'a>(pub ScreenDrawFn<'a>);
 
 impl Drawable for DrawableFunc<'_> {
     fn draw(&mut self, scr: &mut dyn Screen, area: Rectangle) {
@@ -164,8 +167,12 @@ impl CursorShape {
         // We're using the ANSI escape sequence values for cursor styles. We
         // need to map both [style] and [steady] to the correct value.
         let s = (*self as i32 * 2) + 1;
-        let s = if !blink { s + 1 } else { s };
-        s
+
+        if !blink {
+            s + 1
+        } else {
+            s
+        }
     }
 }
 
@@ -402,12 +409,8 @@ pub fn encode_mouse_mode(w: &mut dyn Write, mode: MouseMode) -> io::Result<()> {
         }
         MouseMode::MouseModePress => charming_x_ansi::mode::SET_MODE_MOUSE_X10.to_string(),
         MouseMode::MouseModeClick => charming_x_ansi::mode::SET_MODE_MOUSE_NORMAL.to_string(),
-        MouseMode::MouseModeDrag => {
-            charming_x_ansi::mode::SET_MODE_MOUSE_BUTTON_EVENT.to_string()
-        }
-        MouseMode::MouseModeMotion => {
-            charming_x_ansi::mode::SET_MODE_MOUSE_ANY_EVENT.to_string()
-        }
+        MouseMode::MouseModeDrag => charming_x_ansi::mode::SET_MODE_MOUSE_BUTTON_EVENT.to_string(),
+        MouseMode::MouseModeMotion => charming_x_ansi::mode::SET_MODE_MOUSE_ANY_EVENT.to_string(),
     };
     w.write_all(seq.as_bytes())?;
     Ok(())
@@ -423,7 +426,9 @@ pub fn encode_mouse_encoding(w: &mut dyn Write, enc: MouseEncoding) -> io::Resul
                 + charming_x_ansi::mode::RESET_MODE_MOUSE_EXT_URXVT
                 + charming_x_ansi::mode::RESET_MODE_MOUSE_EXT_SGR_PIXEL
         }
-        MouseEncoding::MouseEncodingSGR => charming_x_ansi::mode::SET_MODE_MOUSE_EXT_SGR.to_string(),
+        MouseEncoding::MouseEncodingSGR => {
+            charming_x_ansi::mode::SET_MODE_MOUSE_EXT_SGR.to_string()
+        }
         MouseEncoding::MouseEncodingSGRPixel => {
             charming_x_ansi::mode::SET_MODE_MOUSE_EXT_SGR_PIXEL.to_string()
         }
@@ -538,6 +543,12 @@ mod tests {
     fn test_drawable_func() {
         let mut f = DrawableFunc(Box::new(|_scr: &mut dyn Screen, _area: Rectangle| {}));
         let mut b = new_buffer(2, 2);
-        f.draw(&mut b, Rectangle { min: (0, 0), max: (2, 2) });
+        f.draw(
+            &mut b,
+            Rectangle {
+                min: (0, 0),
+                max: (2, 2),
+            },
+        );
     }
 }

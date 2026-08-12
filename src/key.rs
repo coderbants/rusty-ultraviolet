@@ -364,7 +364,7 @@ pub const KEY_SPACE: u32 = 0x20;
 /// Note that [Key::text] will be empty for special keys like [KEY_ENTER],
 /// [KEY_TAB], and for keys that don't represent printable characters like key
 /// combos with modifier keys.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct Key {
     /// Text contains the actual characters received. This is usually the same
     /// as [Key::code]. When [Key::text] is non-empty, it indicates that the
@@ -397,19 +397,6 @@ pub struct Key {
     /// This is only available with the Kitty Keyboard Protocol or the
     /// Windows Console API.
     pub is_repeat: bool,
-}
-
-impl Default for Key {
-    fn default() -> Self {
-        Key {
-            text: String::new(),
-            mod_: KeyMod::default(),
-            code: 0,
-            shifted_code: 0,
-            base_code: 0,
-            is_repeat: false,
-        }
-    }
 }
 
 impl Key {
@@ -454,29 +441,44 @@ impl Key {
     /// ctrl, alt, shift, meta, hyper, super.
     pub fn keystroke(&self) -> String {
         let mut sb = String::new();
-        if self.mod_.contains(MOD_CTRL) && self.code != KEY_LEFT_CTRL && self.code != KEY_RIGHT_CTRL {
+        if self.mod_.contains(MOD_CTRL) && self.code != KEY_LEFT_CTRL && self.code != KEY_RIGHT_CTRL
+        {
             sb.push_str("ctrl+");
         }
         if self.mod_.contains(MOD_ALT) && self.code != KEY_LEFT_ALT && self.code != KEY_RIGHT_ALT {
             sb.push_str("alt+");
         }
-        if self.mod_.contains(MOD_SHIFT) && self.code != KEY_LEFT_SHIFT && self.code != KEY_RIGHT_SHIFT {
+        if self.mod_.contains(MOD_SHIFT)
+            && self.code != KEY_LEFT_SHIFT
+            && self.code != KEY_RIGHT_SHIFT
+        {
             sb.push_str("shift+");
         }
-        if self.mod_.contains(MOD_META) && self.code != KEY_LEFT_META && self.code != KEY_RIGHT_META {
+        if self.mod_.contains(MOD_META) && self.code != KEY_LEFT_META && self.code != KEY_RIGHT_META
+        {
             sb.push_str("meta+");
         }
-        if self.mod_.contains(MOD_HYPER) && self.code != KEY_LEFT_HYPER && self.code != KEY_RIGHT_HYPER {
+        if self.mod_.contains(MOD_HYPER)
+            && self.code != KEY_LEFT_HYPER
+            && self.code != KEY_RIGHT_HYPER
+        {
             sb.push_str("hyper+");
         }
-        if self.mod_.contains(MOD_SUPER) && self.code != KEY_LEFT_SUPER && self.code != KEY_RIGHT_SUPER {
+        if self.mod_.contains(MOD_SUPER)
+            && self.code != KEY_LEFT_SUPER
+            && self.code != KEY_RIGHT_SUPER
+        {
             sb.push_str("super+");
         }
 
         if let Some(kt) = key_type_string(self.code) {
             sb.push_str(kt);
         } else {
-            let code = if self.base_code != 0 { self.base_code } else { self.code };
+            let code = if self.base_code != 0 {
+                self.base_code
+            } else {
+                self.code
+            };
             match code {
                 KEY_SPACE => sb.push_str("space"),
                 KEY_EXTENDED => sb.push_str(&self.text),
@@ -533,7 +535,8 @@ fn key_match_string(k: &Key, s: &str) -> bool {
     let smod = KeyMod(mods.0 & !(MOD_SHIFT.0 | MOD_CAPS_LOCK.0));
     if smod.0 == 0 && text.is_empty() && code <= 0x10FFFF {
         if let Some(c) = char::from_u32(code) {
-            if c.is_alphabetic() || c.is_numeric() || c.is_ascii_punctuation() || c.is_alphabetic() {
+            if c.is_alphabetic() || c.is_numeric() || c.is_ascii_punctuation() || c.is_alphabetic()
+            {
                 if mods.contains(MOD_SHIFT) || mods.contains(MOD_CAPS_LOCK) {
                     // Shifted code we need to use uppercase.
                     text = c.to_uppercase().collect::<String>();

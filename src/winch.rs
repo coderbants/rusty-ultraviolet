@@ -12,7 +12,7 @@ use crate::console::File;
 use crate::err_not_terminal;
 use crate::event::Size;
 use std::io;
-use std::sync::mpsc::{Receiver, Sender, TryRecvError, channel};
+use std::sync::mpsc::{channel, Receiver, Sender, TryRecvError};
 
 /// SizeNotifier represents a notifier that listens for window size changes
 /// using the SIGWINCH signal and notifies the given channel.
@@ -55,13 +55,10 @@ impl SizeNotifier {
 
         let tx = self.tx.clone();
         self.handle = Some(std::thread::spawn(move || {
-            match crate::tty::notify_winch() {
-                Ok(rx) => {
-                    while rx.recv().is_ok() {
-                        let _ = tx.send(());
-                    }
+            if let Ok(rx) = crate::tty::notify_winch() {
+                while rx.recv().is_ok() {
+                    let _ = tx.send(());
                 }
-                Err(_) => {}
             }
         }));
         Ok(())

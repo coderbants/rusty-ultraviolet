@@ -340,14 +340,23 @@ mod tests {
             ..Style::default()
         });
         assert_eq!(b.top.style, b.bottom.style);
-        assert_eq!(b.top.style.fg, Some(charming_x_ansi::style::Color::Basic(1)));
+        assert_eq!(
+            b.top.style.fg,
+            Some(charming_x_ansi::style::Color::Basic(1))
+        );
     }
 
     #[test]
     fn test_border_draw() {
         let mut buf = crate::new_buffer(5, 3);
         let b = normal_border();
-        b.draw(&mut buf, Rectangle { min: (0, 0), max: (5, 3) });
+        b.draw(
+            &mut buf,
+            Rectangle {
+                min: (0, 0),
+                max: (5, 3),
+            },
+        );
         assert_eq!(buf.cell_at(0, 0).unwrap().content, "┌");
         assert_eq!(buf.cell_at(4, 0).unwrap().content, "┐");
         assert_eq!(buf.cell_at(0, 2).unwrap().content, "└");

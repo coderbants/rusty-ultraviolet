@@ -9,12 +9,12 @@
 use crate::decoder::LegacyKeyEncoding;
 use crate::key::{
     Key, KeyMod, KEY_BACKSPACE, KEY_BEGIN, KEY_DELETE, KEY_DOWN, KEY_END, KEY_ENTER, KEY_ESCAPE,
-    KEY_F1, KEY_F2, KEY_F3, KEY_F4, KEY_F5, KEY_F6, KEY_F7, KEY_F8, KEY_F9, KEY_F10, KEY_F11,
-    KEY_F12, KEY_F13, KEY_F14, KEY_F15, KEY_F16, KEY_F17, KEY_F18, KEY_F19, KEY_F20, KEY_FIND, KEY_HOME, KEY_INSERT, KEY_KP_0, KEY_KP_1, KEY_KP_2, KEY_KP_3,
-    KEY_KP_4, KEY_KP_5, KEY_KP_6, KEY_KP_7, KEY_KP_8, KEY_KP_9, KEY_KP_COMMA, KEY_KP_DECIMAL,
-    KEY_KP_DIVIDE, KEY_KP_ENTER, KEY_KP_EQUAL, KEY_KP_MINUS, KEY_KP_MULTIPLY, KEY_KP_PLUS,
-    KEY_LEFT, KEY_PG_DOWN, KEY_PG_UP, KEY_RIGHT, KEY_SELECT, KEY_SPACE, KEY_TAB, KEY_UP, MOD_ALT,
-    MOD_CTRL, MOD_META, MOD_SHIFT,
+    KEY_F1, KEY_F10, KEY_F11, KEY_F12, KEY_F13, KEY_F14, KEY_F15, KEY_F16, KEY_F17, KEY_F18,
+    KEY_F19, KEY_F2, KEY_F20, KEY_F3, KEY_F4, KEY_F5, KEY_F6, KEY_F7, KEY_F8, KEY_F9, KEY_FIND,
+    KEY_HOME, KEY_INSERT, KEY_KP_0, KEY_KP_1, KEY_KP_2, KEY_KP_3, KEY_KP_4, KEY_KP_5, KEY_KP_6,
+    KEY_KP_7, KEY_KP_8, KEY_KP_9, KEY_KP_COMMA, KEY_KP_DECIMAL, KEY_KP_DIVIDE, KEY_KP_ENTER,
+    KEY_KP_EQUAL, KEY_KP_MINUS, KEY_KP_MULTIPLY, KEY_KP_PLUS, KEY_LEFT, KEY_PG_DOWN, KEY_PG_UP,
+    KEY_RIGHT, KEY_SELECT, KEY_SPACE, KEY_TAB, KEY_UP, MOD_ALT, MOD_CTRL, MOD_META, MOD_SHIFT,
 };
 use std::collections::HashMap;
 
@@ -28,7 +28,11 @@ const FLAG_SELECT: u32 = 1 << 6;
 
 /// BuildKeysTable builds a table of key sequences and their corresponding key
 /// events based on the VT100/VT200, XTerm, and Urxvt terminal specs.
-pub fn build_keys_table(flags: LegacyKeyEncoding, term: &str, use_terminfo: bool) -> HashMap<String, Key> {
+pub fn build_keys_table(
+    flags: LegacyKeyEncoding,
+    term: &str,
+    use_terminfo: bool,
+) -> HashMap<String, Key> {
     let nul = if flags.0 & FLAG_CTRL_AT != 0 {
         Key {
             code: b'@' as u32,
@@ -436,16 +440,46 @@ pub fn build_keys_table(flags: LegacyKeyEncoding, term: &str, use_terminfo: bool
     table.insert(String::from("\x1b[32^"), urxvt_fkey(KEY_F18, MOD_CTRL));
     table.insert(String::from("\x1b[33^"), urxvt_fkey(KEY_F19, MOD_CTRL));
     table.insert(String::from("\x1b[34^"), urxvt_fkey(KEY_F20, MOD_CTRL));
-    table.insert(String::from("\x1b[23@"), urxvt_fkey(KEY_F11, KeyMod(MOD_SHIFT.0 | MOD_CTRL.0)));
-    table.insert(String::from("\x1b[24@"), urxvt_fkey(KEY_F12, KeyMod(MOD_SHIFT.0 | MOD_CTRL.0)));
-    table.insert(String::from("\x1b[25@"), urxvt_fkey(KEY_F13, KeyMod(MOD_SHIFT.0 | MOD_CTRL.0)));
-    table.insert(String::from("\x1b[26@"), urxvt_fkey(KEY_F14, KeyMod(MOD_SHIFT.0 | MOD_CTRL.0)));
-    table.insert(String::from("\x1b[28@"), urxvt_fkey(KEY_F15, KeyMod(MOD_SHIFT.0 | MOD_CTRL.0)));
-    table.insert(String::from("\x1b[29@"), urxvt_fkey(KEY_F16, KeyMod(MOD_SHIFT.0 | MOD_CTRL.0)));
-    table.insert(String::from("\x1b[31@"), urxvt_fkey(KEY_F17, KeyMod(MOD_SHIFT.0 | MOD_CTRL.0)));
-    table.insert(String::from("\x1b[32@"), urxvt_fkey(KEY_F18, KeyMod(MOD_SHIFT.0 | MOD_CTRL.0)));
-    table.insert(String::from("\x1b[33@"), urxvt_fkey(KEY_F19, KeyMod(MOD_SHIFT.0 | MOD_CTRL.0)));
-    table.insert(String::from("\x1b[34@"), urxvt_fkey(KEY_F20, KeyMod(MOD_SHIFT.0 | MOD_CTRL.0)));
+    table.insert(
+        String::from("\x1b[23@"),
+        urxvt_fkey(KEY_F11, KeyMod(MOD_SHIFT.0 | MOD_CTRL.0)),
+    );
+    table.insert(
+        String::from("\x1b[24@"),
+        urxvt_fkey(KEY_F12, KeyMod(MOD_SHIFT.0 | MOD_CTRL.0)),
+    );
+    table.insert(
+        String::from("\x1b[25@"),
+        urxvt_fkey(KEY_F13, KeyMod(MOD_SHIFT.0 | MOD_CTRL.0)),
+    );
+    table.insert(
+        String::from("\x1b[26@"),
+        urxvt_fkey(KEY_F14, KeyMod(MOD_SHIFT.0 | MOD_CTRL.0)),
+    );
+    table.insert(
+        String::from("\x1b[28@"),
+        urxvt_fkey(KEY_F15, KeyMod(MOD_SHIFT.0 | MOD_CTRL.0)),
+    );
+    table.insert(
+        String::from("\x1b[29@"),
+        urxvt_fkey(KEY_F16, KeyMod(MOD_SHIFT.0 | MOD_CTRL.0)),
+    );
+    table.insert(
+        String::from("\x1b[31@"),
+        urxvt_fkey(KEY_F17, KeyMod(MOD_SHIFT.0 | MOD_CTRL.0)),
+    );
+    table.insert(
+        String::from("\x1b[32@"),
+        urxvt_fkey(KEY_F18, KeyMod(MOD_SHIFT.0 | MOD_CTRL.0)),
+    );
+    table.insert(
+        String::from("\x1b[33@"),
+        urxvt_fkey(KEY_F19, KeyMod(MOD_SHIFT.0 | MOD_CTRL.0)),
+    );
+    table.insert(
+        String::from("\x1b[34@"),
+        urxvt_fkey(KEY_F20, KeyMod(MOD_SHIFT.0 | MOD_CTRL.0)),
+    );
 
     // Register Alt + <key> combinations
     // XXX: this must come after URxvt but before XTerm keys to register
@@ -463,20 +497,20 @@ pub fn build_keys_table(flags: LegacyKeyEncoding, term: &str, use_terminfo: bool
 
     // XTerm modifiers
     let modifiers: Vec<KeyMod> = vec![
-        MOD_SHIFT,                              // 1
-        MOD_ALT,                                // 2
-        KeyMod(MOD_SHIFT.0 | MOD_ALT.0),        // 3
-        MOD_CTRL,                               // 4
-        KeyMod(MOD_SHIFT.0 | MOD_CTRL.0),       // 5
-        KeyMod(MOD_ALT.0 | MOD_CTRL.0),         // 6
-        KeyMod(MOD_SHIFT.0 | MOD_ALT.0 | MOD_CTRL.0), // 7
-        MOD_META,                               // 8
-        KeyMod(MOD_META.0 | MOD_SHIFT.0),       // 9
-        KeyMod(MOD_META.0 | MOD_ALT.0),         // 10
-        KeyMod(MOD_META.0 | MOD_SHIFT.0 | MOD_ALT.0), // 11
-        KeyMod(MOD_META.0 | MOD_CTRL.0),        // 12
-        KeyMod(MOD_META.0 | MOD_SHIFT.0 | MOD_CTRL.0), // 13
-        KeyMod(MOD_META.0 | MOD_ALT.0 | MOD_CTRL.0), // 14
+        MOD_SHIFT,                                                 // 1
+        MOD_ALT,                                                   // 2
+        KeyMod(MOD_SHIFT.0 | MOD_ALT.0),                           // 3
+        MOD_CTRL,                                                  // 4
+        KeyMod(MOD_SHIFT.0 | MOD_CTRL.0),                          // 5
+        KeyMod(MOD_ALT.0 | MOD_CTRL.0),                            // 6
+        KeyMod(MOD_SHIFT.0 | MOD_ALT.0 | MOD_CTRL.0),              // 7
+        MOD_META,                                                  // 8
+        KeyMod(MOD_META.0 | MOD_SHIFT.0),                          // 9
+        KeyMod(MOD_META.0 | MOD_ALT.0),                            // 10
+        KeyMod(MOD_META.0 | MOD_SHIFT.0 | MOD_ALT.0),              // 11
+        KeyMod(MOD_META.0 | MOD_CTRL.0),                           // 12
+        KeyMod(MOD_META.0 | MOD_SHIFT.0 | MOD_CTRL.0),             // 13
+        KeyMod(MOD_META.0 | MOD_ALT.0 | MOD_CTRL.0),               // 14
         KeyMod(MOD_META.0 | MOD_SHIFT.0 | MOD_ALT.0 | MOD_CTRL.0), // 15
     ];
 
@@ -642,7 +676,11 @@ mod tests {
 
     #[test]
     fn test_build_keys_table_legacy_flags() {
-        let flags = LKE::default().ctrl_at(true).ctrl_i(true).ctrl_m(true).backspace(true);
+        let flags = LKE::default()
+            .ctrl_at(true)
+            .ctrl_i(true)
+            .ctrl_m(true)
+            .backspace(true);
         let table = build_keys_table(flags, "xterm-256color", false);
         assert_eq!(table["\x00"].code, b'@' as u32);
         assert_eq!(table["\x09"].code, b'i' as u32);

@@ -6,7 +6,7 @@ use charming_ultraviolet::decoder::DecodedEvent;
 use charming_ultraviolet::screen::{clear, fill_area, rect};
 use charming_ultraviolet::terminal::default_terminal;
 use charming_ultraviolet::terminal_screen::TerminalScreen;
-use charming_x_ansi::color::{RGBColor};
+use charming_x_ansi::color::RGBColor;
 use charming_x_ansi::style::Color;
 
 const BAR_COUNT: usize = 7;
@@ -63,7 +63,11 @@ fn main() {
         let mid_row = rect(0, top_row.max.1, area.max.0, (area.max.1 * 8) / 100);
         let bot_row = rect(0, mid_row.max.1, area.max.0, (area.max.1 * 26) / 100);
 
-        let bar_width = if BAR_COUNT > 0 { top_row.max.0 / BAR_COUNT } else { 0 };
+        let bar_width = if BAR_COUNT > 0 {
+            top_row.max.0 / BAR_COUNT
+        } else {
+            0
+        };
         for (i, row) in [top_row, mid_row].iter().enumerate() {
             for j in 0..BAR_COUNT {
                 let bar = rect(j * bar_width, row.min.1, (j + 1) * bar_width, row.max.1);
@@ -74,9 +78,18 @@ fn main() {
             }
         }
 
-        let bot_bar_width = if BOT_BAR_COUNT > 0 { bot_row.max.0 / BOT_BAR_COUNT } else { 0 };
+        let bot_bar_width = if BOT_BAR_COUNT > 0 {
+            bot_row.max.0 / BOT_BAR_COUNT
+        } else {
+            0
+        };
         for i in 0..BOT_BAR_COUNT {
-            let bar = rect(i * bot_bar_width, bot_row.min.1, (i + 1) * bot_bar_width, bot_row.max.1);
+            let bar = rect(
+                i * bot_bar_width,
+                bot_row.min.1,
+                (i + 1) * bot_bar_width,
+                bot_row.max.1,
+            );
             let mut cell = empty_cell();
             let c = row_colors[2][i % row_colors[2].len()];
             cell.style.bg = Some(rgb(c[0], c[1], c[2]));

@@ -2,10 +2,10 @@
 //! Upstream Target Tag / Version: `v0.0.0-20260703014108-f5a850f9c2b7`
 
 use charming_ultraviolet::decoder::DecodedEvent;
+use charming_ultraviolet::screen::clear;
 use charming_ultraviolet::screen_context::new_context;
 use charming_ultraviolet::terminal::default_terminal;
 use charming_ultraviolet::terminal_screen::TerminalScreen;
-use charming_ultraviolet::screen::clear;
 
 const VIEW: [&str; 2] = ["Hello, World!", "Press any key to exit."];
 

@@ -44,7 +44,9 @@ fn clamp(value: f64, min: f64, max: f64) -> f64 {
 
 fn rand_f64() -> f64 {
     use std::time::{SystemTime, UNIX_EPOCH};
-    let t = SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default();
+    let t = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default();
     let bits = (t.as_nanos() ^ (t.subsec_nanos() as u128) << 32) as u64;
     // 53-bit mantissa like Go's rand.Float64().
     (bits >> 11) as f64 / (1u64 << 53) as f64
@@ -79,7 +81,10 @@ fn main() {
         // re-sending (upstream behaviour, reproduced exactly).
         let tick_ready = tick_rx.try_recv().is_ok();
         if !tick_ready {
-            match t.events().recv_timeout(std::time::Duration::from_millis(16)) {
+            match t
+                .events()
+                .recv_timeout(std::time::Duration::from_millis(16))
+            {
                 Ok(ev) => {
                     let scr = t.screen();
                     match ev {
@@ -123,8 +128,16 @@ fn main() {
                     let fg = colors[y * 2][xi];
                     let bg = colors[y * 2 + 1][xi];
                     let mut cell = empty_cell();
-                    cell.style.fg = Some(Color::RGB(RGBColor { r: fg[0], g: fg[1], b: fg[2] }));
-                    cell.style.bg = Some(Color::RGB(RGBColor { r: bg[0], g: bg[1], b: bg[2] }));
+                    cell.style.fg = Some(Color::RGB(RGBColor {
+                        r: fg[0],
+                        g: fg[1],
+                        b: fg[2],
+                    }));
+                    cell.style.bg = Some(Color::RGB(RGBColor {
+                        r: bg[0],
+                        g: bg[1],
+                        b: bg[2],
+                    }));
                     scr.set_cell(
                         x,
                         y,

@@ -9,14 +9,14 @@
 
 use crate::event::{KeyPressEvent, Size};
 use crate::key::{
-    Key, KeyMod, KEY_BACKSPACE, KEY_BEGIN, KEY_CAPS_LOCK, KEY_DELETE, KEY_DOWN, KEY_END,
-    KEY_ENTER, KEY_ESCAPE, KEY_EXTENDED, KEY_F1, KEY_F11, KEY_F13, KEY_F15, KEY_F17, KEY_F21, KEY_F3, KEY_F6,
-    KEY_FIND, KEY_HOME, KEY_INSERT, KEY_ISO_LEVEL3_SHIFT, KEY_ISO_LEVEL5_SHIFT, KEY_KP_0,
-    KEY_KP_1, KEY_KP_2, KEY_KP_3, KEY_KP_4, KEY_KP_5, KEY_KP_6, KEY_KP_7, KEY_KP_8, KEY_KP_9,
-    KEY_KP_BEGIN, KEY_KP_COMMA, KEY_KP_DECIMAL, KEY_KP_DELETE, KEY_KP_DIVIDE, KEY_KP_DOWN,
-    KEY_KP_END, KEY_KP_ENTER, KEY_KP_EQUAL, KEY_KP_HOME, KEY_KP_INSERT, KEY_KP_LEFT,
-    KEY_KP_MINUS, KEY_KP_MULTIPLY, KEY_KP_PG_DOWN, KEY_KP_PG_UP, KEY_KP_PLUS, KEY_KP_RIGHT,
-    KEY_KP_SEP, KEY_KP_UP, KEY_LEFT, KEY_LEFT_ALT, KEY_LEFT_CTRL, KEY_LEFT_HYPER, KEY_LEFT_META,
+    Key, KeyMod, KEY_BACKSPACE, KEY_BEGIN, KEY_CAPS_LOCK, KEY_DELETE, KEY_DOWN, KEY_END, KEY_ENTER,
+    KEY_ESCAPE, KEY_EXTENDED, KEY_F1, KEY_F11, KEY_F13, KEY_F15, KEY_F17, KEY_F21, KEY_F3, KEY_F6,
+    KEY_FIND, KEY_HOME, KEY_INSERT, KEY_ISO_LEVEL3_SHIFT, KEY_ISO_LEVEL5_SHIFT, KEY_KP_0, KEY_KP_1,
+    KEY_KP_2, KEY_KP_3, KEY_KP_4, KEY_KP_5, KEY_KP_6, KEY_KP_7, KEY_KP_8, KEY_KP_9, KEY_KP_BEGIN,
+    KEY_KP_COMMA, KEY_KP_DECIMAL, KEY_KP_DELETE, KEY_KP_DIVIDE, KEY_KP_DOWN, KEY_KP_END,
+    KEY_KP_ENTER, KEY_KP_EQUAL, KEY_KP_HOME, KEY_KP_INSERT, KEY_KP_LEFT, KEY_KP_MINUS,
+    KEY_KP_MULTIPLY, KEY_KP_PG_DOWN, KEY_KP_PG_UP, KEY_KP_PLUS, KEY_KP_RIGHT, KEY_KP_SEP,
+    KEY_KP_UP, KEY_LEFT, KEY_LEFT_ALT, KEY_LEFT_CTRL, KEY_LEFT_HYPER, KEY_LEFT_META,
     KEY_LEFT_SHIFT, KEY_LEFT_SUPER, KEY_LOWER_VOL, KEY_MEDIA_FAST_FORWARD, KEY_MEDIA_NEXT,
     KEY_MEDIA_PAUSE, KEY_MEDIA_PLAY, KEY_MEDIA_PLAY_PAUSE, KEY_MEDIA_PREV, KEY_MEDIA_RECORD,
     KEY_MEDIA_REVERSE, KEY_MEDIA_REWIND, KEY_MEDIA_STOP, KEY_MENU, KEY_MUTE, KEY_NUM_LOCK,
@@ -25,7 +25,9 @@ use crate::key::{
     KEY_SCROLL_LOCK, KEY_SELECT, KEY_SPACE, KEY_TAB, KEY_UP, MOD_ALT, MOD_CAPS_LOCK, MOD_CTRL,
     MOD_HYPER, MOD_META, MOD_NUM_LOCK, MOD_SCROLL_LOCK, MOD_SHIFT, MOD_SUPER,
 };
-use crate::mouse::{Mouse, MOUSE_BACKWARD, MOUSE_LEFT, MOUSE_NONE, MOUSE_WHEEL_RIGHT, MOUSE_WHEEL_UP};
+use crate::mouse::{
+    Mouse, MOUSE_BACKWARD, MOUSE_LEFT, MOUSE_NONE, MOUSE_WHEEL_RIGHT, MOUSE_WHEEL_UP,
+};
 use charming_x_ansi::mouse::MouseButton;
 use charming_x_ansi::parser::{HAS_MORE_FLAG, MISSING_PARAM};
 use unicode_segmentation::UnicodeSegmentation;
@@ -39,6 +41,10 @@ const FLAG_BACKSPACE: u32 = 1 << 4;
 const FLAG_FIND: u32 = 1 << 5;
 const FLAG_SELECT: u32 = 1 << 6;
 const FLAG_F_KEYS: u32 = 1 << 7;
+
+/// A ST-terminated payload decoder callback (upstream `parseStTerminated`'s
+/// `st *parser`).
+type StTerminatedFn = Option<fn(&[u8]) -> Option<DecodedEvent>>;
 
 /// LegacyKeyEncoding is a set of flags that control the behavior of legacy
 /// terminal key encodings.
@@ -247,10 +253,13 @@ impl EventDecoder {
                 // ESC
                 if buf.len() == 1 {
                     // Escape key
-                    return (1, Some(DecodedEvent::KeyPress(Key {
-                        code: KEY_ESCAPE,
-                        ..Key::default()
-                    })));
+                    return (
+                        1,
+                        Some(DecodedEvent::KeyPress(Key {
+                            code: KEY_ESCAPE,
+                            ..Key::default()
+                        })),
+                    );
                 }
 
                 match buf[1] {
@@ -272,10 +281,13 @@ impl EventDecoder {
                         // Not a key sequence, nor an alt modified key
                         // sequence. In that case, just report a single
                         // escape key.
-                        (1, Some(DecodedEvent::KeyPress(Key {
-                            code: KEY_ESCAPE,
-                            ..Key::default()
-                        })))
+                        (
+                            1,
+                            Some(DecodedEvent::KeyPress(Key {
+                                code: KEY_ESCAPE,
+                                ..Key::default()
+                            })),
+                        )
                     }
                 }
             }
@@ -289,7 +301,7 @@ impl EventDecoder {
             b => {
                 if b <= 0x1F || b == 0x7F || b == 0x20 {
                     return (1, Some(self.parse_control(b)));
-                } else if b >= 0x80 && b <= 0x9F {
+                } else if (0x80..=0x9F).contains(&b) {
                     // C1 control code
                     // UTF-8 never starts with a C1 control code
                     // Encode these as Ctrl+Alt+<code - 0x40>
@@ -392,7 +404,12 @@ impl EventDecoder {
                     return (n, Some(DecodedEvent::KeyPress(k)));
                 }
             }
-            return (i, Some(DecodedEvent::UnknownCsi(String::from_utf8_lossy(&b[..i]).into_owned())));
+            return (
+                i,
+                Some(DecodedEvent::UnknownCsi(
+                    String::from_utf8_lossy(&b[..i]).into_owned(),
+                )),
+            );
         }
 
         // Add the final byte
@@ -413,13 +430,29 @@ impl EventDecoder {
                 // Report Mode (DECRPM)
                 let (mode, _, ok) = param_get(pa, 0, -1);
                 if !ok || mode == -1 {
-                    return (i, Some(DecodedEvent::UnknownCsi(String::from_utf8_lossy(&b[..i]).into_owned())));
+                    return (
+                        i,
+                        Some(DecodedEvent::UnknownCsi(
+                            String::from_utf8_lossy(&b[..i]).into_owned(),
+                        )),
+                    );
                 }
                 let (value, _, ok) = param_get(pa, 1, 0);
                 if !ok {
-                    return (i, Some(DecodedEvent::UnknownCsi(String::from_utf8_lossy(&b[..i]).into_owned())));
+                    return (
+                        i,
+                        Some(DecodedEvent::UnknownCsi(
+                            String::from_utf8_lossy(&b[..i]).into_owned(),
+                        )),
+                    );
                 }
-                return (i, Some(DecodedEvent::ModeReport { mode, value: value as u8 }));
+                return (
+                    i,
+                    Some(DecodedEvent::ModeReport {
+                        mode,
+                        value: value as u8,
+                    }),
+                );
             }
             _ if cmd == packed(b'?', 0, b'c') => {
                 // Primary Device Attributes
@@ -440,9 +473,20 @@ impl EventDecoder {
                 let (row, _, _) = param_get(pa, 0, 1);
                 let (col, _, ok) = param_get(pa, 1, 1);
                 if !ok {
-                    return (i, Some(DecodedEvent::UnknownCsi(String::from_utf8_lossy(&b[..i]).into_owned())));
+                    return (
+                        i,
+                        Some(DecodedEvent::UnknownCsi(
+                            String::from_utf8_lossy(&b[..i]).into_owned(),
+                        )),
+                    );
                 }
-                return (i, Some(DecodedEvent::CursorPosition { x: col - 1, y: row - 1 }));
+                return (
+                    i,
+                    Some(DecodedEvent::CursorPosition {
+                        x: col - 1,
+                        y: row - 1,
+                    }),
+                );
             }
             _ if cmd == packed(b'<', 0, b'm') || cmd == packed(b'<', 0, b'M') => {
                 // Handle SGR mouse
@@ -454,26 +498,33 @@ impl EventDecoder {
                 // XTerm modifyOtherKeys
                 let (mok, _, ok) = param_get(pa, 0, 0);
                 if !ok || mok != 4 {
-                    return (i, Some(DecodedEvent::UnknownCsi(String::from_utf8_lossy(&b[..i]).into_owned())));
+                    return (
+                        i,
+                        Some(DecodedEvent::UnknownCsi(
+                            String::from_utf8_lossy(&b[..i]).into_owned(),
+                        )),
+                    );
                 }
                 let (val, _, ok) = param_get(pa, 1, -1);
                 if !ok || val == -1 {
-                    return (i, Some(DecodedEvent::UnknownCsi(String::from_utf8_lossy(&b[..i]).into_owned())));
+                    return (
+                        i,
+                        Some(DecodedEvent::UnknownCsi(
+                            String::from_utf8_lossy(&b[..i]).into_owned(),
+                        )),
+                    );
                 }
                 return (i, Some(DecodedEvent::ModifyOtherKeys(val)));
             }
             _ if cmd == packed(b'?', 0, b'n') => {
                 let (report, _, _) = param_get(pa, 0, -1);
                 let (dark_light, _, _) = param_get(pa, 1, -1);
-                match report {
-                    997 => {
-                        match dark_light {
-                            1 => return (i, Some(DecodedEvent::DarkColorScheme)),
-                            2 => return (i, Some(DecodedEvent::LightColorScheme)),
-                            _ => {}
-                        }
+                if report == 997 {
+                    match dark_light {
+                        1 => return (i, Some(DecodedEvent::DarkColorScheme)),
+                        2 => return (i, Some(DecodedEvent::LightColorScheme)),
+                        _ => {}
                     }
-                    _ => {}
                 }
             }
             _ if cmd == b'I' as i32 => {
@@ -487,7 +538,10 @@ impl EventDecoder {
                 let (row, _, rok) = param_get(pa, 0, 1);
                 let (col, _, cok) = param_get(pa, 1, 1);
                 if params_len == 2 && rok && cok {
-                    let m = DecodedEvent::CursorPosition { x: col - 1, y: row - 1 };
+                    let m = DecodedEvent::CursorPosition {
+                        x: col - 1,
+                        y: row - 1,
+                    };
                     if row == 1 && col - 1 <= (MOD_META.0 | MOD_SHIFT.0 | MOD_ALT.0 | MOD_CTRL.0) {
                         // XXX: We cannot differentiate between cursor position
                         // report and CSI 1 ; <mod> R (which is modified F3)
@@ -509,7 +563,12 @@ impl EventDecoder {
                 }
 
                 if params_len != 0 {
-                    return (i, Some(DecodedEvent::UnknownCsi(String::from_utf8_lossy(&b[..i]).into_owned())));
+                    return (
+                        i,
+                        Some(DecodedEvent::UnknownCsi(
+                            String::from_utf8_lossy(&b[..i]).into_owned(),
+                        )),
+                    );
                 }
 
                 // Unmodified key F3 (CSI R)
@@ -517,7 +576,12 @@ impl EventDecoder {
                 let (id, _, _) = param_get(pa, 0, 1);
                 let (mod_, _, _) = param_get(pa, 1, 1);
                 if params_len > 2 && !has_more(pa, 1) || id != 1 {
-                    return (i, Some(DecodedEvent::UnknownCsi(String::from_utf8_lossy(&b[..i]).into_owned())));
+                    return (
+                        i,
+                        Some(DecodedEvent::UnknownCsi(
+                            String::from_utf8_lossy(&b[..i]).into_owned(),
+                        )),
+                    );
                 }
                 if params_len > 1 && id == 1 && mod_ != -1 {
                     // CSI 1 ; <modifiers> A
@@ -529,7 +593,12 @@ impl EventDecoder {
             _ if cmd == b'M' as i32 => {
                 // Handle X10 mouse
                 if i + 3 > b.len() {
-                    return (i, Some(DecodedEvent::UnknownCsi(String::from_utf8_lossy(&b[..i]).into_owned())));
+                    return (
+                        i,
+                        Some(DecodedEvent::UnknownCsi(
+                            String::from_utf8_lossy(&b[..i]).into_owned(),
+                        )),
+                    );
                 }
                 let mut buf2 = b[..i].to_vec();
                 buf2.extend_from_slice(&b[i..i + 3]);
@@ -539,32 +608,71 @@ impl EventDecoder {
                 // Report Mode (DECRPM)
                 let (mode, _, ok) = param_get(pa, 0, -1);
                 if !ok || mode == -1 {
-                    return (i, Some(DecodedEvent::UnknownCsi(String::from_utf8_lossy(&b[..i]).into_owned())));
+                    return (
+                        i,
+                        Some(DecodedEvent::UnknownCsi(
+                            String::from_utf8_lossy(&b[..i]).into_owned(),
+                        )),
+                    );
                 }
                 let (val, _, ok) = param_get(pa, 1, 0);
                 if !ok {
-                    return (i, Some(DecodedEvent::UnknownCsi(String::from_utf8_lossy(&b[..i]).into_owned())));
+                    return (
+                        i,
+                        Some(DecodedEvent::UnknownCsi(
+                            String::from_utf8_lossy(&b[..i]).into_owned(),
+                        )),
+                    );
                 }
-                return (i, Some(DecodedEvent::ModeReport { mode, value: val as u8 }));
+                return (
+                    i,
+                    Some(DecodedEvent::ModeReport {
+                        mode,
+                        value: val as u8,
+                    }),
+                );
             }
             _ if cmd == b'u' as i32 => {
                 // Kitty keyboard protocol & CSI u (fixterms)
                 if params_len == 0 {
-                    return (i, Some(DecodedEvent::UnknownCsi(String::from_utf8_lossy(&b[..i]).into_owned())));
+                    return (
+                        i,
+                        Some(DecodedEvent::UnknownCsi(
+                            String::from_utf8_lossy(&b[..i]).into_owned(),
+                        )),
+                    );
                 }
                 return (i, Some(parse_kitty_keyboard(pa)));
             }
             _ if matches!(
                 (cmd & 0xff) as u8,
-                b'a' | b'b' | b'c' | b'd' | b'A' | b'B' | b'C' | b'D' | b'E' | b'F' | b'H'
-                    | b'P' | b'Q' | b'S' | b'Z'
-            ) => {
+                b'a' | b'b'
+                    | b'c'
+                    | b'd'
+                    | b'A'
+                    | b'B'
+                    | b'C'
+                    | b'D'
+                    | b'E'
+                    | b'F'
+                    | b'H'
+                    | b'P'
+                    | b'Q'
+                    | b'S'
+                    | b'Z'
+            ) =>
+            {
                 // Simple CSI keys (up/down/left/right/home/end/f1-f4/tab).
                 let mut k = key_press_from_cmd(cmd);
                 let (id, _, _) = param_get(pa, 0, 1);
                 let (mod_, _, _) = param_get(pa, 1, 1);
                 if params_len > 2 && !has_more(pa, 1) || id != 1 {
-                    return (i, Some(DecodedEvent::UnknownCsi(String::from_utf8_lossy(&b[..i]).into_owned())));
+                    return (
+                        i,
+                        Some(DecodedEvent::UnknownCsi(
+                            String::from_utf8_lossy(&b[..i]).into_owned(),
+                        )),
+                    );
                 }
                 if params_len > 1 && id == 1 && mod_ != -1 {
                     // CSI 1 ; <modifiers> A
@@ -576,7 +684,12 @@ impl EventDecoder {
             _ if cmd == b'_' as i32 => {
                 // Win32 Input Mode
                 if params_len != 6 {
-                    return (i, Some(DecodedEvent::UnknownCsi(String::from_utf8_lossy(&b[..i]).into_owned())));
+                    return (
+                        i,
+                        Some(DecodedEvent::UnknownCsi(
+                            String::from_utf8_lossy(&b[..i]).into_owned(),
+                        )),
+                    );
                 }
 
                 let (vk, _, _) = param_get(pa, 0, 0);
@@ -598,7 +711,12 @@ impl EventDecoder {
             }
             _ if cmd == b'@' as i32 || cmd == b'^' as i32 || cmd == b'~' as i32 => {
                 if params_len == 0 {
-                    return (i, Some(DecodedEvent::UnknownCsi(String::from_utf8_lossy(&b[..i]).into_owned())));
+                    return (
+                        i,
+                        Some(DecodedEvent::UnknownCsi(
+                            String::from_utf8_lossy(&b[..i]).into_owned(),
+                        )),
+                    );
                 }
 
                 let (param, _, _) = param_get(pa, 0, 0);
@@ -607,7 +725,12 @@ impl EventDecoder {
                         27 => {
                             // XTerm modifyOtherKeys 2
                             if params_len != 3 {
-                                return (i, Some(DecodedEvent::UnknownCsi(String::from_utf8_lossy(&b[..i]).into_owned())));
+                                return (
+                                    i,
+                                    Some(DecodedEvent::UnknownCsi(
+                                        String::from_utf8_lossy(&b[..i]).into_owned(),
+                                    )),
+                                );
                             }
                             return (i, Some(parse_xterm_modify_other_keys(pa)));
                         }
@@ -689,7 +812,12 @@ impl EventDecoder {
             _ if cmd == b't' as i32 => {
                 let (param, _, ok) = param_get(pa, 0, 0);
                 if !ok {
-                    return (i, Some(DecodedEvent::UnknownCsi(String::from_utf8_lossy(&b[..i]).into_owned())));
+                    return (
+                        i,
+                        Some(DecodedEvent::UnknownCsi(
+                            String::from_utf8_lossy(&b[..i]).into_owned(),
+                        )),
+                    );
                 }
 
                 match param {
@@ -699,12 +827,20 @@ impl EventDecoder {
                             let (height, _, h_ok) = param_get(pa, 1, 0);
                             let (width, _, w_ok) = param_get(pa, 2, 0);
                             if !h_ok || !w_ok {
-                                return (i, Some(DecodedEvent::UnknownCsi(String::from_utf8_lossy(&b[..i]).into_owned())));
+                                return (
+                                    i,
+                                    Some(DecodedEvent::UnknownCsi(
+                                        String::from_utf8_lossy(&b[..i]).into_owned(),
+                                    )),
+                                );
                             }
-                            return (i, Some(DecodedEvent::PixelSize(Size {
-                                width: width as usize,
-                                height: height as usize,
-                            })));
+                            return (
+                                i,
+                                Some(DecodedEvent::PixelSize(Size {
+                                    width: width as usize,
+                                    height: height as usize,
+                                })),
+                            );
                         }
                     }
                     6 => {
@@ -713,12 +849,20 @@ impl EventDecoder {
                             let (height, _, h_ok) = param_get(pa, 1, 0);
                             let (width, _, w_ok) = param_get(pa, 2, 0);
                             if !h_ok || !w_ok {
-                                return (i, Some(DecodedEvent::UnknownCsi(String::from_utf8_lossy(&b[..i]).into_owned())));
+                                return (
+                                    i,
+                                    Some(DecodedEvent::UnknownCsi(
+                                        String::from_utf8_lossy(&b[..i]).into_owned(),
+                                    )),
+                                );
                             }
-                            return (i, Some(DecodedEvent::CellSize(Size {
-                                width: width as usize,
-                                height: height as usize,
-                            })));
+                            return (
+                                i,
+                                Some(DecodedEvent::CellSize(Size {
+                                    width: width as usize,
+                                    height: height as usize,
+                                })),
+                            );
                         }
                     }
                     8 => {
@@ -727,12 +871,20 @@ impl EventDecoder {
                             let (height, _, h_ok) = param_get(pa, 1, 0);
                             let (width, _, w_ok) = param_get(pa, 2, 0);
                             if !h_ok || !w_ok {
-                                return (i, Some(DecodedEvent::UnknownCsi(String::from_utf8_lossy(&b[..i]).into_owned())));
+                                return (
+                                    i,
+                                    Some(DecodedEvent::UnknownCsi(
+                                        String::from_utf8_lossy(&b[..i]).into_owned(),
+                                    )),
+                                );
                             }
-                            return (i, Some(DecodedEvent::WindowSize(Size {
-                                width: width as usize,
-                                height: height as usize,
-                            })));
+                            return (
+                                i,
+                                Some(DecodedEvent::WindowSize(Size {
+                                    width: width as usize,
+                                    height: height as usize,
+                                })),
+                            );
                         }
                     }
                     48 => {
@@ -743,7 +895,12 @@ impl EventDecoder {
                             let (pixel_height, _, ph_ok) = param_get(pa, 3, 0);
                             let (pixel_width, _, pw_ok) = param_get(pa, 4, 0);
                             if !ch_ok || !cw_ok || !ph_ok || !pw_ok {
-                                return (i, Some(DecodedEvent::UnknownCsi(String::from_utf8_lossy(&b[..i]).into_owned())));
+                                return (
+                                    i,
+                                    Some(DecodedEvent::UnknownCsi(
+                                        String::from_utf8_lossy(&b[..i]).into_owned(),
+                                    )),
+                                );
                             }
                             return (
                                 i,
@@ -776,7 +933,12 @@ impl EventDecoder {
             }
             _ => {}
         }
-        (i, Some(DecodedEvent::UnknownCsi(String::from_utf8_lossy(&b[..i]).into_owned())))
+        (
+            i,
+            Some(DecodedEvent::UnknownCsi(
+                String::from_utf8_lossy(&b[..i]).into_owned(),
+            )),
+        )
     }
 
     /// parseSs3 parses a SS3 sequence.
@@ -812,7 +974,12 @@ impl EventDecoder {
 
         // Scan a GL character
         if i >= b.len() || b[i] < 0x21 || b[i] > 0x7E {
-            return (i, Some(DecodedEvent::Unknown(String::from_utf8_lossy(&b[..i]).into_owned())));
+            return (
+                i,
+                Some(DecodedEvent::Unknown(
+                    String::from_utf8_lossy(&b[..i]).into_owned(),
+                )),
+            );
         }
 
         // GL character(s)
@@ -841,7 +1008,12 @@ impl EventDecoder {
                 k.0.code = KEY_KP_MULTIPLY + (gl - b'j') as u32;
             }
             _ => {
-                return (i, Some(DecodedEvent::UnknownSs3(String::from_utf8_lossy(&b[..i]).into_owned())));
+                return (
+                    i,
+                    Some(DecodedEvent::UnknownSs3(
+                        String::from_utf8_lossy(&b[..i]).into_owned(),
+                    )),
+                );
             }
         }
 
@@ -877,7 +1049,7 @@ impl EventDecoder {
 
         // Parse OSC command
         let mut start = 0usize;
-        let end;
+
         let mut cmd: i32 = -1;
         while i < b.len() && b[i].is_ascii_digit() {
             if cmd == -1 {
@@ -904,16 +1076,26 @@ impl EventDecoder {
         }
 
         if i >= b.len() {
-            return (i, Some(DecodedEvent::Unknown(String::from_utf8_lossy(&b[..i]).into_owned())));
+            return (
+                i,
+                Some(DecodedEvent::Unknown(
+                    String::from_utf8_lossy(&b[..i]).into_owned(),
+                )),
+            );
         }
 
-        end = i; // end of the sequence data
+        let end = i; // end of the sequence data
         i += 1;
 
         // Check 7-bit ST (string terminator) character
         match b[i - 1] {
             0x18 | 0x1A => {
-                return (i, Some(DecodedEvent::Ignored(String::from_utf8_lossy(&b[..i]).into_owned())));
+                return (
+                    i,
+                    Some(DecodedEvent::Ignored(
+                        String::from_utf8_lossy(&b[..i]).into_owned(),
+                    )),
+                );
             }
             0x1B => {
                 if i >= b.len() || b[i] != b'\\' {
@@ -923,7 +1105,12 @@ impl EventDecoder {
 
                     // If we don't have a valid ST terminator, then this is a
                     // cancelled sequence and should be ignored.
-                    return (i, Some(DecodedEvent::Ignored(String::from_utf8_lossy(&b[..i]).into_owned())));
+                    return (
+                        i,
+                        Some(DecodedEvent::Ignored(
+                            String::from_utf8_lossy(&b[..i]).into_owned(),
+                        )),
+                    );
                 }
 
                 i += 1;
@@ -932,16 +1119,27 @@ impl EventDecoder {
         }
 
         if end <= start {
-            return (i, Some(DecodedEvent::Unknown(String::from_utf8_lossy(&b[..i]).into_owned())));
+            return (
+                i,
+                Some(DecodedEvent::Unknown(
+                    String::from_utf8_lossy(&b[..i]).into_owned(),
+                )),
+            );
         }
 
         let data = &b[start..end];
         match cmd {
             10 => {
-                return (i, Some(DecodedEvent::ForegroundColor(parse_xparse_color(data))));
+                return (
+                    i,
+                    Some(DecodedEvent::ForegroundColor(parse_xparse_color(data))),
+                );
             }
             11 => {
-                return (i, Some(DecodedEvent::BackgroundColor(parse_xparse_color(data))));
+                return (
+                    i,
+                    Some(DecodedEvent::BackgroundColor(parse_xparse_color(data))),
+                );
             }
             12 => {
                 return (i, Some(DecodedEvent::CursorColor(parse_xparse_color(data))));
@@ -949,10 +1147,13 @@ impl EventDecoder {
             52 => {
                 let parts: Vec<&[u8]> = data.split(|&c| c == b';').collect();
                 if parts.len() != 2 || parts[0].is_empty() {
-                    return (i, Some(DecodedEvent::Clipboard {
-                        content: String::new(),
-                        selection: 0,
-                    }));
+                    return (
+                        i,
+                        Some(DecodedEvent::Clipboard {
+                            content: String::new(),
+                            selection: 0,
+                        }),
+                    );
                 }
 
                 let b64 = parts[1];
@@ -981,7 +1182,12 @@ impl EventDecoder {
             _ => {}
         }
 
-        (i, Some(DecodedEvent::UnknownOsc(String::from_utf8_lossy(&b[..i]).into_owned())))
+        (
+            i,
+            Some(DecodedEvent::UnknownOsc(
+                String::from_utf8_lossy(&b[..i]).into_owned(),
+            )),
+        )
     }
 
     /// parseStTerminated parses a control sequence that gets terminated by a
@@ -990,7 +1196,7 @@ impl EventDecoder {
         &mut self,
         intro8: u8,
         intro7: u8,
-        f: Option<fn(&[u8]) -> Option<DecodedEvent>>,
+        f: StTerminatedFn,
         b: &[u8],
     ) -> (usize, Option<DecodedEvent>) {
         let default_key = |b: &[u8]| -> (usize, Option<DecodedEvent>) {
@@ -1039,7 +1245,12 @@ impl EventDecoder {
         }
 
         if i >= b.len() {
-            return (i, Some(DecodedEvent::Unknown(String::from_utf8_lossy(&b[..i]).into_owned())));
+            return (
+                i,
+                Some(DecodedEvent::Unknown(
+                    String::from_utf8_lossy(&b[..i]).into_owned(),
+                )),
+            );
         }
 
         let end = i; // end of the sequence data
@@ -1048,7 +1259,12 @@ impl EventDecoder {
         // Check 7-bit ST (string terminator) character
         match b[i - 1] {
             0x18 | 0x1A => {
-                return (i, Some(DecodedEvent::Ignored(String::from_utf8_lossy(&b[..i]).into_owned())));
+                return (
+                    i,
+                    Some(DecodedEvent::Ignored(
+                        String::from_utf8_lossy(&b[..i]).into_owned(),
+                    )),
+                );
             }
             0x1B => {
                 if i >= b.len() || b[i] != b'\\' {
@@ -1058,7 +1274,12 @@ impl EventDecoder {
 
                     // If we don't have a valid ST terminator, then this is a
                     // cancelled sequence and should be ignored.
-                    return (i, Some(DecodedEvent::Ignored(String::from_utf8_lossy(&b[..i]).into_owned())));
+                    return (
+                        i,
+                        Some(DecodedEvent::Ignored(
+                            String::from_utf8_lossy(&b[..i]).into_owned(),
+                        )),
+                    );
                 }
 
                 i += 1;
@@ -1074,10 +1295,30 @@ impl EventDecoder {
         }
 
         match intro8 {
-            0x9E => (i, Some(DecodedEvent::UnknownPm(String::from_utf8_lossy(&b[..i]).into_owned()))),
-            0x98 => (i, Some(DecodedEvent::UnknownSos(String::from_utf8_lossy(&b[..i]).into_owned()))),
-            0x9F => (i, Some(DecodedEvent::UnknownApc(String::from_utf8_lossy(&b[..i]).into_owned()))),
-            _ => (i, Some(DecodedEvent::Unknown(String::from_utf8_lossy(&b[..i]).into_owned()))),
+            0x9E => (
+                i,
+                Some(DecodedEvent::UnknownPm(
+                    String::from_utf8_lossy(&b[..i]).into_owned(),
+                )),
+            ),
+            0x98 => (
+                i,
+                Some(DecodedEvent::UnknownSos(
+                    String::from_utf8_lossy(&b[..i]).into_owned(),
+                )),
+            ),
+            0x9F => (
+                i,
+                Some(DecodedEvent::UnknownApc(
+                    String::from_utf8_lossy(&b[..i]).into_owned(),
+                )),
+            ),
+            _ => (
+                i,
+                Some(DecodedEvent::Unknown(
+                    String::from_utf8_lossy(&b[..i]).into_owned(),
+                )),
+            ),
         }
     }
 
@@ -1152,7 +1393,12 @@ impl EventDecoder {
 
         // Scan final byte in the range 0x40-0x7E
         if i >= b.len() || b[i] < 0x40 || b[i] > 0x7E {
-            return (i, Some(DecodedEvent::Unknown(String::from_utf8_lossy(&b[..i]).into_owned())));
+            return (
+                i,
+                Some(DecodedEvent::Unknown(
+                    String::from_utf8_lossy(&b[..i]).into_owned(),
+                )),
+            );
         }
 
         // Add the final byte
@@ -1168,7 +1414,12 @@ impl EventDecoder {
         }
 
         if i >= b.len() {
-            return (i, Some(DecodedEvent::Unknown(String::from_utf8_lossy(&b[..i]).into_owned())));
+            return (
+                i,
+                Some(DecodedEvent::Unknown(
+                    String::from_utf8_lossy(&b[..i]).into_owned(),
+                )),
+            );
         }
 
         let end = i; // end of the sequence data
@@ -1190,20 +1441,19 @@ impl EventDecoder {
             _ if cmd == packed(b'+', b'r') => {
                 // XTGETTCAP responses
                 let (param, _, _) = param_get(pa, 0, 0);
-                match param {
-                    1 => {
-                        // 1 means valid response, 0 means invalid response
-                        let tc = parse_termcap(&b[start..end]);
-                        return (i, Some(DecodedEvent::Capability(tc)));
-                    }
-                    _ => {}
+                if param == 1 {
+                    // 1 means valid response, 0 means invalid response
+                    let tc = parse_termcap(&b[start..end]);
+                    return (i, Some(DecodedEvent::Capability(tc)));
                 }
             }
             _ if cmd == packed(0, b'|') || cmd == ((b'>' as i32) << 8 | b'|' as i32) => {
                 // XTVersion response
                 return (
                     i,
-                    Some(DecodedEvent::TerminalVersion(String::from_utf8_lossy(&b[start..end]).into_owned())),
+                    Some(DecodedEvent::TerminalVersion(
+                        String::from_utf8_lossy(&b[start..end]).into_owned(),
+                    )),
                 );
             }
             _ if cmd == packed(b'!', b'|') => {
@@ -1213,7 +1463,12 @@ impl EventDecoder {
             _ => {}
         }
 
-        (i, Some(DecodedEvent::UnknownDcs(String::from_utf8_lossy(&b[..i]).into_owned())))
+        (
+            i,
+            Some(DecodedEvent::UnknownDcs(
+                String::from_utf8_lossy(&b[..i]).into_owned(),
+            )),
+        )
     }
 
     /// parseApc parses an APC sequence.
@@ -1363,7 +1618,7 @@ impl EventDecoder {
                 ..Key::default()
             }),
             _ => {
-                if b >= 0x01 && b <= 0x1A {
+                if (0x01..=0x1A).contains(&b) {
                     // Use lower case letters for control codes
                     let code = (b + 0x60) as u32;
                     DecodedEvent::KeyPress(Key {
@@ -1371,7 +1626,7 @@ impl EventDecoder {
                         mod_: MOD_CTRL,
                         ..Key::default()
                     })
-                } else if b >= 0x1C && b <= 0x1F {
+                } else if (0x1C..=0x1F).contains(&b) {
                     let code = (b + 0x40) as u32;
                     DecodedEvent::KeyPress(Key {
                         code,
@@ -1567,7 +1822,9 @@ impl EventDecoder {
             key.code = r;
             if char::from_u32(r).map(|c| c.is_control()).unwrap_or(true) {
                 // unreachable: handled above
-            } else if char::from_u32(r).map(|c| c.is_alphanumeric() || c.is_ascii_punctuation() || c.is_whitespace()).unwrap_or(false)
+            } else if char::from_u32(r)
+                .map(|c| c.is_alphanumeric() || c.is_ascii_punctuation() || c.is_whitespace())
+                .unwrap_or(false)
                 && (cks == 0
                     || cks == SHIFT_PRESSED
                     || cks == CAPSLOCK_ON
@@ -1636,7 +1893,10 @@ fn param_get(params: &[i32], i: usize, def: i32) -> (i32, bool, bool) {
 }
 
 fn has_more(params: &[i32], i: usize) -> bool {
-    params.get(i).map(|p| p & HAS_MORE_FLAG != 0).unwrap_or(false)
+    params
+        .get(i)
+        .map(|p| p & HAS_MORE_FLAG != 0)
+        .unwrap_or(false)
 }
 
 /// parseXTermModifyOtherKeys parses an XTerm modifyOtherKeys sequence.
@@ -1850,14 +2110,14 @@ fn parse_kitty_keyboard(params: &[i32]) -> DecodedEvent {
                     // shifted key + base key
                     let b = Param_(*p).param(1) as u32;
                     if let Some(c) = char::from_u32(b) {
-                        if c.is_control() == false {
+                        if !c.is_control() {
                             key.base_code = b;
                         }
                     }
                     // fallthrough to case 1
                     let s = Param_(*p).param(1) as u32;
                     if let Some(c) = char::from_u32(s) {
-                        if c.is_control() == false {
+                        if !c.is_control() {
                             // XXX: We swap keys here because we want the
                             // shifted key to be the Rune that is returned.
                             key.shifted_code = s;
@@ -1868,7 +2128,7 @@ fn parse_kitty_keyboard(params: &[i32]) -> DecodedEvent {
                     // shifted key
                     let s = Param_(*p).param(1) as u32;
                     if let Some(c) = char::from_u32(s) {
-                        if c.is_control() == false {
+                        if !c.is_control() {
                             key.shifted_code = s;
                         }
                     }
@@ -1944,11 +2204,12 @@ fn parse_kitty_keyboard(params: &[i32]) -> DecodedEvent {
                 if key_mod.0 == 0 {
                     key.text = c.to_string();
                 } else {
-                    let desired_case = if key_mod.contains(MOD_SHIFT) || key_mod.contains(MOD_CAPS_LOCK) {
-                        c.to_uppercase().collect::<String>()
-                    } else {
-                        c.to_lowercase().collect::<String>()
-                    };
+                    let desired_case =
+                        if key_mod.contains(MOD_SHIFT) || key_mod.contains(MOD_CAPS_LOCK) {
+                            c.to_uppercase().collect::<String>()
+                        } else {
+                            c.to_lowercase().collect::<String>()
+                        };
                     if key.shifted_code != 0 {
                         if let Some(s) = char::from_u32(key.shifted_code) {
                             key.text = s.to_string();
@@ -2036,7 +2297,9 @@ fn parse_tertiary_dev_attrs(b: &[u8]) -> DecodedEvent {
     // Tertiary Device Attributes
     // The response is a 4-digit hexadecimal number.
     match hex_decode(b) {
-        Some(bts) => DecodedEvent::TertiaryDeviceAttributes(String::from_utf8_lossy(&bts).into_owned()),
+        Some(bts) => {
+            DecodedEvent::TertiaryDeviceAttributes(String::from_utf8_lossy(&bts).into_owned())
+        }
         None => DecodedEvent::UnknownDcs(format!("\x1bP!|{}\x1b\\", String::from_utf8_lossy(b))),
     }
 }
@@ -2301,16 +2564,28 @@ fn ensure_key_case(key: Key, cks: u32) -> Key {
     if has_shift || has_caps {
         if let Some(c) = char::from_u32(key.code) {
             if c.is_lowercase() {
-                key.shifted_code = c.to_uppercase().collect::<String>().chars().next().unwrap_or(c) as u32;
-                key.text = char::from_u32(key.shifted_code).map(|s| s.to_string()).unwrap_or_default();
+                key.shifted_code = c
+                    .to_uppercase()
+                    .collect::<String>()
+                    .chars()
+                    .next()
+                    .unwrap_or(c) as u32;
+                key.text = char::from_u32(key.shifted_code)
+                    .map(|s| s.to_string())
+                    .unwrap_or_default();
             }
         }
-    } else {
-        if let Some(c) = char::from_u32(key.code) {
-            if c.is_uppercase() {
-                key.shifted_code = c.to_lowercase().collect::<String>().chars().next().unwrap_or(c) as u32;
-                key.text = char::from_u32(key.shifted_code).map(|s| s.to_string()).unwrap_or_default();
-            }
+    } else if let Some(c) = char::from_u32(key.code) {
+        if c.is_uppercase() {
+            key.shifted_code = c
+                .to_lowercase()
+                .collect::<String>()
+                .chars()
+                .next()
+                .unwrap_or(c) as u32;
+            key.text = char::from_u32(key.shifted_code)
+                .map(|s| s.to_string())
+                .unwrap_or_default();
         }
     }
 
@@ -2451,11 +2726,14 @@ mod tests {
     fn test_decode_ascii() {
         let events = decode_all(b"abc");
         assert_eq!(events.len(), 3);
-        assert_eq!(events[0], DecodedEvent::KeyPress(Key {
-            code: b'a' as u32,
-            text: "a".to_string(),
-            ..Key::default()
-        }));
+        assert_eq!(
+            events[0],
+            DecodedEvent::KeyPress(Key {
+                code: b'a' as u32,
+                text: "a".to_string(),
+                ..Key::default()
+            })
+        );
     }
 
     #[test]
@@ -2525,19 +2803,28 @@ mod tests {
     #[test]
     fn test_decode_ctrl_space_and_tab() {
         let events = decode_all(b"\x00\x09\x0d");
-        assert_eq!(events[0], DecodedEvent::KeyPress(Key {
-            code: KEY_SPACE,
-            mod_: MOD_CTRL,
-            ..Key::default()
-        }));
-        assert_eq!(events[1], DecodedEvent::KeyPress(Key {
-            code: KEY_TAB,
-            ..Key::default()
-        }));
-        assert_eq!(events[2], DecodedEvent::KeyPress(Key {
-            code: KEY_ENTER,
-            ..Key::default()
-        }));
+        assert_eq!(
+            events[0],
+            DecodedEvent::KeyPress(Key {
+                code: KEY_SPACE,
+                mod_: MOD_CTRL,
+                ..Key::default()
+            })
+        );
+        assert_eq!(
+            events[1],
+            DecodedEvent::KeyPress(Key {
+                code: KEY_TAB,
+                ..Key::default()
+            })
+        );
+        assert_eq!(
+            events[2],
+            DecodedEvent::KeyPress(Key {
+                code: KEY_ENTER,
+                ..Key::default()
+            })
+        );
     }
 
     #[test]
@@ -2547,23 +2834,32 @@ mod tests {
             ..Default::default()
         };
         let (_, ev) = d.decode(b"\x00");
-        assert_eq!(ev, Some(DecodedEvent::KeyPress(Key {
-            code: b'@' as u32,
-            mod_: MOD_CTRL,
-            ..Key::default()
-        })));
+        assert_eq!(
+            ev,
+            Some(DecodedEvent::KeyPress(Key {
+                code: b'@' as u32,
+                mod_: MOD_CTRL,
+                ..Key::default()
+            }))
+        );
         let (_, ev) = d.decode(b"\x09");
-        assert_eq!(ev, Some(DecodedEvent::KeyPress(Key {
-            code: b'i' as u32,
-            mod_: MOD_CTRL,
-            ..Key::default()
-        })));
+        assert_eq!(
+            ev,
+            Some(DecodedEvent::KeyPress(Key {
+                code: b'i' as u32,
+                mod_: MOD_CTRL,
+                ..Key::default()
+            }))
+        );
         let (_, ev) = d.decode(b"\x0d");
-        assert_eq!(ev, Some(DecodedEvent::KeyPress(Key {
-            code: b'm' as u32,
-            mod_: MOD_CTRL,
-            ..Key::default()
-        })));
+        assert_eq!(
+            ev,
+            Some(DecodedEvent::KeyPress(Key {
+                code: b'm' as u32,
+                mod_: MOD_CTRL,
+                ..Key::default()
+            }))
+        );
     }
 
     #[test]
@@ -2576,7 +2872,10 @@ mod tests {
                 _ => None,
             })
             .collect();
-        assert_eq!(codes, vec![KEY_PG_UP, KEY_PG_DOWN, KEY_DELETE, KEY_INSERT, KEY_LEFT]);
+        assert_eq!(
+            codes,
+            vec![KEY_PG_UP, KEY_PG_DOWN, KEY_DELETE, KEY_INSERT, KEY_LEFT]
+        );
         // Last one has ctrl modifier (modifier 5 - 1 = 4 = ctrl).
         if let Some(DecodedEvent::KeyPress(k)) = events.last() {
             assert_eq!(k.mod_, MOD_CTRL);
@@ -2586,24 +2885,33 @@ mod tests {
     #[test]
     fn test_decode_sgr_mouse() {
         let events = decode_all(b"\x1b[<0;10;20M\x1b[<0;10;20m\x1b[<64;10;20M");
-        assert_eq!(events[0], DecodedEvent::MouseClick(Mouse {
-            x: 9,
-            y: 19,
-            button: MOUSE_LEFT,
-            mod_: KeyMod(0),
-        }));
-        assert_eq!(events[1], DecodedEvent::MouseRelease(Mouse {
-            x: 9,
-            y: 19,
-            button: MOUSE_LEFT,
-            mod_: KeyMod(0),
-        }));
-        assert_eq!(events[2], DecodedEvent::MouseWheel(Mouse {
-            x: 9,
-            y: 19,
-            button: MOUSE_WHEEL_UP,
-            mod_: KeyMod(0),
-        }));
+        assert_eq!(
+            events[0],
+            DecodedEvent::MouseClick(Mouse {
+                x: 9,
+                y: 19,
+                button: MOUSE_LEFT,
+                mod_: KeyMod(0),
+            })
+        );
+        assert_eq!(
+            events[1],
+            DecodedEvent::MouseRelease(Mouse {
+                x: 9,
+                y: 19,
+                button: MOUSE_LEFT,
+                mod_: KeyMod(0),
+            })
+        );
+        assert_eq!(
+            events[2],
+            DecodedEvent::MouseWheel(Mouse {
+                x: 9,
+                y: 19,
+                button: MOUSE_WHEEL_UP,
+                mod_: KeyMod(0),
+            })
+        );
     }
 
     #[test]
@@ -2611,18 +2919,24 @@ mod tests {
         let events = decode_all(b"\x1b[M \x00\x00\x1b[M#\x00\x00");
         // Button 0 (space) click; button 3 (#) release. Coordinates are
         // 0x00 - 32 - 1 = -33, matching the upstream formula.
-        assert_eq!(events[0], DecodedEvent::MouseClick(Mouse {
-            x: -33,
-            y: -33,
-            button: MOUSE_LEFT,
-            mod_: KeyMod(0),
-        }));
-        assert_eq!(events[1], DecodedEvent::MouseRelease(Mouse {
-            x: -33,
-            y: -33,
-            button: MOUSE_NONE,
-            mod_: KeyMod(0),
-        }));
+        assert_eq!(
+            events[0],
+            DecodedEvent::MouseClick(Mouse {
+                x: -33,
+                y: -33,
+                button: MOUSE_LEFT,
+                mod_: KeyMod(0),
+            })
+        );
+        assert_eq!(
+            events[1],
+            DecodedEvent::MouseRelease(Mouse {
+                x: -33,
+                y: -33,
+                button: MOUSE_NONE,
+                mod_: KeyMod(0),
+            })
+        );
     }
 
     #[test]

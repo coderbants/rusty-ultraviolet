@@ -22,7 +22,11 @@ Press ctrl+h for this help message.
 
 Press any key to continue...";
 
-fn display_help(scr: &mut TerminalScreen, show: bool, prev_help_buf: &mut Option<charming_ultraviolet::Buffer>) {
+fn display_help(
+    scr: &mut TerminalScreen,
+    show: bool,
+    prev_help_buf: &mut Option<charming_ultraviolet::Buffer>,
+) {
     let help_comp = new_styled_string(HELP);
     let help_area = help_comp.bounds();
     let help_w = help_area.dx();
@@ -145,7 +149,6 @@ fn main() {
     const DEFAULT_CHAR: &str = "█";
     let mut pen = empty_cell();
     pen.content = DEFAULT_CHAR.to_string();
-
 
     'events: loop {
         let ev = t.events().recv();

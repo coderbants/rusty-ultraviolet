@@ -66,10 +66,7 @@ impl Cell {
 
     /// Returns whether the cell is an empty cell.
     pub fn is_zero(&self) -> bool {
-        self.content.is_empty()
-            && self.style.is_zero()
-            && self.link.is_none()
-            && self.width == 0
+        self.content.is_empty() && self.style.is_zero() && self.link.is_none() && self.width == 0
     }
 
     /// isWidePlaceholder reports whether the cell is the continuation column
@@ -132,6 +129,6 @@ mod tests {
         let e = Cell::new(" ");
         assert_eq!(e.content, " ");
         assert_eq!(e.width, 1);
-        assert_eq!(e.is_zero(), false);
+        assert!(!e.is_zero());
     }
 }

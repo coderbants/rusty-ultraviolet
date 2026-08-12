@@ -6,7 +6,7 @@ use charming_ultraviolet::decoder::DecodedEvent;
 use charming_ultraviolet::mouse::MouseMode;
 use charming_ultraviolet::style::Style;
 use charming_ultraviolet::terminal::{new_terminal, Options};
-use charming_ultraviolet::window::{pos, new_window, Window};
+use charming_ultraviolet::window::{new_window, pos, Window};
 use charming_ultraviolet::{console::new_console, screen::Rectangle};
 use charming_x_ansi::style::Color;
 use std::rc::Rc;
@@ -43,12 +43,22 @@ struct App {
 
 impl App {
     fn new_app(width: usize, height: usize) -> App {
-        let _scr = new_window(width, height, Some(charming_x_ansi::method::WidthMethod::GraphemeWidth));
-        let root_win = new_window(0, 0, Some(charming_x_ansi::method::WidthMethod::GraphemeWidth));
-        let mut root_win = Rc::try_unwrap(root_win).ok().expect("fresh window");
+        let _scr = new_window(
+            width,
+            height,
+            Some(charming_x_ansi::method::WidthMethod::GraphemeWidth),
+        );
+        let root_win = new_window(
+            0,
+            0,
+            Some(charming_x_ansi::method::WidthMethod::GraphemeWidth),
+        );
+        let mut root_win = Rc::try_unwrap(root_win).expect("fresh window");
         root_win.resize(width, height);
         let root_rc = Rc::new(root_win);
-        let ctx = charming_ultraviolet::screen_context::new_context(Box::new(WindowDrawProxy(root_rc.clone())));
+        let ctx = charming_ultraviolet::screen_context::new_context(Box::new(WindowDrawProxy(
+            root_rc.clone(),
+        )));
         let root = AppWindow {
             id: ROOT_ID.to_string(),
             win: root_rc,
@@ -61,7 +71,9 @@ impl App {
             win: root.win.clone(),
             z: 0,
             st: Style::default(),
-            ctx: charming_ultraviolet::screen_context::new_context(Box::new(WindowDrawProxy(root.win.clone()))),
+            ctx: charming_ultraviolet::screen_context::new_context(Box::new(WindowDrawProxy(
+                root.win.clone(),
+            ))),
         }];
         App {
             root,
@@ -85,19 +97,33 @@ impl App {
                 win: aw.win.clone(),
                 z: aw.z,
                 st: aw.st.clone(),
-                ctx: charming_ultraviolet::screen_context::new_context(Box::new(WindowDrawProxy(aw.win.clone()))),
+                ctx: charming_ultraviolet::screen_context::new_context(Box::new(WindowDrawProxy(
+                    aw.win.clone(),
+                ))),
             };
             aw.z = self.zwins.len() as i64;
             self.zwins.push(aw);
         }
     }
 
-    fn create_window(&mut self, id: &str, x: usize, y: usize, width: usize, height: usize) -> Option<AppWindow> {
-        let mut style = Style::default();
-        style.bg = Some(Color::Indexed((rand_range(256)) as u8));
+    fn create_window(
+        &mut self,
+        id: &str,
+        x: usize,
+        y: usize,
+        width: usize,
+        height: usize,
+    ) -> Option<AppWindow> {
+        let style = Style {
+            bg: Some(Color::Indexed((rand_range(256)) as u8)),
+            ..Default::default()
+        };
 
-        let win = self.root.win.new_window(x as i64, y as i64, width as i64, height as i64);
-        let mut win = Rc::try_unwrap(win).ok().expect("fresh window");
+        let win = self
+            .root
+            .win
+            .new_window(x as i64, y as i64, width as i64, height as i64);
+        let mut win = Rc::try_unwrap(win).expect("fresh window");
         win.resize(width, height);
         let cell = Cell {
             content: " ".to_string(),
@@ -113,21 +139,30 @@ impl App {
             win: win.clone(),
             z: self.zwins.len() as i64,
             st: style,
-            ctx: charming_ultraviolet::screen_context::new_context(Box::new(WindowDrawProxy(win.clone()))),
+            ctx: charming_ultraviolet::screen_context::new_context(Box::new(WindowDrawProxy(
+                win.clone(),
+            ))),
         };
-        self.wins.insert(id.to_string(), AppWindow {
-            id: aw.id.clone(),
-            win: aw.win.clone(),
-            z: aw.z,
-            st: aw.st.clone(),
-            ctx: charming_ultraviolet::screen_context::new_context(Box::new(WindowDrawProxy(aw.win.clone()))),
-        });
+        self.wins.insert(
+            id.to_string(),
+            AppWindow {
+                id: aw.id.clone(),
+                win: aw.win.clone(),
+                z: aw.z,
+                st: aw.st.clone(),
+                ctx: charming_ultraviolet::screen_context::new_context(Box::new(WindowDrawProxy(
+                    aw.win.clone(),
+                ))),
+            },
+        );
         self.zwins.push(AppWindow {
             id: aw.id.clone(),
             win: aw.win.clone(),
             z: aw.z,
             st: aw.st.clone(),
-            ctx: charming_ultraviolet::screen_context::new_context(Box::new(WindowDrawProxy(aw.win.clone()))),
+            ctx: charming_ultraviolet::screen_context::new_context(Box::new(WindowDrawProxy(
+                aw.win.clone(),
+            ))),
         });
         Some(aw)
     }
@@ -227,7 +262,10 @@ impl App {
             }
             DecodedEvent::MouseMotion(m) => {
                 if self.mouse_down && self.last_clicked == id {
-                    let bounds = self.window(id).map(|w| w.bounds()).unwrap_or(Rectangle { min: (0, 0), max: (0, 0) });
+                    let bounds = self.window(id).map(|w| w.bounds()).unwrap_or(Rectangle {
+                        min: (0, 0),
+                        max: (0, 0),
+                    });
                     let new_x = m.x as i64 - bounds.dx() as i64 / 2;
                     let new_y = m.y as i64 - bounds.dy() as i64 / 2;
                     eprintln!("moving window {id:?} to ({new_x}, {new_y})");
@@ -288,7 +326,13 @@ impl App {
                             y = root_size_y as i64 - height as i64;
                         }
                         let win_id = format!("win-{}", self.wins.len());
-                        self.create_window(&win_id, x as usize, y as usize, width as usize, height as usize);
+                        self.create_window(
+                            &win_id,
+                            x as usize,
+                            y as usize,
+                            width as usize,
+                            height as usize,
+                        );
                         self.set_active_id(&win_id);
                         return true;
                     }
@@ -302,7 +346,10 @@ impl App {
                         }
                     }
                     for zid in to_destroy {
-                        eprintln!("right-clicked window {zid:?} at ({}, {}), destroying", m.x, m.y);
+                        eprintln!(
+                            "right-clicked window {zid:?} at ({}, {}), destroying",
+                            m.x, m.y
+                        );
                         self.destroy_window(&zid);
                     }
                     return true;
@@ -335,7 +382,8 @@ impl App {
                 // We need to update our terminal size and root window size.
                 let scr = term.screen();
                 scr.resize(s.width, s.height);
-                let mut root_win = Rc::try_unwrap(self.root.win.clone()).unwrap_or_else(|rc| (*rc).clone_window());
+                let mut root_win =
+                    Rc::try_unwrap(self.root.win.clone()).unwrap_or_else(|rc| (*rc).clone_window());
                 root_win.resize(s.width, s.height);
                 self.root.win = Rc::new(root_win);
             }
@@ -354,7 +402,9 @@ impl App {
                 }
                 let parent_id = self.parent_id(&focused_id);
                 if !parent_id.is_empty() {
-                    eprintln!("event not handled by {focused_id:?}, passing to parent {parent_id:?}");
+                    eprintln!(
+                        "event not handled by {focused_id:?}, passing to parent {parent_id:?}"
+                    );
                     focused_id = parent_id;
                 } else {
                     break;
@@ -383,12 +433,17 @@ impl charming_ultraviolet::buffer::Screen for WindowDrawProxy {
         None
     }
     fn set_cell(&mut self, x: usize, y: usize, c: Option<&Cell>) {
-        self.0.set_cell(x, y, c.cloned().unwrap_or_else(charming_ultraviolet::cell::empty_cell));
+        self.0.set_cell(
+            x,
+            y,
+            c.cloned()
+                .unwrap_or_else(charming_ultraviolet::cell::empty_cell),
+        );
     }
     fn width_method(&self) -> charming_x_ansi::method::WidthMethod {
         self.0.width_method()
     }
-    fn as_any_mut<'b>(&'b mut self) -> Option<&'b mut dyn std::any::Any> {
+    fn as_any_mut(&mut self) -> Option<&mut dyn std::any::Any> {
         None
     }
 }
@@ -403,7 +458,9 @@ impl charming_ultraviolet::Drawable for DrawableApp<'_> {
 
 fn rand_range(n: u64) -> u64 {
     use std::time::{SystemTime, UNIX_EPOCH};
-    let t = SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default();
+    let t = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default();
     (t.subsec_nanos() as u64 ^ (t.as_nanos() as u64)) % n
 }
 

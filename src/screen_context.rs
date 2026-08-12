@@ -15,8 +15,8 @@
 //!   ported trait cannot answer `WidthMethod()`. Once the integrator's
 //!   `uv.go` port exposes `width_method` on the screen, the Context should
 //!   query the screen instead, matching upstream.
+//!
 //! </public-docs>
-
 use std::io;
 
 use charming_x_ansi::method::WidthMethod;
@@ -126,10 +126,7 @@ impl<'a> Context<'a> {
 
     /// WithBackground returns a copy of the context with the given background
     /// color.
-    pub fn with_background(
-        mut self,
-        bg: Option<charming_x_ansi::style::Color>,
-    ) -> Context<'a> {
+    pub fn with_background(mut self, bg: Option<charming_x_ansi::style::Color>) -> Context<'a> {
         self.set_background(bg);
         self
     }
@@ -142,10 +139,7 @@ impl<'a> Context<'a> {
 
     /// WithForeground returns a copy of the context with the given foreground
     /// color.
-    pub fn with_foreground(
-        mut self,
-        fg: Option<charming_x_ansi::style::Color>,
-    ) -> Context<'a> {
+    pub fn with_foreground(mut self, fg: Option<charming_x_ansi::style::Color>) -> Context<'a> {
         self.set_foreground(fg);
         self
     }
@@ -415,7 +409,8 @@ impl<'a> Context<'a> {
 /// position accordingly.
 impl<'a> io::Write for Context<'a> {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        let s = std::str::from_utf8(buf).map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
+        let s =
+            std::str::from_utf8(buf).map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
         self.write_str_impl(s);
         Ok(buf.len())
     }
@@ -456,6 +451,9 @@ impl<'a> Context<'a> {
     }
 }
 
+/// Mirrors the upstream Go signature `drawStringAt(scr Screen, s string, x,
+/// y int64, style Style, link Link, wrap bool, wm WidthMethod)` 1:1.
+#[allow(clippy::too_many_arguments)]
 fn draw_string_at(
     scr: &mut dyn Screen,
     s: &str,
@@ -520,8 +518,8 @@ fn draw_string_at(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::io::Write as _;
     use crate::buffer::new_buffer;
+    use std::io::Write as _;
 
     fn read_all(scr: &mut dyn Screen) -> String {
         let mut out = String::new();

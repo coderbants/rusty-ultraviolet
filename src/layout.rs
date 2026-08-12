@@ -459,7 +459,7 @@ pub fn horizontal(constraints: &[Constraint]) -> Layout {
 /// Internally, sizes are resolved by a Cassowary linear-constraint solver
 /// that satisfies as many rules as it can, preferring higher-priority
 /// constraints when trade-offs are necessary.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Default)]
 pub struct Layout {
     /// The direction of the layout.
     pub direction: Direction,
@@ -472,18 +472,6 @@ pub struct Layout {
     pub spacing: i64,
     /// The flex strategy for distributing leftover space.
     pub flex: Flex,
-}
-
-impl Default for Layout {
-    fn default() -> Self {
-        Layout {
-            direction: Direction::default(),
-            constraints: Vec::new(),
-            padding: Padding::default(),
-            spacing: 0,
-            flex: Flex::default(),
-        }
-    }
 }
 
 impl Layout {
@@ -529,9 +517,7 @@ impl Layout {
     /// Panics when the solver cannot satisfy the constraints.
     pub fn split_with_spacers(&self, area: Rectangle) -> (Splitted, Splitted) {
         match self.split_cached(area) {
-            Ok((segments, spacers)) => {
-                (Splitted::from(segments), Splitted::from(spacers))
-            }
+            Ok((segments, spacers)) => (Splitted::from(segments), Splitted::from(spacers)),
             Err(err) => panic!("{err}"),
         }
     }
@@ -548,7 +534,7 @@ impl Layout {
     /// Panics when the solver cannot satisfy the constraints.
     pub fn split(&self, area: Rectangle) -> Splitted {
         let (segments, _) = self.split_with_spacers(area);
-        Splitted::from(segments)
+        segments
     }
 
     fn split_cached(&self, area: Rectangle) -> Result<(Vec<Rectangle>, Vec<Rectangle>), String> {
@@ -611,8 +597,14 @@ impl Layout {
             .map_err(|e| format!("configure variable constraints: {e}"))?;
         configure_flex_constraints(&mut s, area_el, &spacer_elements, self.flex, spacing)
             .map_err(|e| format!("configure flex constraints: {e}"))?;
-        configure_constraints(&mut s, area_el, &segment_elements, &self.constraints, self.flex)
-            .map_err(|e| format!("configure constraints: {e}"))?;
+        configure_constraints(
+            &mut s,
+            area_el,
+            &segment_elements,
+            &self.constraints,
+            self.flex,
+        )
+        .map_err(|e| format!("configure constraints: {e}"))?;
         configure_fill_constraints(&mut s, &segment_elements, &self.constraints, self.flex)
             .map_err(|e| format!("configure fill constraints: {e}"))?;
 
@@ -713,8 +705,12 @@ fn changes_to_rects(
         let start_val = changes[&e.start];
         let end_val = changes[&e.end];
 
-        let start_rounded = (start_val.round() / FLOAT_PRECISION_MULTIPLIER).round().max(0.0) as usize;
-        let end_rounded = (end_val.round() / FLOAT_PRECISION_MULTIPLIER).round().max(0.0) as usize;
+        let start_rounded = (start_val.round() / FLOAT_PRECISION_MULTIPLIER)
+            .round()
+            .max(0.0) as usize;
+        let end_rounded = (end_val.round() / FLOAT_PRECISION_MULTIPLIER)
+            .round()
+            .max(0.0) as usize;
 
         let size = end_rounded.saturating_sub(start_rounded);
 
@@ -1243,6 +1239,14 @@ fn binomial(n: usize, k: usize) -> usize {
 mod tests {
     use super::*;
 
+    /// A constraint-position case: (flex, constraints, expected positions).
+    type PositionCase = Vec<(Flex, Vec<Constraint>, Vec<(usize, usize)>)>;
+    /// A spacing case: (flex, spacing, expected positions).
+    type SpacingCase = Vec<(Flex, i64, Vec<(usize, usize)>)>;
+
+    /// Mirrors upstream `layout_test.go` `paintLayout` (an index-based
+    /// rasterizer, so the range loop is intentional).
+    #[allow(clippy::needless_range_loop)]
     fn letters(flex: Flex, constraints: &[Constraint], width: usize) -> String {
         let area = crate::window::rect(0, 0, width as i64, 1);
 
@@ -1272,17 +1276,23 @@ mod tests {
 
     #[test]
     fn test_priority_is_valid() {
-        assert!(SPACER_SIZE_EQ > MAX_SIZE_LTE);
-        assert!(MAX_SIZE_LTE > MAX_SIZE_EQ);
-        assert!((MIN_SIZE_GTE - MAX_SIZE_LTE).abs() < f64::EPSILON);
-        assert!(MAX_SIZE_LTE > LENGTH_SIZE_EQ);
-        assert!(LENGTH_SIZE_EQ > PERCENT_SIZE_EQ);
-        assert!(PERCENT_SIZE_EQ > RATIO_SIZE_EQ);
-        assert!(RATIO_SIZE_EQ > MAX_SIZE_EQ);
-        assert!(MIN_SIZE_GTE > FILL_GROW);
-        assert!(FILL_GROW > GROW);
-        assert!(GROW > SPACE_GROW);
-        assert!(SPACE_GROW > ALL_SEGMENT_GROW);
+        // Ported from upstream `layout_test.go` `TestPriorityIsValid`; the
+        // ordering is compile-time constant in Rust but kept to mirror the
+        // upstream test.
+        #[allow(clippy::assertions_on_constants)]
+        {
+            assert!(SPACER_SIZE_EQ > MAX_SIZE_LTE);
+            assert!(MAX_SIZE_LTE > MAX_SIZE_EQ);
+            assert!((MIN_SIZE_GTE - MAX_SIZE_LTE).abs() < f64::EPSILON);
+            assert!(MAX_SIZE_LTE > LENGTH_SIZE_EQ);
+            assert!(LENGTH_SIZE_EQ > PERCENT_SIZE_EQ);
+            assert!(PERCENT_SIZE_EQ > RATIO_SIZE_EQ);
+            assert!(RATIO_SIZE_EQ > MAX_SIZE_EQ);
+            assert!(MIN_SIZE_GTE > FILL_GROW);
+            assert!(FILL_GROW > GROW);
+            assert!(GROW > SPACE_GROW);
+            assert!(SPACE_GROW > ALL_SEGMENT_GROW);
+        }
     }
 
     #[test]
@@ -1293,107 +1303,514 @@ mod tests {
             (Flex::FlexLegacy, vec![Constraint::Len(2)], 1, "a"),
             (Flex::FlexLegacy, vec![Constraint::Len(0)], 2, "aa"),
             (Flex::FlexLegacy, vec![Constraint::Len(3)], 2, "aa"),
-            (Flex::FlexLegacy, vec![Constraint::Len(1), Constraint::Len(0)], 2, "ab"),
-            (Flex::FlexLegacy, vec![Constraint::Len(1), Constraint::Len(1)], 2, "ab"),
-            (Flex::FlexLegacy, vec![Constraint::Len(2), Constraint::Len(2)], 2, "aa"),
-            (Flex::FlexLegacy, vec![Constraint::Len(3), Constraint::Len(3)], 2, "aa"),
-            (Flex::FlexLegacy, vec![Constraint::Len(2), Constraint::Len(2)], 3, "aab"),
+            (
+                Flex::FlexLegacy,
+                vec![Constraint::Len(1), Constraint::Len(0)],
+                2,
+                "ab",
+            ),
+            (
+                Flex::FlexLegacy,
+                vec![Constraint::Len(1), Constraint::Len(1)],
+                2,
+                "ab",
+            ),
+            (
+                Flex::FlexLegacy,
+                vec![Constraint::Len(2), Constraint::Len(2)],
+                2,
+                "aa",
+            ),
+            (
+                Flex::FlexLegacy,
+                vec![Constraint::Len(3), Constraint::Len(3)],
+                2,
+                "aa",
+            ),
+            (
+                Flex::FlexLegacy,
+                vec![Constraint::Len(2), Constraint::Len(2)],
+                3,
+                "aab",
+            ),
         ];
         for (flex, constraints, width, want) in cases {
             let got = letters(flex, &constraints, width);
-            assert_eq!(got, want, "flex={flex} constraints={constraints:?} width={width}");
+            assert_eq!(
+                got, want,
+                "flex={flex} constraints={constraints:?} width={width}"
+            );
         }
     }
 
     #[test]
     fn test_percent() {
         let cases: Vec<(Flex, Vec<Constraint>, usize, &str)> = vec![
-            (Flex::FlexStart, vec![Constraint::Percent(0), Constraint::Percent(0)], 10, "          "),
-            (Flex::FlexStart, vec![Constraint::Percent(0), Constraint::Percent(25)], 10, "bbb       "),
-            (Flex::FlexStart, vec![Constraint::Percent(0), Constraint::Percent(50)], 10, "bbbbb     "),
-            (Flex::FlexStart, vec![Constraint::Percent(0), Constraint::Percent(100)], 10, "bbbbbbbbbb"),
-            (Flex::FlexStart, vec![Constraint::Percent(10), Constraint::Percent(0)], 10, "a         "),
-            (Flex::FlexStart, vec![Constraint::Percent(10), Constraint::Percent(25)], 10, "abbb      "),
-            (Flex::FlexStart, vec![Constraint::Percent(10), Constraint::Percent(50)], 10, "abbbbb    "),
-            (Flex::FlexStart, vec![Constraint::Percent(10), Constraint::Percent(100)], 10, "abbbbbbbbb"),
-            (Flex::FlexStart, vec![Constraint::Percent(25), Constraint::Percent(0)], 10, "aaa       "),
-            (Flex::FlexStart, vec![Constraint::Percent(25), Constraint::Percent(25)], 10, "aaabb     "),
-            (Flex::FlexStart, vec![Constraint::Percent(25), Constraint::Percent(50)], 10, "aaabbbbb  "),
-            (Flex::FlexStart, vec![Constraint::Percent(25), Constraint::Percent(100)], 10, "aaabbbbbbb"),
-            (Flex::FlexStart, vec![Constraint::Percent(50), Constraint::Percent(0)], 10, "aaaaa     "),
-            (Flex::FlexStart, vec![Constraint::Percent(50), Constraint::Percent(50)], 10, "aaaaabbbbb"),
-            (Flex::FlexStart, vec![Constraint::Percent(100), Constraint::Percent(0)], 10, "aaaaaaaaaa"),
-            (Flex::FlexStart, vec![Constraint::Percent(100), Constraint::Percent(50)], 10, "aaaaabbbbb"),
-            (Flex::FlexSpaceBetween, vec![Constraint::Percent(0), Constraint::Percent(0)], 10, "          "),
-            (Flex::FlexSpaceBetween, vec![Constraint::Percent(0), Constraint::Percent(25)], 10, "        bb"),
-            (Flex::FlexSpaceBetween, vec![Constraint::Percent(0), Constraint::Percent(50)], 10, "     bbbbb"),
-            (Flex::FlexSpaceBetween, vec![Constraint::Percent(0), Constraint::Percent(100)], 10, "bbbbbbbbbb"),
-            (Flex::FlexSpaceBetween, vec![Constraint::Percent(10), Constraint::Percent(0)], 10, "a         "),
-            (Flex::FlexSpaceBetween, vec![Constraint::Percent(10), Constraint::Percent(25)], 10, "a       bb"),
-            (Flex::FlexSpaceBetween, vec![Constraint::Percent(10), Constraint::Percent(50)], 10, "a    bbbbb"),
-            (Flex::FlexSpaceBetween, vec![Constraint::Percent(10), Constraint::Percent(100)], 10, "abbbbbbbbb"),
-            (Flex::FlexSpaceBetween, vec![Constraint::Percent(25), Constraint::Percent(0)], 10, "aaa       "),
-            (Flex::FlexSpaceBetween, vec![Constraint::Percent(25), Constraint::Percent(25)], 10, "aaa     bb"),
-            (Flex::FlexSpaceBetween, vec![Constraint::Percent(25), Constraint::Percent(50)], 10, "aaa  bbbbb"),
-            (Flex::FlexSpaceBetween, vec![Constraint::Percent(25), Constraint::Percent(100)], 10, "aaabbbbbbb"),
-            (Flex::FlexSpaceBetween, vec![Constraint::Percent(50), Constraint::Percent(0)], 10, "aaaaa     "),
-            (Flex::FlexSpaceBetween, vec![Constraint::Percent(50), Constraint::Percent(50)], 10, "aaaaabbbbb"),
-            (Flex::FlexSpaceBetween, vec![Constraint::Percent(100), Constraint::Percent(0)], 10, "aaaaaaaaaa"),
-            (Flex::FlexSpaceBetween, vec![Constraint::Percent(100), Constraint::Percent(50)], 10, "aaaaabbbbb"),
+            (
+                Flex::FlexStart,
+                vec![Constraint::Percent(0), Constraint::Percent(0)],
+                10,
+                "          ",
+            ),
+            (
+                Flex::FlexStart,
+                vec![Constraint::Percent(0), Constraint::Percent(25)],
+                10,
+                "bbb       ",
+            ),
+            (
+                Flex::FlexStart,
+                vec![Constraint::Percent(0), Constraint::Percent(50)],
+                10,
+                "bbbbb     ",
+            ),
+            (
+                Flex::FlexStart,
+                vec![Constraint::Percent(0), Constraint::Percent(100)],
+                10,
+                "bbbbbbbbbb",
+            ),
+            (
+                Flex::FlexStart,
+                vec![Constraint::Percent(10), Constraint::Percent(0)],
+                10,
+                "a         ",
+            ),
+            (
+                Flex::FlexStart,
+                vec![Constraint::Percent(10), Constraint::Percent(25)],
+                10,
+                "abbb      ",
+            ),
+            (
+                Flex::FlexStart,
+                vec![Constraint::Percent(10), Constraint::Percent(50)],
+                10,
+                "abbbbb    ",
+            ),
+            (
+                Flex::FlexStart,
+                vec![Constraint::Percent(10), Constraint::Percent(100)],
+                10,
+                "abbbbbbbbb",
+            ),
+            (
+                Flex::FlexStart,
+                vec![Constraint::Percent(25), Constraint::Percent(0)],
+                10,
+                "aaa       ",
+            ),
+            (
+                Flex::FlexStart,
+                vec![Constraint::Percent(25), Constraint::Percent(25)],
+                10,
+                "aaabb     ",
+            ),
+            (
+                Flex::FlexStart,
+                vec![Constraint::Percent(25), Constraint::Percent(50)],
+                10,
+                "aaabbbbb  ",
+            ),
+            (
+                Flex::FlexStart,
+                vec![Constraint::Percent(25), Constraint::Percent(100)],
+                10,
+                "aaabbbbbbb",
+            ),
+            (
+                Flex::FlexStart,
+                vec![Constraint::Percent(50), Constraint::Percent(0)],
+                10,
+                "aaaaa     ",
+            ),
+            (
+                Flex::FlexStart,
+                vec![Constraint::Percent(50), Constraint::Percent(50)],
+                10,
+                "aaaaabbbbb",
+            ),
+            (
+                Flex::FlexStart,
+                vec![Constraint::Percent(100), Constraint::Percent(0)],
+                10,
+                "aaaaaaaaaa",
+            ),
+            (
+                Flex::FlexStart,
+                vec![Constraint::Percent(100), Constraint::Percent(50)],
+                10,
+                "aaaaabbbbb",
+            ),
+            (
+                Flex::FlexSpaceBetween,
+                vec![Constraint::Percent(0), Constraint::Percent(0)],
+                10,
+                "          ",
+            ),
+            (
+                Flex::FlexSpaceBetween,
+                vec![Constraint::Percent(0), Constraint::Percent(25)],
+                10,
+                "        bb",
+            ),
+            (
+                Flex::FlexSpaceBetween,
+                vec![Constraint::Percent(0), Constraint::Percent(50)],
+                10,
+                "     bbbbb",
+            ),
+            (
+                Flex::FlexSpaceBetween,
+                vec![Constraint::Percent(0), Constraint::Percent(100)],
+                10,
+                "bbbbbbbbbb",
+            ),
+            (
+                Flex::FlexSpaceBetween,
+                vec![Constraint::Percent(10), Constraint::Percent(0)],
+                10,
+                "a         ",
+            ),
+            (
+                Flex::FlexSpaceBetween,
+                vec![Constraint::Percent(10), Constraint::Percent(25)],
+                10,
+                "a       bb",
+            ),
+            (
+                Flex::FlexSpaceBetween,
+                vec![Constraint::Percent(10), Constraint::Percent(50)],
+                10,
+                "a    bbbbb",
+            ),
+            (
+                Flex::FlexSpaceBetween,
+                vec![Constraint::Percent(10), Constraint::Percent(100)],
+                10,
+                "abbbbbbbbb",
+            ),
+            (
+                Flex::FlexSpaceBetween,
+                vec![Constraint::Percent(25), Constraint::Percent(0)],
+                10,
+                "aaa       ",
+            ),
+            (
+                Flex::FlexSpaceBetween,
+                vec![Constraint::Percent(25), Constraint::Percent(25)],
+                10,
+                "aaa     bb",
+            ),
+            (
+                Flex::FlexSpaceBetween,
+                vec![Constraint::Percent(25), Constraint::Percent(50)],
+                10,
+                "aaa  bbbbb",
+            ),
+            (
+                Flex::FlexSpaceBetween,
+                vec![Constraint::Percent(25), Constraint::Percent(100)],
+                10,
+                "aaabbbbbbb",
+            ),
+            (
+                Flex::FlexSpaceBetween,
+                vec![Constraint::Percent(50), Constraint::Percent(0)],
+                10,
+                "aaaaa     ",
+            ),
+            (
+                Flex::FlexSpaceBetween,
+                vec![Constraint::Percent(50), Constraint::Percent(50)],
+                10,
+                "aaaaabbbbb",
+            ),
+            (
+                Flex::FlexSpaceBetween,
+                vec![Constraint::Percent(100), Constraint::Percent(0)],
+                10,
+                "aaaaaaaaaa",
+            ),
+            (
+                Flex::FlexSpaceBetween,
+                vec![Constraint::Percent(100), Constraint::Percent(50)],
+                10,
+                "aaaaabbbbb",
+            ),
         ];
         for (flex, constraints, width, want) in cases {
             let got = letters(flex, &constraints, width);
-            assert_eq!(got, want, "flex={flex} constraints={constraints:?} width={width}");
+            assert_eq!(
+                got, want,
+                "flex={flex} constraints={constraints:?} width={width}"
+            );
         }
     }
 
     #[test]
     fn test_ratio() {
         let cases: Vec<(Flex, Vec<Constraint>, usize, &str)> = vec![
-            (Flex::FlexLegacy, vec![Constraint::Ratio { num: 0, den: 1 }], 1, "a"),
-            (Flex::FlexLegacy, vec![Constraint::Ratio { num: 0, den: 1 }], 2, "aa"),
-            (Flex::FlexLegacy, vec![Constraint::Ratio { num: 0, den: 1 }, Constraint::Ratio { num: 0, den: 1 }], 10, "bbbbbbbbbb"),
-            (Flex::FlexLegacy, vec![Constraint::Ratio { num: 1, den: 10 }, Constraint::Ratio { num: 0, den: 1 }], 10, "abbbbbbbbb"),
-            (Flex::FlexLegacy, vec![Constraint::Ratio { num: 1, den: 4 }, Constraint::Ratio { num: 0, den: 1 }], 10, "aaabbbbbbb"),
-            (Flex::FlexLegacy, vec![Constraint::Ratio { num: 1, den: 2 }, Constraint::Ratio { num: 0, den: 1 }], 10, "aaaaabbbbb"),
-            (Flex::FlexLegacy, vec![Constraint::Ratio { num: 1, den: 1 }, Constraint::Ratio { num: 0, den: 1 }], 10, "aaaaaaaaaa"),
-            (Flex::FlexStart, vec![Constraint::Ratio { num: 0, den: 1 }, Constraint::Ratio { num: 0, den: 1 }], 10, "          "),
-            (Flex::FlexStart, vec![Constraint::Ratio { num: 0, den: 1 }, Constraint::Ratio { num: 1, den: 4 }], 10, "bbb       "),
-            (Flex::FlexStart, vec![Constraint::Ratio { num: 0, den: 1 }, Constraint::Ratio { num: 1, den: 2 }], 10, "bbbbb     "),
-            (Flex::FlexStart, vec![Constraint::Ratio { num: 0, den: 1 }, Constraint::Ratio { num: 1, den: 1 }], 10, "bbbbbbbbbb"),
-            (Flex::FlexStart, vec![Constraint::Ratio { num: 1, den: 10 }, Constraint::Ratio { num: 0, den: 1 }], 10, "a         "),
-            (Flex::FlexStart, vec![Constraint::Ratio { num: 1, den: 10 }, Constraint::Ratio { num: 1, den: 4 }], 10, "abbb      "),
-            (Flex::FlexStart, vec![Constraint::Ratio { num: 1, den: 10 }, Constraint::Ratio { num: 1, den: 2 }], 10, "abbbbb    "),
-            (Flex::FlexStart, vec![Constraint::Ratio { num: 1, den: 10 }, Constraint::Ratio { num: 1, den: 1 }], 10, "abbbbbbbbb"),
-            (Flex::FlexStart, vec![Constraint::Ratio { num: 1, den: 4 }, Constraint::Ratio { num: 0, den: 1 }], 10, "aaa       "),
-            (Flex::FlexStart, vec![Constraint::Ratio { num: 1, den: 4 }, Constraint::Ratio { num: 1, den: 4 }], 10, "aaabb     "),
-            (Flex::FlexStart, vec![Constraint::Ratio { num: 1, den: 4 }, Constraint::Ratio { num: 1, den: 2 }], 10, "aaabbbbb  "),
-            (Flex::FlexStart, vec![Constraint::Ratio { num: 1, den: 4 }, Constraint::Ratio { num: 1, den: 1 }], 10, "aaabbbbbbb"),
-            (Flex::FlexStart, vec![Constraint::Ratio { num: 1, den: 2 }, Constraint::Ratio { num: 0, den: 1 }], 10, "aaaaa     "),
-            (Flex::FlexStart, vec![Constraint::Ratio { num: 1, den: 2 }, Constraint::Ratio { num: 1, den: 2 }], 10, "aaaaabbbbb"),
-            (Flex::FlexStart, vec![Constraint::Ratio { num: 1, den: 1 }, Constraint::Ratio { num: 0, den: 1 }], 10, "aaaaaaaaaa"),
+            (
+                Flex::FlexLegacy,
+                vec![Constraint::Ratio { num: 0, den: 1 }],
+                1,
+                "a",
+            ),
+            (
+                Flex::FlexLegacy,
+                vec![Constraint::Ratio { num: 0, den: 1 }],
+                2,
+                "aa",
+            ),
+            (
+                Flex::FlexLegacy,
+                vec![
+                    Constraint::Ratio { num: 0, den: 1 },
+                    Constraint::Ratio { num: 0, den: 1 },
+                ],
+                10,
+                "bbbbbbbbbb",
+            ),
+            (
+                Flex::FlexLegacy,
+                vec![
+                    Constraint::Ratio { num: 1, den: 10 },
+                    Constraint::Ratio { num: 0, den: 1 },
+                ],
+                10,
+                "abbbbbbbbb",
+            ),
+            (
+                Flex::FlexLegacy,
+                vec![
+                    Constraint::Ratio { num: 1, den: 4 },
+                    Constraint::Ratio { num: 0, den: 1 },
+                ],
+                10,
+                "aaabbbbbbb",
+            ),
+            (
+                Flex::FlexLegacy,
+                vec![
+                    Constraint::Ratio { num: 1, den: 2 },
+                    Constraint::Ratio { num: 0, den: 1 },
+                ],
+                10,
+                "aaaaabbbbb",
+            ),
+            (
+                Flex::FlexLegacy,
+                vec![
+                    Constraint::Ratio { num: 1, den: 1 },
+                    Constraint::Ratio { num: 0, den: 1 },
+                ],
+                10,
+                "aaaaaaaaaa",
+            ),
+            (
+                Flex::FlexStart,
+                vec![
+                    Constraint::Ratio { num: 0, den: 1 },
+                    Constraint::Ratio { num: 0, den: 1 },
+                ],
+                10,
+                "          ",
+            ),
+            (
+                Flex::FlexStart,
+                vec![
+                    Constraint::Ratio { num: 0, den: 1 },
+                    Constraint::Ratio { num: 1, den: 4 },
+                ],
+                10,
+                "bbb       ",
+            ),
+            (
+                Flex::FlexStart,
+                vec![
+                    Constraint::Ratio { num: 0, den: 1 },
+                    Constraint::Ratio { num: 1, den: 2 },
+                ],
+                10,
+                "bbbbb     ",
+            ),
+            (
+                Flex::FlexStart,
+                vec![
+                    Constraint::Ratio { num: 0, den: 1 },
+                    Constraint::Ratio { num: 1, den: 1 },
+                ],
+                10,
+                "bbbbbbbbbb",
+            ),
+            (
+                Flex::FlexStart,
+                vec![
+                    Constraint::Ratio { num: 1, den: 10 },
+                    Constraint::Ratio { num: 0, den: 1 },
+                ],
+                10,
+                "a         ",
+            ),
+            (
+                Flex::FlexStart,
+                vec![
+                    Constraint::Ratio { num: 1, den: 10 },
+                    Constraint::Ratio { num: 1, den: 4 },
+                ],
+                10,
+                "abbb      ",
+            ),
+            (
+                Flex::FlexStart,
+                vec![
+                    Constraint::Ratio { num: 1, den: 10 },
+                    Constraint::Ratio { num: 1, den: 2 },
+                ],
+                10,
+                "abbbbb    ",
+            ),
+            (
+                Flex::FlexStart,
+                vec![
+                    Constraint::Ratio { num: 1, den: 10 },
+                    Constraint::Ratio { num: 1, den: 1 },
+                ],
+                10,
+                "abbbbbbbbb",
+            ),
+            (
+                Flex::FlexStart,
+                vec![
+                    Constraint::Ratio { num: 1, den: 4 },
+                    Constraint::Ratio { num: 0, den: 1 },
+                ],
+                10,
+                "aaa       ",
+            ),
+            (
+                Flex::FlexStart,
+                vec![
+                    Constraint::Ratio { num: 1, den: 4 },
+                    Constraint::Ratio { num: 1, den: 4 },
+                ],
+                10,
+                "aaabb     ",
+            ),
+            (
+                Flex::FlexStart,
+                vec![
+                    Constraint::Ratio { num: 1, den: 4 },
+                    Constraint::Ratio { num: 1, den: 2 },
+                ],
+                10,
+                "aaabbbbb  ",
+            ),
+            (
+                Flex::FlexStart,
+                vec![
+                    Constraint::Ratio { num: 1, den: 4 },
+                    Constraint::Ratio { num: 1, den: 1 },
+                ],
+                10,
+                "aaabbbbbbb",
+            ),
+            (
+                Flex::FlexStart,
+                vec![
+                    Constraint::Ratio { num: 1, den: 2 },
+                    Constraint::Ratio { num: 0, den: 1 },
+                ],
+                10,
+                "aaaaa     ",
+            ),
+            (
+                Flex::FlexStart,
+                vec![
+                    Constraint::Ratio { num: 1, den: 2 },
+                    Constraint::Ratio { num: 1, den: 2 },
+                ],
+                10,
+                "aaaaabbbbb",
+            ),
+            (
+                Flex::FlexStart,
+                vec![
+                    Constraint::Ratio { num: 1, den: 1 },
+                    Constraint::Ratio { num: 0, den: 1 },
+                ],
+                10,
+                "aaaaaaaaaa",
+            ),
         ];
         for (flex, constraints, width, want) in cases {
             let got = letters(flex, &constraints, width);
-            assert_eq!(got, want, "flex={flex} constraints={constraints:?} width={width}");
+            assert_eq!(
+                got, want,
+                "flex={flex} constraints={constraints:?} width={width}"
+            );
         }
     }
 
     #[test]
     fn test_min_max_len() {
         let cases: Vec<(Flex, Vec<Constraint>, usize, &str)> = vec![
-            (Flex::FlexLegacy, vec![Constraint::Min(0), Constraint::Min(0)], 1, "b"),
-            (Flex::FlexLegacy, vec![Constraint::Min(0), Constraint::Min(1)], 1, "b"),
-            (Flex::FlexLegacy, vec![Constraint::Min(1), Constraint::Min(0)], 1, "a"),
-            (Flex::FlexLegacy, vec![Constraint::Min(2), Constraint::Min(2)], 2, "aa"),
-            (Flex::FlexLegacy, vec![Constraint::Min(2), Constraint::Min(2)], 3, "aab"),
-            (Flex::FlexLegacy, vec![Constraint::Min(2), Constraint::Min(0)], 2, "aa"),
-            (Flex::FlexStart, vec![Constraint::Fill(1), Constraint::Fill(1)], 10, "aaaaabbbbb"),
-            (Flex::FlexStart, vec![Constraint::Fill(1), Constraint::Fill(2)], 10, "aaabbbbbbb"),
+            (
+                Flex::FlexLegacy,
+                vec![Constraint::Min(0), Constraint::Min(0)],
+                1,
+                "b",
+            ),
+            (
+                Flex::FlexLegacy,
+                vec![Constraint::Min(0), Constraint::Min(1)],
+                1,
+                "b",
+            ),
+            (
+                Flex::FlexLegacy,
+                vec![Constraint::Min(1), Constraint::Min(0)],
+                1,
+                "a",
+            ),
+            (
+                Flex::FlexLegacy,
+                vec![Constraint::Min(2), Constraint::Min(2)],
+                2,
+                "aa",
+            ),
+            (
+                Flex::FlexLegacy,
+                vec![Constraint::Min(2), Constraint::Min(2)],
+                3,
+                "aab",
+            ),
+            (
+                Flex::FlexLegacy,
+                vec![Constraint::Min(2), Constraint::Min(0)],
+                2,
+                "aa",
+            ),
+            (
+                Flex::FlexStart,
+                vec![Constraint::Fill(1), Constraint::Fill(1)],
+                10,
+                "aaaaabbbbb",
+            ),
+            (
+                Flex::FlexStart,
+                vec![Constraint::Fill(1), Constraint::Fill(2)],
+                10,
+                "aaabbbbbbb",
+            ),
         ];
         for (flex, constraints, width, want) in cases {
             let got = letters(flex, &constraints, width);
-            assert_eq!(got, want, "flex={flex} constraints={constraints:?} width={width}");
+            assert_eq!(
+                got, want,
+                "flex={flex} constraints={constraints:?} width={width}"
+            );
         }
     }
 
@@ -1415,19 +1832,51 @@ mod tests {
 
     #[test]
     fn test_flex_constraint_positions() {
-        let cases: Vec<(Flex, Vec<Constraint>, Vec<(usize, usize)>)> = vec![
+        let cases: PositionCase = vec![
             (Flex::FlexLegacy, vec![Constraint::Len(50)], vec![(0, 100)]),
             (Flex::FlexStart, vec![Constraint::Len(50)], vec![(0, 50)]),
             (Flex::FlexEnd, vec![Constraint::Len(50)], vec![(50, 100)]),
             (Flex::FlexCenter, vec![Constraint::Len(50)], vec![(25, 75)]),
-            (Flex::FlexLegacy, vec![Constraint::Ratio { num: 1, den: 2 }], vec![(0, 100)]),
-            (Flex::FlexStart, vec![Constraint::Ratio { num: 1, den: 2 }], vec![(0, 50)]),
-            (Flex::FlexEnd, vec![Constraint::Ratio { num: 1, den: 2 }], vec![(50, 100)]),
-            (Flex::FlexCenter, vec![Constraint::Ratio { num: 1, den: 2 }], vec![(25, 75)]),
-            (Flex::FlexLegacy, vec![Constraint::Percent(50)], vec![(0, 100)]),
-            (Flex::FlexStart, vec![Constraint::Percent(50)], vec![(0, 50)]),
-            (Flex::FlexEnd, vec![Constraint::Percent(50)], vec![(50, 100)]),
-            (Flex::FlexCenter, vec![Constraint::Percent(50)], vec![(25, 75)]),
+            (
+                Flex::FlexLegacy,
+                vec![Constraint::Ratio { num: 1, den: 2 }],
+                vec![(0, 100)],
+            ),
+            (
+                Flex::FlexStart,
+                vec![Constraint::Ratio { num: 1, den: 2 }],
+                vec![(0, 50)],
+            ),
+            (
+                Flex::FlexEnd,
+                vec![Constraint::Ratio { num: 1, den: 2 }],
+                vec![(50, 100)],
+            ),
+            (
+                Flex::FlexCenter,
+                vec![Constraint::Ratio { num: 1, den: 2 }],
+                vec![(25, 75)],
+            ),
+            (
+                Flex::FlexLegacy,
+                vec![Constraint::Percent(50)],
+                vec![(0, 100)],
+            ),
+            (
+                Flex::FlexStart,
+                vec![Constraint::Percent(50)],
+                vec![(0, 50)],
+            ),
+            (
+                Flex::FlexEnd,
+                vec![Constraint::Percent(50)],
+                vec![(50, 100)],
+            ),
+            (
+                Flex::FlexCenter,
+                vec![Constraint::Percent(50)],
+                vec![(25, 75)],
+            ),
             (Flex::FlexLegacy, vec![Constraint::Min(50)], vec![(0, 100)]),
             (Flex::FlexStart, vec![Constraint::Min(50)], vec![(0, 100)]),
             (Flex::FlexEnd, vec![Constraint::Min(50)], vec![(0, 100)]),
@@ -1436,39 +1885,155 @@ mod tests {
             (Flex::FlexStart, vec![Constraint::Max(50)], vec![(0, 50)]),
             (Flex::FlexEnd, vec![Constraint::Max(50)], vec![(50, 100)]),
             (Flex::FlexCenter, vec![Constraint::Max(50)], vec![(25, 75)]),
-            (Flex::FlexSpaceBetween, vec![Constraint::Min(1)], vec![(0, 100)]),
-            (Flex::FlexSpaceBetween, vec![Constraint::Max(20)], vec![(0, 100)]),
-            (Flex::FlexSpaceBetween, vec![Constraint::Len(20)], vec![(0, 100)]),
-            (Flex::FlexLegacy, vec![Constraint::Len(25), Constraint::Len(25)], vec![(0, 25), (25, 100)]),
-            (Flex::FlexStart, vec![Constraint::Len(25), Constraint::Len(25)], vec![(0, 25), (25, 50)]),
-            (Flex::FlexCenter, vec![Constraint::Len(25), Constraint::Len(25)], vec![(25, 50), (50, 75)]),
-            (Flex::FlexEnd, vec![Constraint::Len(25), Constraint::Len(25)], vec![(50, 75), (75, 100)]),
-            (Flex::FlexSpaceBetween, vec![Constraint::Len(25), Constraint::Len(25)], vec![(0, 25), (75, 100)]),
-            (Flex::FlexSpaceEvenly, vec![Constraint::Len(25), Constraint::Len(25)], vec![(17, 42), (58, 83)]),
-            (Flex::FlexSpaceAround, vec![Constraint::Len(25), Constraint::Len(25)], vec![(13, 38), (63, 88)]),
-            (Flex::FlexLegacy, vec![Constraint::Percent(25), Constraint::Percent(25)], vec![(0, 25), (25, 100)]),
-            (Flex::FlexStart, vec![Constraint::Percent(25), Constraint::Percent(25)], vec![(0, 25), (25, 50)]),
-            (Flex::FlexCenter, vec![Constraint::Percent(25), Constraint::Percent(25)], vec![(25, 50), (50, 75)]),
-            (Flex::FlexEnd, vec![Constraint::Percent(25), Constraint::Percent(25)], vec![(50, 75), (75, 100)]),
-            (Flex::FlexSpaceBetween, vec![Constraint::Percent(25), Constraint::Percent(25)], vec![(0, 25), (75, 100)]),
-            (Flex::FlexSpaceEvenly, vec![Constraint::Percent(25), Constraint::Percent(25)], vec![(17, 42), (58, 83)]),
-            (Flex::FlexSpaceAround, vec![Constraint::Percent(25), Constraint::Percent(25)], vec![(13, 38), (63, 88)]),
-            (Flex::FlexLegacy, vec![Constraint::Min(25), Constraint::Min(25)], vec![(0, 25), (25, 100)]),
-            (Flex::FlexStart, vec![Constraint::Min(25), Constraint::Min(25)], vec![(0, 50), (50, 100)]),
-            (Flex::FlexCenter, vec![Constraint::Min(25), Constraint::Min(25)], vec![(0, 50), (50, 100)]),
-            (Flex::FlexEnd, vec![Constraint::Min(25), Constraint::Min(25)], vec![(0, 50), (50, 100)]),
-            (Flex::FlexSpaceBetween, vec![Constraint::Min(25), Constraint::Min(25)], vec![(0, 50), (50, 100)]),
-            (Flex::FlexSpaceEvenly, vec![Constraint::Min(25), Constraint::Min(25)], vec![(0, 50), (50, 100)]),
-            (Flex::FlexSpaceAround, vec![Constraint::Min(25), Constraint::Min(25)], vec![(0, 50), (50, 100)]),
-            (Flex::FlexLegacy, vec![Constraint::Max(25), Constraint::Max(25)], vec![(0, 25), (25, 100)]),
-            (Flex::FlexStart, vec![Constraint::Max(25), Constraint::Max(25)], vec![(0, 25), (25, 50)]),
+            (
+                Flex::FlexSpaceBetween,
+                vec![Constraint::Min(1)],
+                vec![(0, 100)],
+            ),
+            (
+                Flex::FlexSpaceBetween,
+                vec![Constraint::Max(20)],
+                vec![(0, 100)],
+            ),
+            (
+                Flex::FlexSpaceBetween,
+                vec![Constraint::Len(20)],
+                vec![(0, 100)],
+            ),
+            (
+                Flex::FlexLegacy,
+                vec![Constraint::Len(25), Constraint::Len(25)],
+                vec![(0, 25), (25, 100)],
+            ),
+            (
+                Flex::FlexStart,
+                vec![Constraint::Len(25), Constraint::Len(25)],
+                vec![(0, 25), (25, 50)],
+            ),
+            (
+                Flex::FlexCenter,
+                vec![Constraint::Len(25), Constraint::Len(25)],
+                vec![(25, 50), (50, 75)],
+            ),
+            (
+                Flex::FlexEnd,
+                vec![Constraint::Len(25), Constraint::Len(25)],
+                vec![(50, 75), (75, 100)],
+            ),
+            (
+                Flex::FlexSpaceBetween,
+                vec![Constraint::Len(25), Constraint::Len(25)],
+                vec![(0, 25), (75, 100)],
+            ),
+            (
+                Flex::FlexSpaceEvenly,
+                vec![Constraint::Len(25), Constraint::Len(25)],
+                vec![(17, 42), (58, 83)],
+            ),
+            (
+                Flex::FlexSpaceAround,
+                vec![Constraint::Len(25), Constraint::Len(25)],
+                vec![(13, 38), (63, 88)],
+            ),
+            (
+                Flex::FlexLegacy,
+                vec![Constraint::Percent(25), Constraint::Percent(25)],
+                vec![(0, 25), (25, 100)],
+            ),
+            (
+                Flex::FlexStart,
+                vec![Constraint::Percent(25), Constraint::Percent(25)],
+                vec![(0, 25), (25, 50)],
+            ),
+            (
+                Flex::FlexCenter,
+                vec![Constraint::Percent(25), Constraint::Percent(25)],
+                vec![(25, 50), (50, 75)],
+            ),
+            (
+                Flex::FlexEnd,
+                vec![Constraint::Percent(25), Constraint::Percent(25)],
+                vec![(50, 75), (75, 100)],
+            ),
+            (
+                Flex::FlexSpaceBetween,
+                vec![Constraint::Percent(25), Constraint::Percent(25)],
+                vec![(0, 25), (75, 100)],
+            ),
+            (
+                Flex::FlexSpaceEvenly,
+                vec![Constraint::Percent(25), Constraint::Percent(25)],
+                vec![(17, 42), (58, 83)],
+            ),
+            (
+                Flex::FlexSpaceAround,
+                vec![Constraint::Percent(25), Constraint::Percent(25)],
+                vec![(13, 38), (63, 88)],
+            ),
+            (
+                Flex::FlexLegacy,
+                vec![Constraint::Min(25), Constraint::Min(25)],
+                vec![(0, 25), (25, 100)],
+            ),
+            (
+                Flex::FlexStart,
+                vec![Constraint::Min(25), Constraint::Min(25)],
+                vec![(0, 50), (50, 100)],
+            ),
+            (
+                Flex::FlexCenter,
+                vec![Constraint::Min(25), Constraint::Min(25)],
+                vec![(0, 50), (50, 100)],
+            ),
+            (
+                Flex::FlexEnd,
+                vec![Constraint::Min(25), Constraint::Min(25)],
+                vec![(0, 50), (50, 100)],
+            ),
+            (
+                Flex::FlexSpaceBetween,
+                vec![Constraint::Min(25), Constraint::Min(25)],
+                vec![(0, 50), (50, 100)],
+            ),
+            (
+                Flex::FlexSpaceEvenly,
+                vec![Constraint::Min(25), Constraint::Min(25)],
+                vec![(0, 50), (50, 100)],
+            ),
+            (
+                Flex::FlexSpaceAround,
+                vec![Constraint::Min(25), Constraint::Min(25)],
+                vec![(0, 50), (50, 100)],
+            ),
+            (
+                Flex::FlexLegacy,
+                vec![Constraint::Max(25), Constraint::Max(25)],
+                vec![(0, 25), (25, 100)],
+            ),
+            (
+                Flex::FlexStart,
+                vec![Constraint::Max(25), Constraint::Max(25)],
+                vec![(0, 25), (25, 50)],
+            ),
             (Flex::FlexLegacy, vec![Constraint::Fill(1)], vec![(0, 100)]),
             (Flex::FlexStart, vec![Constraint::Fill(1)], vec![(0, 100)]),
             (Flex::FlexEnd, vec![Constraint::Fill(1)], vec![(0, 100)]),
             (Flex::FlexCenter, vec![Constraint::Fill(1)], vec![(0, 100)]),
-            (Flex::FlexStart, vec![Constraint::Fill(1), Constraint::Fill(2)], vec![(0, 33), (33, 100)]),
-            (Flex::FlexStart, vec![Constraint::Fill(1), Constraint::Fill(1)], vec![(0, 50), (50, 100)]),
-            (Flex::FlexStart, vec![Constraint::Min(1), Constraint::Fill(1)], vec![(0, 50), (50, 100)]),
+            (
+                Flex::FlexStart,
+                vec![Constraint::Fill(1), Constraint::Fill(2)],
+                vec![(0, 33), (33, 100)],
+            ),
+            (
+                Flex::FlexStart,
+                vec![Constraint::Fill(1), Constraint::Fill(1)],
+                vec![(0, 50), (50, 100)],
+            ),
+            (
+                Flex::FlexStart,
+                vec![Constraint::Min(1), Constraint::Fill(1)],
+                vec![(0, 50), (50, 100)],
+            ),
         ];
         for (flex, constraints, want) in cases {
             let got = x_ranges(flex, &constraints);
@@ -1510,10 +2075,7 @@ mod tests {
         }
         .split(area);
         assert_eq!(
-            layout
-                .iter()
-                .map(|r| (r.min.0, r.dx()))
-                .collect::<Vec<_>>(),
+            layout.iter().map(|r| (r.min.0, r.dx())).collect::<Vec<_>>(),
             vec![(0, 0), (0, 4), (4, 0), (4, 3)]
         );
     }
@@ -1535,15 +2097,27 @@ mod tests {
 
     #[test]
     fn test_flex_spacing() {
-        let len_three = vec![Constraint::Len(20), Constraint::Len(20), Constraint::Len(20)];
-        let cases: Vec<(Flex, i64, Vec<(usize, usize)>)> = vec![
+        let len_three = vec![
+            Constraint::Len(20),
+            Constraint::Len(20),
+            Constraint::Len(20),
+        ];
+        let cases: SpacingCase = vec![
             (Flex::FlexStart, 0, vec![(0, 20), (20, 20), (40, 20)]),
             (Flex::FlexStart, -1, vec![(0, 20), (19, 20), (38, 20)]),
             (Flex::FlexCenter, -1, vec![(21, 20), (40, 20), (59, 20)]),
             (Flex::FlexEnd, -1, vec![(42, 20), (61, 20), (80, 20)]),
             (Flex::FlexLegacy, -1, vec![(0, 20), (19, 20), (38, 62)]),
-            (Flex::FlexSpaceBetween, -1, vec![(0, 20), (40, 20), (80, 20)]),
-            (Flex::FlexSpaceEvenly, -1, vec![(10, 20), (40, 20), (70, 20)]),
+            (
+                Flex::FlexSpaceBetween,
+                -1,
+                vec![(0, 20), (40, 20), (80, 20)],
+            ),
+            (
+                Flex::FlexSpaceEvenly,
+                -1,
+                vec![(10, 20), (40, 20), (70, 20)],
+            ),
             (Flex::FlexSpaceAround, -1, vec![(7, 20), (40, 20), (73, 20)]),
             (Flex::FlexStart, 2, vec![(0, 20), (22, 20), (44, 20)]),
             (Flex::FlexCenter, 2, vec![(18, 20), (40, 20), (62, 20)]),
@@ -1615,7 +2189,17 @@ mod tests {
 
     #[test]
     fn test_combinations() {
-        assert_eq!(combinations(4, 2), vec![vec![0, 1], vec![0, 2], vec![0, 3], vec![1, 2], vec![1, 3], vec![2, 3]]);
+        assert_eq!(
+            combinations(4, 2),
+            vec![
+                vec![0, 1],
+                vec![0, 2],
+                vec![0, 3],
+                vec![1, 2],
+                vec![1, 3],
+                vec![2, 3]
+            ]
+        );
         assert!(combinations(1, 2).is_empty());
         assert_eq!(combinations(3, 3), vec![vec![0, 1, 2]]);
     }
@@ -1630,6 +2214,9 @@ mod tests {
         assert_eq!(Flex::FlexSpaceEvenly.to_string(), "Space Evenly");
         assert_eq!(Flex::FlexSpaceAround.to_string(), "Space Around");
         assert_eq!(Constraint::Min(20).to_string(), "Min(20)");
-        assert_eq!(Constraint::Ratio { num: 1, den: 2 }.to_string(), "Ratio(1 / 2)");
+        assert_eq!(
+            Constraint::Ratio { num: 1, den: 2 }.to_string(),
+            "Ratio(1 / 2)"
+        );
     }
 }

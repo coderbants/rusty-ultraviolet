@@ -15,7 +15,7 @@
 use crate::err_platform_not_supported;
 use std::io;
 use std::os::fd::{AsRawFd, FromRawFd, OwnedFd};
-use std::sync::mpsc::{Receiver, Sender, channel};
+use std::sync::mpsc::{channel, Receiver, Sender};
 use std::sync::OnceLock;
 
 /// The self-pipe write end used by the signal handlers. Bytes written here

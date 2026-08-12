@@ -16,14 +16,20 @@ E.g. the second line of the Len/Min box is [Len(2), Min(2), Min(0)]
 Note: constraint labels that don't fit are truncated";
 
 fn zero_rect() -> charming_ultraviolet::screen::Rectangle {
-    charming_ultraviolet::screen::Rectangle { min: (0, 0), max: (0, 0) }
+    charming_ultraviolet::screen::Rectangle {
+        min: (0, 0),
+        max: (0, 0),
+    }
 }
 
 fn cell(bg: Color) -> Cell {
     Cell {
         content: " ".to_string(),
         width: 1,
-        style: charming_ultraviolet::style::Style { bg: Some(bg), ..Default::default() },
+        style: charming_ultraviolet::style::Style {
+            bg: Some(bg),
+            ..Default::default()
+        },
         ..Cell::default()
     }
 }
@@ -39,10 +45,17 @@ fn constraint_label(c: &Constraint) -> String {
     }
 }
 
-fn render_example(scr: &mut TerminalScreen, area: charming_ultraviolet::screen::Rectangle, constraints: &[Constraint]) {
+fn render_example(
+    scr: &mut TerminalScreen,
+    area: charming_ultraviolet::screen::Rectangle,
+    constraints: &[Constraint],
+) {
     let l = charming_ultraviolet::layout::horizontal(constraints);
     let splits = l.split(area);
-    let zero = charming_ultraviolet::screen::Rectangle { min: (0, 0), max: (0, 0) };
+    let zero = charming_ultraviolet::screen::Rectangle {
+        min: (0, 0),
+        max: (0, 0),
+    };
     let mut r = splits.get(0).copied().unwrap_or(zero);
     let mut b = splits.get(1).copied().unwrap_or(zero);
     let mut g = splits.get(2).copied().unwrap_or(zero);
@@ -112,7 +125,6 @@ fn render_example_combinations(
     ctx.draw_string(&nums[..n], row.min.0 as i64, row.min.1 as i64);
 }
 
-
 fn main() {
     let mut t = default_terminal();
     t.screen().enter_alt_screen();
@@ -139,26 +151,27 @@ fn main() {
             let _ = t.screen().flush();
         }
         let timeout = next_tick.saturating_duration_since(std::time::Instant::now());
-        match t.events().recv_timeout(timeout.max(std::time::Duration::from_millis(1))) {
-            Ok(ev) => {
-                match ev {
-                    DecodedEvent::WindowSize(s) => {
-                        area = charming_ultraviolet::screen::Rectangle {
-                            min: (0, 0),
-                            max: (s.width, s.height),
-                        };
-                        let scr = t.screen();
-                        scr.resize(s.width, s.height);
-                        charming_ultraviolet::screen::clear(scr);
-                    }
-                    DecodedEvent::KeyPress(k) => {
-                        if k.match_string(&["ctrl+c", "q"]) {
-                            break 'events;
-                        }
-                    }
-                    _ => {}
+        match t
+            .events()
+            .recv_timeout(timeout.max(std::time::Duration::from_millis(1)))
+        {
+            Ok(ev) => match ev {
+                DecodedEvent::WindowSize(s) => {
+                    area = charming_ultraviolet::screen::Rectangle {
+                        min: (0, 0),
+                        max: (s.width, s.height),
+                    };
+                    let scr = t.screen();
+                    scr.resize(s.width, s.height);
+                    charming_ultraviolet::screen::clear(scr);
                 }
-            }
+                DecodedEvent::KeyPress(k) => {
+                    if k.match_string(&["ctrl+c", "q"]) {
+                        break 'events;
+                    }
+                }
+                _ => {}
+            },
             Err(std::sync::mpsc::RecvTimeoutError::Timeout) => continue,
             Err(_) => break 'events,
         }

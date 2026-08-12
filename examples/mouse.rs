@@ -10,11 +10,22 @@ use charming_ultraviolet::terminal::default_terminal;
 use charming_ultraviolet::terminal_screen::TerminalScreen;
 use charming_x_ansi::style::Color;
 
-fn display(scr: &mut TerminalScreen, width: usize, last_btn: &charming_x_ansi::mouse::MouseButton, last_x: i32, last_y: i32) {
-    let label = format!(" Button: {:<12} Position: ({last_x}, {last_y})", last_btn.as_str());
-    let mut st = Style::default();
-    st.bg = Some(Color::Basic(4));
-    st.fg = Some(Color::Basic(0)); // ansi.Black
+fn display(
+    scr: &mut TerminalScreen,
+    width: usize,
+    last_btn: &charming_x_ansi::mouse::MouseButton,
+    last_x: i32,
+    last_y: i32,
+) {
+    let label = format!(
+        " Button: {:<12} Position: ({last_x}, {last_y})",
+        last_btn.as_str()
+    );
+    let st = Style {
+        bg: Some(Color::Basic(4)),
+        fg: Some(Color::Basic(0)), // ansi.Black
+        ..Default::default()
+    };
     let mut bg = empty_cell();
     bg.style = st.clone();
     fill_area(scr, Some(&bg), rect(0, 0, width, 1));
@@ -50,8 +61,10 @@ fn main() {
         std::process::exit(1);
     }
 
-    t.screen().set_mouse_mode(charming_ultraviolet::mouse::MouseMode::MouseModeMotion);
-    t.screen().set_mouse_encoding(charming_ultraviolet::mouse::MouseEncoding::MouseEncodingSGRPixel);
+    t.screen()
+        .set_mouse_mode(charming_ultraviolet::mouse::MouseMode::MouseModeMotion);
+    t.screen()
+        .set_mouse_encoding(charming_ultraviolet::mouse::MouseEncoding::MouseEncodingSGRPixel);
 
     let mut last_btn: charming_x_ansi::mouse::MouseButton = charming_x_ansi::mouse::MOUSE_NONE;
     let mut last_x: i32 = 0;
@@ -74,7 +87,10 @@ fn main() {
 
                 // Query the pixel dimensions of the window in-case this platform
                 // doesn't report them via the terminal's get_winsize.
-                let _ = scr.write_string(&charming_x_ansi::winop::window_op(charming_x_ansi::winop::RESIZE_WINDOW_WIN_OP, &[]));
+                let _ = scr.write_string(&charming_x_ansi::winop::window_op(
+                    charming_x_ansi::winop::RESIZE_WINDOW_WIN_OP,
+                    &[],
+                ));
 
                 display(scr, width, &last_btn, last_x, last_y);
             }
@@ -98,7 +114,9 @@ fn main() {
                 let scr = t.screen();
                 let _ = scr.insert_above(&format!(
                     "{ev_desc:<20} ({}, {}) {}",
-                    m.x, m.y, m.button.as_str()
+                    m.x,
+                    m.y,
+                    m.button.as_str()
                 ));
                 display(scr, width, &last_btn, last_x, last_y);
             }

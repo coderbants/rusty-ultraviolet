@@ -120,9 +120,9 @@ impl Style {
                 b.underline_style = u;
             }
         }
-        b.fg_color = self.fg.map(|c| ansi_color(c));
-        b.bg_color = self.bg.map(|c| ansi_color(c));
-        b.ul_color = self.underline_color.map(|c| ansi_color(c));
+        b.fg_color = self.fg.map(ansi_color);
+        b.bg_color = self.bg.map(ansi_color);
+        b.ul_color = self.underline_color.map(ansi_color);
         let s = b.string();
         if s.is_empty() {
             RESET_STYLE.to_string()
@@ -216,10 +216,8 @@ pub fn style_diff(from: &Style, to: &Style) -> String {
         params.push(charming_x_ansi::style::color_seq(&c, 5));
     }
 
-    if bold_changed || faint_changed {
-        if (from_bold && !to_bold) || (from_faint && !to_faint) {
-            params.push("22".to_string());
-        }
+    if (bold_changed || faint_changed) && ((from_bold && !to_bold) || (from_faint && !to_faint)) {
+        params.push("22".to_string());
     }
     if italic_changed && !to_italic {
         params.push("23".to_string());
@@ -227,10 +225,10 @@ pub fn style_diff(from: &Style, to: &Style) -> String {
     if underline_changed && !to_underline {
         params.push("24".to_string());
     }
-    if blink_changed || rapid_blink_changed {
-        if (from_blink && !to_blink) || (from_rapid_blink && !to_rapid_blink) {
-            params.push("25".to_string());
-        }
+    if (blink_changed || rapid_blink_changed)
+        && ((from_blink && !to_blink) || (from_rapid_blink && !to_rapid_blink))
+    {
+        params.push("25".to_string());
     }
     if reverse_changed && !to_reverse {
         params.push("27".to_string());
@@ -296,16 +294,20 @@ mod tests {
 
     #[test]
     fn test_style_string() {
-        let mut s = Style::default();
-        s.attrs = Attr::BOLD.0;
+        let s = Style {
+            attrs: Attr::BOLD.0,
+            ..Default::default()
+        };
         assert_eq!(s.string(), "\x1b[1m");
         assert_eq!(s.styled("hi"), "\x1b[1mhi\x1b[m");
     }
 
     #[test]
     fn test_style_diff() {
-        let mut from = Style::default();
-        from.attrs = Attr::BOLD.0;
+        let from = Style {
+            attrs: Attr::BOLD.0,
+            ..Default::default()
+        };
         let to = Style::default();
         assert_eq!(style_diff(&from, &to), "\x1b[m");
     }

@@ -194,7 +194,12 @@ fn apply_gradient(base: Style, input: &str, from: &str, to: &str) -> String {
             0.0
         };
         let hex = a.blend_luv(&b, t).hex();
-        output.push_str(&base.clone().foreground_color(Color::parse(&hex)).render(&chars[i].to_string()));
+        output.push_str(
+            &base
+                .clone()
+                .foreground_color(Color::parse(&hex))
+                .render(&chars[i].to_string()),
+        );
     }
     output
 }
@@ -218,7 +223,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .padding(&[0, 1])
         .foreground_color(Color::parse(&subtle))
         .string();
-    let url = |s: &str| Style::new().foreground_color(Color::parse(&special)).render(s);
+    let url = |s: &str| {
+        Style::new()
+            .foreground_color(Color::parse(&special))
+            .render(s)
+    };
 
     let active_tab_border = charming_lipgloss::border::Border {
         top: "─".to_string(),
@@ -358,9 +367,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let t5 = tab.render("Foundation");
         let row = join::join_horizontal(
             TOP,
-            &[t1.as_str(), t2.as_str(), t3.as_str(), t4.as_str(), t5.as_str()],
+            &[
+                t1.as_str(),
+                t2.as_str(),
+                t3.as_str(),
+                t4.as_str(),
+                t5.as_str(),
+            ],
         );
-        let gap = tab_gap.render(&" ".repeat((WIDTH as i64 - size::width(&row) as i64 - 2).max(0) as usize));
+        let gap = tab_gap
+            .render(&" ".repeat((WIDTH as i64 - size::width(&row) as i64 - 2).max(0) as usize));
         let row = join::join_horizontal(BOTTOM, &[row.as_str(), gap.as_str()]);
         doc.push_str(&row);
         doc.push_str("\n\n");
@@ -384,7 +400,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
         }
         let d1 = desc_style.render("Style Definitions for Nice Terminal Layouts");
-        let d2 = info_style.render(&format!("From Charm{divider}{}", url("https://github.com/charmbracelet/lipgloss")));
+        let d2 = info_style.render(&format!(
+            "From Charm{divider}{}",
+            url("https://github.com/charmbracelet/lipgloss")
+        ));
         let desc = join::join_vertical(LEFT, &[d1.as_str(), d2.as_str()]);
         let row = join::join_horizontal(TOP, &[title.as_str(), desc.as_str()]);
         doc.push_str(&row);
@@ -400,10 +419,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         "#EDFF82",
         "#F25D94",
     );
-    let question = Style::new()
-        .width(50)
-        .align(&[CENTER])
-        .render(&grad);
+    let question = Style::new().width(50).align(&[CENTER]).render(&grad);
     let buttons = join::join_horizontal(TOP, &[ok_button.as_str(), cancel_button.as_str()]);
     let dialog_ui = join::join_vertical(CENTER, &[question.as_str(), buttons.as_str()]);
 
@@ -445,7 +461,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let li3 = list_item("Pomelo");
     let lv1 = join::join_vertical(
         LEFT,
-        &[lh1.as_str(), ld1.as_str(), ld2.as_str(), li1.as_str(), li2.as_str(), li3.as_str()],
+        &[
+            lh1.as_str(),
+            ld1.as_str(),
+            ld2.as_str(),
+            li1.as_str(),
+            li2.as_str(),
+            li3.as_str(),
+        ],
     );
     let lh2 = list_header("Actual Lip Gloss Vendors");
     let li4 = list_item("Glossier");
@@ -455,12 +478,22 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let ld4 = list_done("Milk");
     let lv2 = join::join_vertical(
         LEFT,
-        &[lh2.as_str(), li4.as_str(), li5.as_str(), ld3.as_str(), li6.as_str(), ld4.as_str()],
+        &[
+            lh2.as_str(),
+            li4.as_str(),
+            li5.as_str(),
+            ld3.as_str(),
+            li6.as_str(),
+            ld4.as_str(),
+        ],
     );
     let l1 = list.render(&lv1);
     let l2 = list.width(COLUMN_WIDTH).render(&lv2);
     let lists = join::join_horizontal(TOP, &[l1.as_str(), l2.as_str()]);
-    doc.push_str(&join::join_horizontal(TOP, &[lists.as_str(), colors.as_str()]));
+    doc.push_str(&join::join_horizontal(
+        TOP,
+        &[lists.as_str(), colors.as_str()],
+    ));
 
     {
         const HISTORY_A: &str = "The Romans learned from the Greeks that quinces slowly cooked with honey would \"set\" when cool. The Apicius gives a recipe for preserving whole quinces, stems and leaves attached, in a bath of honey diluted with defrutum: Roman marmalade. Preserves of quince and lemon appear (along with rose, apple, plum and pear) in the Book of ceremonies of the Byzantine Emperor Constantine VII Porphyrogennetos.";
@@ -470,7 +503,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let h1 = history_style.clone().align(&[RIGHT]).render(HISTORY_A);
         let h2 = history_style.clone().align(&[CENTER]).render(HISTORY_B);
         let h3 = history_style.margin_right(0).render(HISTORY_C);
-        doc.push_str(&join::join_horizontal(TOP, &[h1.as_str(), h2.as_str(), h3.as_str()]));
+        doc.push_str(&join::join_horizontal(
+            TOP,
+            &[h1.as_str(), h2.as_str(), h3.as_str()],
+        ));
         doc.push_str("\n\n");
     }
 
@@ -485,7 +521,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             .render(&format!("Ravishingly {light_dark_state}!"));
         let bar = join::join_horizontal(
             TOP,
-            &[status_key.as_str(), status_val.as_str(), encoding.as_str(), fish_cake.as_str()],
+            &[
+                status_key.as_str(),
+                status_val.as_str(),
+                encoding.as_str(),
+                fish_cake.as_str(),
+            ],
         );
         doc.push_str(&status_bar_style.width(WIDTH).render(&bar));
     }

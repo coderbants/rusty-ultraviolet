@@ -9,11 +9,11 @@
 use crate::key::Key;
 use crate::mouse::Mouse;
 use crate::screen::Rectangle;
-use charming_x_ansi::mode::ModeSetting;
 use charming_x_ansi::kitty::{
     KITTY_DISAMBIGUATE_ESCAPE_CODES, KITTY_REPORT_ALL_KEYS_AS_ESCAPE_CODES,
     KITTY_REPORT_ALTERNATE_KEYS, KITTY_REPORT_EVENT_TYPES,
 };
+use charming_x_ansi::mode::ModeSetting;
 
 /// Event represents an input event that can be received from an input source.
 pub trait Event: std::fmt::Debug {}
@@ -506,16 +506,26 @@ mod tests {
         let black = charming_x_ansi::color::RGBColor { r: 0, g: 0, b: 0 };
         assert!(is_dark_color(Some(black)));
         assert!(is_dark_color(None));
-        let white = charming_x_ansi::color::RGBColor { r: 255, g: 255, b: 255 };
+        let white = charming_x_ansi::color::RGBColor {
+            r: 255,
+            g: 255,
+            b: 255,
+        };
         assert!(!is_dark_color(Some(white)));
     }
 
     #[test]
     fn test_size_bounds() {
-        let s = Size { width: 10, height: 5 };
+        let s = Size {
+            width: 10,
+            height: 5,
+        };
         assert_eq!(
             s.bounds(),
-            Rectangle { min: (0, 0), max: (10, 5) }
+            Rectangle {
+                min: (0, 0),
+                max: (10, 5)
+            }
         );
     }
 
@@ -525,7 +535,9 @@ mod tests {
         assert!(e.supports_key_disambiguation());
         assert!(!e.supports_key_releases());
         assert!(!e.supports_uniform_key_layout());
-        let e = KeyboardEnhancementsEvent { flags: 1 | 2 | 4 | 8 };
+        let e = KeyboardEnhancementsEvent {
+            flags: 1 | 2 | 4 | 8,
+        };
         assert!(e.supports_uniform_key_layout());
     }
 }

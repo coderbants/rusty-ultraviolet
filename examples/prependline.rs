@@ -4,9 +4,9 @@
 use charming_ultraviolet::cell::{empty_cell, Cell};
 use charming_ultraviolet::decoder::DecodedEvent;
 use charming_ultraviolet::screen::{fill_area, rect};
+use charming_ultraviolet::style::Style;
 use charming_ultraviolet::terminal::default_terminal;
 use charming_ultraviolet::terminal_screen::TerminalScreen;
-use charming_ultraviolet::style::Style;
 use charming_x_ansi::style::Color;
 
 fn main() {
@@ -17,7 +17,8 @@ fn main() {
         std::process::exit(1);
     }
 
-    t.screen().write_string(&charming_x_ansi::screen::set_window_title("Hello, World!"));
+    t.screen()
+        .write_string(&charming_x_ansi::screen::set_window_title("Hello, World!"));
 
     let mut st = Style::default();
     let mut bg: u8 = 1;
@@ -51,7 +52,6 @@ fn main() {
     // initial render
     display(t.screen(), &st, bg);
 
-
     'events: loop {
         let ev = t.events().recv();
         let Ok(ev) = ev else { break };
@@ -80,7 +80,8 @@ fn main() {
         display(scr, &st, bg);
     }
 
-    t.screen().write_string(&charming_x_ansi::screen::set_window_title(""));
+    t.screen()
+        .write_string(&charming_x_ansi::screen::set_window_title(""));
 
     let _ = t.stop();
 }
@@ -102,7 +103,9 @@ fn go_event_desc(ev: &DecodedEvent) -> String {
 /// chosen per non-quit key.
 fn rand16() -> u8 {
     use std::time::{SystemTime, UNIX_EPOCH};
-    let t = SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default();
+    let t = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default();
     (t.subsec_nanos() % 16) as u8
 }
 

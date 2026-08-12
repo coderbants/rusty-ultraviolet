@@ -193,7 +193,7 @@ pub trait Screen {
     fn width_method(&self) -> WidthMethod;
 
     /// Provides access to the underlying concrete type for downcasting.
-    fn as_any_mut<'b>(&'b mut self) -> Option<&'b mut dyn Any> {
+    fn as_any_mut(&mut self) -> Option<&mut dyn Any> {
         None
     }
 }
@@ -424,7 +424,7 @@ impl Buffer {
                     Some(c) => {
                         scr.set_cell(x, y, Some(c));
                         let mut width = c.width;
-                        if width <= 0 {
+                        if width == 0 {
                             width = 1;
                         }
                         x += width;
@@ -626,7 +626,14 @@ impl RenderBuffer {
 
     /// InsertCellArea inserts new cells at the given position, with the given
     /// optional cell, within the rectangle bounds.
-    pub fn insert_cell_area(&mut self, x: usize, y: usize, n: usize, c: Option<&Cell>, area: Rectangle) {
+    pub fn insert_cell_area(
+        &mut self,
+        x: usize,
+        y: usize,
+        n: usize,
+        c: Option<&Cell>,
+        area: Rectangle,
+    ) {
         insert_cell_area(&mut self.buffer, x, y, n, c, area);
         let mut n = n;
         if x + n > area.max.0 {
@@ -643,7 +650,14 @@ impl RenderBuffer {
 
     /// DeleteCellArea deletes cells at the given position, with the given
     /// optional cell, within the rectangle bounds.
-    pub fn delete_cell_area(&mut self, x: usize, y: usize, n: usize, c: Option<&Cell>, area: Rectangle) {
+    pub fn delete_cell_area(
+        &mut self,
+        x: usize,
+        y: usize,
+        n: usize,
+        c: Option<&Cell>,
+        area: Rectangle,
+    ) {
         delete_cell_area(&mut self.buffer, x, y, n, c, area);
         let mut n = n;
         let remaining_cells = area.max.0.saturating_sub(x);
@@ -929,7 +943,7 @@ pub(crate) fn insert_line_area(
         for x in area.min.0..area.max.0 {
             let src = b.cell_at(x, i - n).cloned();
             if let Some(dst) = b.cell_at_mut(x, i) {
-                *dst = src.unwrap_or_else(|| empty_cell());
+                *dst = src.unwrap_or_else(empty_cell);
             }
         }
     }
@@ -969,7 +983,7 @@ pub(crate) fn delete_line_area(
         for x in area.min.0..area.max.0 {
             let s = b.cell_at(x, src).cloned();
             if let Some(d) = b.cell_at_mut(x, dst) {
-                *d = s.unwrap_or_else(|| empty_cell());
+                *d = s.unwrap_or_else(empty_cell);
             }
         }
     }
@@ -1016,7 +1030,7 @@ pub(crate) fn insert_cell_area(
         if i - n >= area.min.0 {
             let src = b.cell_at(i - n, y).cloned();
             if let Some(dst) = b.cell_at_mut(i, y) {
-                *dst = src.unwrap_or_else(|| empty_cell());
+                *dst = src.unwrap_or_else(empty_cell);
             }
         }
     }

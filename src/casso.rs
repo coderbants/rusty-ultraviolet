@@ -295,9 +295,7 @@ pub fn new_solver() -> Solver {
 impl Solver {
     /// Val returns the current value of a symbol.
     pub fn val(&self, id: Symbol) -> f64 {
-        self.tabs
-            .get(&id)
-            .map_or(0.0, |row| row.expr.constant)
+        self.tabs.get(&id).map_or(0.0, |row| row.expr.constant)
     }
 
     /// Add adds a constraint to the solver with the given priority.
@@ -615,11 +613,7 @@ mod tests {
         let m = Symbol::new();
         let r = Symbol::new();
 
-        let a = Constraint::new_constraint(
-            Op::EQ,
-            0.0,
-            &[r.t(1.0), l.t(1.0), m.t(-2.0)],
-        );
+        let a = Constraint::new_constraint(Op::EQ, 0.0, &[r.t(1.0), l.t(1.0), m.t(-2.0)]);
         let b = Constraint::new_constraint(Op::GTE, -100.0, &[r.t(1.0), l.t(-1.0)]);
         let c = Constraint::new_constraint(Op::GTE, 0.0, &[l.t(1.0)]);
 
@@ -643,10 +637,16 @@ mod tests {
         let p3 = Symbol::new();
         let container = Symbol::new();
 
-        s.add(1e9, Constraint::new_constraint(Op::EQ, -100.0, &[container.t(1.0)]))
-            .unwrap();
-        s.add(1e6, Constraint::new_constraint(Op::GTE, -30.0, &[p1.t(1.0)]))
-            .unwrap();
+        s.add(
+            1e9,
+            Constraint::new_constraint(Op::EQ, -100.0, &[container.t(1.0)]),
+        )
+        .unwrap();
+        s.add(
+            1e6,
+            Constraint::new_constraint(Op::GTE, -30.0, &[p1.t(1.0)]),
+        )
+        .unwrap();
         s.add(
             1e3,
             Constraint::new_constraint(Op::EQ, 0.0, &[p1.t(1.0), p3.t(-1.0)]),

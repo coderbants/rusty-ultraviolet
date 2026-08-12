@@ -20,7 +20,7 @@ use crate::logger::Logger;
 use crate::terminal_screen::{new_terminal_screen, TerminalScreen};
 use std::io::{self, Read};
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::mpsc::{Receiver, Sender, channel};
+use std::sync::mpsc::{channel, Receiver, Sender};
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -226,7 +226,9 @@ impl Terminal {
                                 grapheme_pending.store(true, Ordering::SeqCst);
                                 use std::io::Write as _;
                                 let mut out = FdFile::stdout_file();
-                                let _ = out.write_all(charming_x_ansi::mode::SET_MODE_UNICODE_CORE.as_bytes());
+                                let _ = out.write_all(
+                                    charming_x_ansi::mode::SET_MODE_UNICODE_CORE.as_bytes(),
+                                );
                             }
                         }
                         let _ = out_sender.send(ev);
@@ -322,10 +324,10 @@ impl Terminal {
     pub fn stop(&mut self) -> io::Result<()> {
         self.done.store(true, Ordering::SeqCst);
         if let Some(h) = self.input_thread.take() {
-            let _ = h.thread().unpark();
+            h.thread().unpark();
         }
         if let Some(h) = self.winch_thread.take() {
-            let _ = h.thread().unpark();
+            h.thread().unpark();
         }
         self.scr.reset();
         self.scr

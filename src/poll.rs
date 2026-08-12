@@ -182,7 +182,8 @@ impl PollReader for PollReaderUnix {
         if fds[1].revents & libc::POLLIN != 0 {
             // remove signal from pipe
             let mut b = [0u8; 1];
-            let read_err = unsafe { libc::read(self.cancel_reader, b.as_mut_ptr() as *mut libc::c_void, 1) };
+            let read_err =
+                unsafe { libc::read(self.cancel_reader, b.as_mut_ptr() as *mut libc::c_void, 1) };
             if read_err < 0 {
                 return Err(PollError::Io(std::io::Error::last_os_error().to_string()));
             }

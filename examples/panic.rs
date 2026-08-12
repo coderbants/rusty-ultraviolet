@@ -34,7 +34,9 @@ fn main() {
         // Wait for either a tick or an event, mirroring the upstream
         // select over the ticker and the events channel.
         let timeout = next_tick.saturating_duration_since(Instant::now());
-        let ev = t.events().recv_timeout(timeout.max(Duration::from_millis(1)));
+        let ev = t
+            .events()
+            .recv_timeout(timeout.max(Duration::from_millis(1)));
         let mut ticked = false;
         match ev {
             Ok(ev) => {

@@ -14,30 +14,32 @@
 
 use crate::buffer::{cell_equal, Line, LineData, RenderBuffer};
 use crate::cell::{empty_cell, Cell, Link};
+use crate::environ::Environ;
+use crate::logger::Logger;
 use crate::screen::rect;
 use crate::style::{Attr, Style};
 use crate::tabstop::{default_tab_stops, TabStops};
-use crate::environ::Environ;
-use crate::logger::Logger;
 use crate::terminal_screen::ColorProfile;
 use charming_x_ansi::color::{ansi256_to_16, convert_16, convert_256};
+use charming_x_ansi::cursor::{cursor_backward_tab, REVERSE_INDEX};
 use charming_x_ansi::hyperlink::{reset_hyperlink, set_hyperlink};
 use charming_x_ansi::method::WidthMethod;
+use charming_x_ansi::mode::{
+    RESET_MODE_AUTO_WRAP, RESET_MODE_INSERT_REPLACE, SET_MODE_AUTO_WRAP, SET_MODE_INSERT_REPLACE,
+};
+use charming_x_ansi::parser::{DEL, US};
 use charming_x_ansi::style::Color;
 use charming_x_ansi::{
-    cursor_backward, cursor_down, cursor_forward,
-    cursor_horizontal_absolute, cursor_position, cursor_up, delete_character, delete_line,
-    erase_character, insert_character, insert_line, repeat_previous_character, scroll_down,
-    scroll_up, set_top_bottom_margins, vertical_position_absolute, CURSOR_HOME_POSITION,
-    ERASE_ENTIRE_SCREEN, ERASE_LINE_LEFT, ERASE_LINE_RIGHT, ERASE_SCREEN_BELOW, RESET_STYLE,
+    cursor_backward, cursor_down, cursor_forward, cursor_horizontal_absolute, cursor_position,
+    cursor_up, delete_character, delete_line, erase_character, insert_character, insert_line,
+    repeat_previous_character, scroll_down, scroll_up, set_top_bottom_margins,
+    vertical_position_absolute, CURSOR_HOME_POSITION, ERASE_ENTIRE_SCREEN, ERASE_LINE_LEFT,
+    ERASE_LINE_RIGHT, ERASE_SCREEN_BELOW, RESET_STYLE,
 };
-use charming_x_ansi::cursor::{REVERSE_INDEX, cursor_backward_tab};
-use charming_x_ansi::mode::{RESET_MODE_AUTO_WRAP, RESET_MODE_INSERT_REPLACE, SET_MODE_AUTO_WRAP, SET_MODE_INSERT_REPLACE};
-use charming_x_ansi::parser::{DEL, US};
 use std::collections::hash_map::DefaultHasher;
-use std::sync::Mutex;
-use std::io::Write;
 use std::hash::{Hash, Hasher};
+use std::io::Write;
+use std::sync::Mutex;
 
 /// The marker used for touched lines that have been processed (upstream uses
 /// `-1, -1`).
@@ -181,7 +183,9 @@ pub(crate) fn convert_style(s: &Style, p: ColorProfile) -> Style {
 
 fn convert_color(c: Color, p: ColorProfile) -> Color {
     match (c, p) {
-        (Color::RGB(rgb), ColorProfile::Ansi256) => Color::Indexed(convert_256(rgb.r, rgb.g, rgb.b)),
+        (Color::RGB(rgb), ColorProfile::Ansi256) => {
+            Color::Indexed(convert_256(rgb.r, rgb.g, rgb.b))
+        }
         (Color::RGB(rgb), ColorProfile::Ansi) => Color::Basic(convert_16(rgb.r, rgb.g, rgb.b)),
         (Color::Indexed(i), ColorProfile::Ansi) => Color::Basic(ansi256_to_16(i)),
         (c, _) => c,
@@ -262,7 +266,9 @@ pub struct TerminalRenderer {
 /// NewTerminalRenderer returns a new [TerminalRenderer] using the given
 /// environment. The renderer detects the color profile from the environment
 /// and the terminal capabilities from the `TERM` variable.
-pub(crate) fn new_terminal_renderer(env: &Environ) -> Box<dyn crate::terminal_screen::TerminalRenderer> {
+pub(crate) fn new_terminal_renderer(
+    env: &Environ,
+) -> Box<dyn crate::terminal_screen::TerminalRenderer> {
     let term = env.getenv("TERM");
     Box::new(TerminalRenderer {
         writer: None,
@@ -584,7 +590,13 @@ impl TerminalRenderer {
     ///
     /// It is safe to call this function with no buffer; in that case, it
     /// won't use any optimizations that depend on the buffer.
-    fn cursor_move(&self, newbuf: Option<&RenderBuffer>, x: i64, y: i64, overwrite: bool) -> String {
+    fn cursor_move(
+        &self,
+        newbuf: Option<&RenderBuffer>,
+        x: i64,
+        y: i64,
+        overwrite: bool,
+    ) -> String {
         let fx = self.cur.x;
         let fy = self.cur.y;
 
@@ -627,14 +639,32 @@ impl TerminalRenderer {
             let use_backspace = i & 1 != 0;
 
             // Method #1: Use local movement sequences.
-            let nseq1 = self.relative_cursor_move(newbuf, fx, fy, x, y, overwrite, use_hard_tabs, use_backspace);
+            let nseq1 = self.relative_cursor_move(
+                newbuf,
+                fx,
+                fy,
+                x,
+                y,
+                overwrite,
+                use_hard_tabs,
+                use_backspace,
+            );
             if (i == 0 && seq.is_empty()) || nseq1.len() < seq.len() {
                 seq = nseq1;
             }
 
             // Method #2: Use CR and local movement sequences.
-            let mut nseq2 = self.relative_cursor_move(newbuf, 0, fy, x, y, overwrite, use_hard_tabs, use_backspace);
-            nseq2.insert_str(0, "\r");
+            let mut nseq2 = self.relative_cursor_move(
+                newbuf,
+                0,
+                fy,
+                x,
+                y,
+                overwrite,
+                use_hard_tabs,
+                use_backspace,
+            );
+            nseq2.insert(0, '\r');
             if nseq2.len() < seq.len() {
                 seq = nseq2;
             }
@@ -642,7 +672,16 @@ impl TerminalRenderer {
             if !self.flags.contains(TFlag::RELATIVE_CURSOR) {
                 // Method #3: Use CursorHomePosition and local movement
                 // sequences.
-                let mut nseq3 = self.relative_cursor_move(newbuf, 0, 0, x, y, overwrite, use_hard_tabs, use_backspace);
+                let mut nseq3 = self.relative_cursor_move(
+                    newbuf,
+                    0,
+                    0,
+                    x,
+                    y,
+                    overwrite,
+                    use_hard_tabs,
+                    use_backspace,
+                );
                 nseq3.insert_str(0, CURSOR_HOME_POSITION);
                 if nseq3.len() < seq.len() {
                     seq = nseq3;
@@ -657,6 +696,10 @@ impl TerminalRenderer {
     /// one or two of [cursor_up], [cursor_down], [cursor_forward],
     /// [cursor_backward], [vertical_position_absolute],
     /// [charming_x_ansi::horizontal_position_absolute].
+    /// Mirrors the upstream Go signature
+    /// `relativeCursorMove(newbuf, fx, fy, tx, ty, overwrite, useTabs,
+    /// useBackspace)` 1:1.
+    #[allow(clippy::too_many_arguments)]
     fn relative_cursor_move(
         &self,
         newbuf: Option<&RenderBuffer>,
@@ -675,7 +718,8 @@ impl TerminalRenderer {
 
         if ty != fy {
             let mut yseq = String::new();
-            if self.caps.contains(Capabilities::VPA) && !self.flags.contains(TFlag::RELATIVE_CURSOR) {
+            if self.caps.contains(Capabilities::VPA) && !self.flags.contains(TFlag::RELATIVE_CURSOR)
+            {
                 yseq = vertical_position_absolute((ty + 1) as i32);
             }
 
@@ -718,25 +762,26 @@ impl TerminalRenderer {
             if tx > fx {
                 let mut n = tx - fx;
                 let mut col = fx;
-                if use_tabs && self.tabs.is_some() {
-                    let tabs = self.tabs.as_ref().unwrap();
-                    let mut tabs_count = 0;
-                    while (tabs.next(col as i32) as i64) <= tx {
-                        tabs_count += 1;
-                        let next = tabs.next(col as i32) as i64;
-                        if col == next || col >= tabs.width() as i64 - 1 {
-                            break;
+                if use_tabs {
+                    if let Some(tabs) = self.tabs.as_ref() {
+                        let mut tabs_count = 0;
+                        while (tabs.next(col as i32) as i64) <= tx {
+                            tabs_count += 1;
+                            let next = tabs.next(col as i32) as i64;
+                            if col == next || col >= tabs.width() as i64 - 1 {
+                                break;
+                            }
+                            col = next;
                         }
-                        col = next;
-                    }
 
-                    if tabs_count > 0 {
-                        seq.push_str(&"\t".repeat(tabs_count as usize));
-                        n = tx - col;
-                        // Mirror upstream: after emitting the tabs the cursor
-                        // sits at the tab destination, not the original
-                        // column; the overwrite scan below must start there.
-                        fx = col;
+                        if tabs_count > 0 {
+                            seq.push_str(&"\t".repeat(tabs_count as usize));
+                            n = tx - col;
+                            // Mirror upstream: after emitting the tabs the cursor
+                            // sits at the tab destination, not the original
+                            // column; the overwrite scan below must start there.
+                            fx = col;
+                        }
                     }
                 }
 
@@ -792,22 +837,23 @@ impl TerminalRenderer {
                 }
             } else if tx < fx {
                 let mut n = fx - tx;
-                if use_tabs && self.tabs.is_some() && self.caps.contains(Capabilities::CBT) {
+                if use_tabs && self.caps.contains(Capabilities::CBT) {
                     // VT100 does not support backward tabs CBT.
-                    let tabs = self.tabs.as_ref().unwrap();
-                    let mut col = fx;
-                    let mut cbt = 0; // cursor backward tabs count
-                    while (tabs.prev(col as i32) as i64) >= tx {
-                        col = tabs.prev(col as i32) as i64;
-                        cbt += 1;
-                        if col == tabs.prev(col as i32) as i64 || col <= 0 {
-                            break;
+                    if let Some(tabs) = self.tabs.as_ref() {
+                        let mut col = fx;
+                        let mut cbt = 0; // cursor backward tabs count
+                        while (tabs.prev(col as i32) as i64) >= tx {
+                            col = tabs.prev(col as i32) as i64;
+                            cbt += 1;
+                            if col == tabs.prev(col as i32) as i64 || col <= 0 {
+                                break;
+                            }
                         }
-                    }
 
-                    if cbt > 0 {
-                        seq.push_str(&cursor_backward_tab(cbt));
-                        n = col - tx;
+                        if cbt > 0 {
+                            seq.push_str(&cursor_backward_tab(cbt));
+                            n = col - tx;
+                        }
                     }
                 }
 
@@ -831,7 +877,10 @@ impl TerminalRenderer {
     fn put_cell(&mut self, newbuf: &RenderBuffer, cell: Option<&Cell>) {
         let width = newbuf.width() as i64;
         let height = newbuf.height() as i64;
-        if self.flags.contains(TFlag::FULLSCREEN) && self.cur.x == width - 1 && self.cur.y == height - 1 {
+        if self.flags.contains(TFlag::FULLSCREEN)
+            && self.cur.x == width - 1
+            && self.cur.y == height - 1
+        {
             self.put_cell_lr(newbuf, cell);
         } else {
             self.put_attr_cell(newbuf, cell);
@@ -923,7 +972,6 @@ impl TerminalRenderer {
                         self.push(reset_hyperlink());
                     }
                 }
-                return;
             }
             Some(cell) => {
                 // Downsample pen when we don't have a TrueColor profile,
@@ -931,7 +979,10 @@ impl TerminalRenderer {
                 let new_style = convert_style(&cell.style, self.profile);
                 let new_link = convert_link(&cell.link.clone().unwrap_or_default(), self.profile);
                 let old_style = convert_style(&self.cur.cell.style, self.profile);
-                let old_link = convert_link(&self.cur.cell.link.clone().unwrap_or_default(), self.profile);
+                let old_link = convert_link(
+                    &self.cur.cell.link.clone().unwrap_or_default(),
+                    self.profile,
+                );
 
                 if !new_style.equal(&old_style) {
                     let mut seq = new_style.diff(&old_style);
@@ -962,7 +1013,11 @@ impl TerminalRenderer {
                 // capability.
                 c.style.underline == charming_x_ansi::style::Underline::None
                     && c.style.attrs
-                        & !(Attr::BOLD.bits() | Attr::FAINT.bits() | Attr::ITALIC.bits() | Attr::BLINK.bits() | Attr::RAPID_BLINK.bits())
+                        & !(Attr::BOLD.bits()
+                            | Attr::FAINT.bits()
+                            | Attr::ITALIC.bits()
+                            | Attr::BLINK.bits()
+                            | Attr::RAPID_BLINK.bits())
                         == 0
                     && c.link.as_ref().map(|l| l.is_zero()).unwrap_or(true)
             }
@@ -984,13 +1039,13 @@ impl TerminalRenderer {
         if has_ech || has_rep {
             while n > 0 {
                 let mut count;
-                while n > 1 && !cell_equal(line.get(0), line.get(1)) {
-                    self.put_cell(newbuf, line.get(0));
+                while n > 1 && !cell_equal(line.first(), line.get(1)) {
+                    self.put_cell(newbuf, line.first());
                     line = &line[1..];
                     n -= 1;
                 }
 
-                let cell0 = line.get(0).cloned();
+                let cell0 = line.first().cloned();
                 if n == 1 {
                     self.put_cell(newbuf, cell0.as_ref());
                     return false;
@@ -1002,7 +1057,10 @@ impl TerminalRenderer {
                 }
 
                 let ech = erase_character(count as i32);
-                let cup = cursor_position((self.cur.x + count as i64 + 1) as i32, (self.cur.y + 1) as i32);
+                let cup = cursor_position(
+                    (self.cur.x + count as i64 + 1) as i32,
+                    (self.cur.y + 1) as i32,
+                );
                 let rep = repeat_previous_character(count as i32);
                 let cell0 = cell0.unwrap_or_else(empty_cell);
                 if has_ech && count > ech.len() + cup.len() && Self::can_clear_with(Some(&cell0)) {
@@ -1070,7 +1128,8 @@ impl TerminalRenderer {
         start: usize,
         end: usize,
     ) -> bool {
-        let inline = (cursor_position((start + 1) as i32, (y + 1) as i32).len()
+        let inline = (cursor_position((start + 1) as i32, (y + 1) as i32)
+            .len()
             .min(charming_x_ansi::horizontal_position_absolute((start + 1) as i32).len()))
         .min(cursor_forward((start + 1) as i32).len());
         // Go tolerates out-of-order ranges (upstream's `emitRange` no-ops
@@ -1185,7 +1244,7 @@ impl TerminalRenderer {
         self.line_had_wide = false;
 
         // Find the first changed cell in the line
-        let mut blank = new_line.0.get(0).cloned();
+        let mut blank = new_line.0.first().cloned();
 
         // It might be cheaper to clear leading spaces with EraseLineLeft.
         if Self::can_clear_with(blank.as_ref()) {
@@ -1259,14 +1318,24 @@ impl TerminalRenderer {
                 // Find the last differing cell
                 let mut n_last = width as i64 - 1;
                 while n_last > first_cell as i64
-                    && cell_equal(new_line.0.get(n_last as usize), old_line.0.get(n_last as usize))
+                    && cell_equal(
+                        new_line.0.get(n_last as usize),
+                        old_line.0.get(n_last as usize),
+                    )
                 {
                     n_last -= 1;
                 }
 
                 if n_last >= first_cell as i64 {
                     self.move_to_pos(Some(newbuf), first_cell as i64, y as i64);
-                    self.put_range(newbuf, &old_line.0, &new_line.0, y as i64, first_cell, n_last as usize);
+                    self.put_range(
+                        newbuf,
+                        &old_line.0,
+                        &new_line.0,
+                        y as i64,
+                        first_cell,
+                        n_last as usize,
+                    );
                     self.copy_old_line(y, &new_line);
                 }
 
@@ -1291,20 +1360,32 @@ impl TerminalRenderer {
         }
 
         let blank_cell = blank.clone().unwrap_or_else(empty_cell);
-        if n_last_cell == first_cell as i64 && self.el0_cost() < (o_last_cell - n_last_cell) as usize {
+        if n_last_cell == first_cell as i64
+            && self.el0_cost() < (o_last_cell - n_last_cell) as usize
+        {
             self.move_to_pos(Some(newbuf), first_cell as i64, y as i64);
             if !cell_equal(new_line.0.get(first_cell), blank.as_ref()) {
                 self.put_cell(newbuf, new_line.0.get(first_cell));
             }
             self.clear_to_end(newbuf, &blank_cell, false);
         } else if n_last_cell != o_last_cell
-            && !cell_equal(new_line.0.get(n_last_cell as usize), old_line.0.get(o_last_cell as usize))
+            && !cell_equal(
+                new_line.0.get(n_last_cell as usize),
+                old_line.0.get(o_last_cell as usize),
+            )
         {
             self.move_to_pos(Some(newbuf), first_cell as i64, y as i64);
             // Upstream uses signed ints; a negative difference falls through
             // to the else branch, which saturating subtraction reproduces.
             if o_last_cell.saturating_sub(n_last_cell) > self.el0_cost() as i64 {
-                if self.put_range(newbuf, &old_line.0, &new_line.0, y as i64, first_cell, n_last_cell as usize) {
+                if self.put_range(
+                    newbuf,
+                    &old_line.0,
+                    &new_line.0,
+                    y as i64,
+                    first_cell,
+                    n_last_cell as usize,
+                ) {
                     self.move_to_pos(Some(newbuf), n_last_cell + 1, y as i64);
                 }
                 self.clear_to_end(newbuf, &blank_cell, false);
@@ -1349,7 +1430,14 @@ impl TerminalRenderer {
             let mut n = o_last_cell.min(n_last_cell);
             if n >= first_cell as i64 {
                 self.move_to_pos(Some(newbuf), first_cell as i64, y as i64);
-                self.put_range(newbuf, &old_line.0, &new_line.0, y as i64, first_cell, n as usize);
+                self.put_range(
+                    newbuf,
+                    &old_line.0,
+                    &new_line.0,
+                    y as i64,
+                    first_cell,
+                    n as usize,
+                );
             }
 
             if o_last_cell < n_last_cell {
@@ -1364,10 +1452,18 @@ impl TerminalRenderer {
                         o_last_cell -= 1;
                     }
                 } else if n >= first_cell as i64
-                    && new_line.0.get(n as usize).map(|c| c.width > 1).unwrap_or(false)
+                    && new_line
+                        .0
+                        .get(n as usize)
+                        .map(|c| c.width > 1)
+                        .unwrap_or(false)
                 {
                     let mut next = new_line.0.get(n as usize + 1).cloned();
-                    while next.as_ref().map(|c| c.is_wide_placeholder()).unwrap_or(false) {
+                    while next
+                        .as_ref()
+                        .map(|c| c.is_wide_placeholder())
+                        .unwrap_or(false)
+                    {
                         n += 1;
                         o_last_cell += 1;
                         next = new_line.0.get(n as usize + 1).cloned();
@@ -1379,15 +1475,33 @@ impl TerminalRenderer {
                 if self.caps.contains(Capabilities::ICH)
                     && (n_last_cell < n_last_non_blank || ich_cost > m - n)
                 {
-                    self.put_range(newbuf, &old_line.0, &new_line.0, y as i64, (n + 1) as usize, m as usize);
+                    self.put_range(
+                        newbuf,
+                        &old_line.0,
+                        &new_line.0,
+                        y as i64,
+                        (n + 1) as usize,
+                        m as usize,
+                    );
                 } else {
-                    self.insert_cells(newbuf, &new_line.0[(n + 1) as usize..], (n_last_cell - o_last_cell) as usize);
+                    self.insert_cells(
+                        newbuf,
+                        &new_line.0[(n + 1) as usize..],
+                        (n_last_cell - o_last_cell) as usize,
+                    );
                 }
             } else if o_last_cell > n_last_cell {
                 self.move_to_pos(Some(newbuf), n + 1, y as i64);
                 let dch_cost = 3 + o_last_cell - n_last_cell;
                 if dch_cost > ERASE_LINE_RIGHT.len() as i64 + n_last_non_blank - (n + 1) {
-                    if self.put_range(newbuf, &old_line.0, &new_line.0, y as i64, (n + 1) as usize, n_last_non_blank as usize) {
+                    if self.put_range(
+                        newbuf,
+                        &old_line.0,
+                        &new_line.0,
+                        y as i64,
+                        (n + 1) as usize,
+                        n_last_non_blank as usize,
+                    ) {
                         self.move_to_pos(Some(newbuf), n_last_non_blank + 1, y as i64);
                     }
                     self.clear_to_end(newbuf, &blank_cell, false);
@@ -1729,8 +1843,10 @@ impl TerminalRenderer {
                 line -= 1;
             }
             let mut line = top;
-            while line < limit && line <= height - 1 && line <= bot {
-                self.curbuf.buffer.fill_area(Some(blank), rect(0, line as usize, self.curbuf.width(), 1));
+            while line < limit && line < height && line <= bot {
+                self.curbuf
+                    .buffer
+                    .fill_area(Some(blank), rect(0, line as usize, self.curbuf.width(), 1));
                 line += 1;
             }
         }
@@ -1739,13 +1855,15 @@ impl TerminalRenderer {
             // shift n lines upwards
             let limit = bot - n;
             let mut line = top;
-            while line <= limit && line <= height - 1 && line <= bot {
+            while line <= limit && line < height && line <= bot {
                 self.curbuf.copy_line(line as usize, (line + n) as usize);
                 line += 1;
             }
             let mut line = bot;
             while line > limit && line >= 0 && line >= top {
-                self.curbuf.buffer.fill_area(Some(blank), rect(0, line as usize, self.curbuf.width(), 1));
+                self.curbuf
+                    .buffer
+                    .fill_area(Some(blank), rect(0, line as usize, self.curbuf.width(), 1));
                 line -= 1;
             }
         }
@@ -1772,7 +1890,9 @@ impl TerminalRenderer {
         }
     }
 
-    /// scrollUp scrolls the screen up by n lines.
+    /// Mirrors the upstream Go signature `scrollUp(newbuf, n, top, bot,
+    /// minY, maxY, blank)` 1:1.
+    #[allow(clippy::too_many_arguments)]
     fn scroll_up(
         &mut self,
         newbuf: &RenderBuffer,
@@ -1810,7 +1930,9 @@ impl TerminalRenderer {
         true
     }
 
-    /// scrollDown scrolls the screen down by n lines.
+    /// Mirrors the upstream Go signature `scrollDown(newbuf, n, top, bot,
+    /// minY, maxY, blank)` 1:1.
+    #[allow(clippy::too_many_arguments)]
     fn scroll_down(
         &mut self,
         newbuf: &RenderBuffer,
@@ -1850,7 +1972,14 @@ impl TerminalRenderer {
     /// scrollIdl scrolls the screen n lines by using
     /// [charming_x_ansi::delete_line] at del and using
     /// [charming_x_ansi::insert_line] at ins.
-    fn scroll_idl(&mut self, newbuf: &RenderBuffer, n: i64, del: i64, ins: i64, blank: &Cell) -> bool {
+    fn scroll_idl(
+        &mut self,
+        newbuf: &RenderBuffer,
+        n: i64,
+        del: i64,
+        ins: i64,
+        blank: &Cell,
+    ) -> bool {
         if n < 0 {
             return false;
         }
@@ -1946,8 +2075,7 @@ impl TerminalRenderer {
         let mut i = 0usize;
         while i < height {
             let mut start;
-            let shift;
-            let size;
+
             while i < height && self.oldnum[i] == NEW_INDEX {
                 i += 1;
             }
@@ -1955,12 +2083,12 @@ impl TerminalRenderer {
                 break;
             }
             start = i;
-            shift = self.oldnum[i] - i as i64;
+            let shift = self.oldnum[i] - i as i64;
             i += 1;
             while i < height && self.oldnum[i] != NEW_INDEX && self.oldnum[i] - i as i64 == shift {
                 i += 1;
             }
-            size = i - start;
+            let size = i - start;
             if size < 3 || (size as i64) + ((size / 8).min(2) as i64) < shift.abs() {
                 while start < i {
                     self.oldnum[start] = NEW_INDEX;
@@ -2025,9 +2153,6 @@ impl TerminalRenderer {
             i += 1;
         }
         while (i as usize) < height {
-            let mut forward_limit: i64;
-            let forward_ref_limit: i64;
-            let end: i64;
             let start = i;
             let shift = self.oldnum[i as usize] - i;
 
@@ -2040,18 +2165,18 @@ impl TerminalRenderer {
                 i += 1;
             }
 
-            end = i;
+            let end: i64 = i;
             while (i as usize) < height && self.oldnum[i as usize] == NEW_INDEX {
                 i += 1;
             }
 
             next_hunk = i;
-            forward_limit = i;
-            if (i as usize) >= height || self.oldnum[i as usize] >= i {
-                forward_ref_limit = i;
+            let mut forward_limit = i;
+            let forward_ref_limit: i64 = if (i as usize) >= height || self.oldnum[i as usize] >= i {
+                i
             } else {
-                forward_ref_limit = self.oldnum[i as usize];
-            }
+                self.oldnum[i as usize]
+            };
 
             i = start - 1;
 
@@ -2111,7 +2236,11 @@ impl TerminalRenderer {
         let nto = newbuf.line(to as usize).cloned().unwrap_or_default();
         let ofrom = self.curbuf.line(from as usize).cloned().unwrap_or_default();
         let nfrom = newbuf.line(from as usize).cloned().unwrap_or_default();
-        let onew_from = self.curbuf.line(new_from as usize).cloned().unwrap_or_default();
+        let onew_from = self
+            .curbuf
+            .line(new_from as usize)
+            .cloned()
+            .unwrap_or_default();
 
         // Calculate costs before moving.
         let mut cost_before_move;
@@ -2233,7 +2362,16 @@ impl TerminalRenderer {
 
             non_empty = self.clear_bottom(newbuf, non_empty);
             if std::env::var("UV_DEBUG").is_ok() {
-                eprintln!("NONEMPTY: {} height: {} touched: {:?}", non_empty, new_height, newbuf.touched.iter().map(|t| t.as_ref().map(|ld| (ld.first_cell, ld.last_cell))).collect::<Vec<_>>());
+                eprintln!(
+                    "NONEMPTY: {} height: {} touched: {:?}",
+                    non_empty,
+                    new_height,
+                    newbuf
+                        .touched
+                        .iter()
+                        .map(|t| t.as_ref().map(|ld| (ld.first_cell, ld.last_cell)))
+                        .collect::<Vec<_>>()
+                );
                 for y in 0..new_height {
                     if let Some(line) = newbuf.line(y) {
                         let content: String = line.0.iter().map(|c| c.content.clone()).collect();
@@ -2534,7 +2672,10 @@ mod tests {
     }
 
     /// Renders the buffer and returns the renderer's output.
-    fn render(r: &mut Box<dyn crate::terminal_screen::TerminalRenderer>, nb: &mut RenderBuffer) -> Vec<u8> {
+    fn render(
+        r: &mut Box<dyn crate::terminal_screen::TerminalRenderer>,
+        nb: &mut RenderBuffer,
+    ) -> Vec<u8> {
         let mut out = Vec::new();
         r.render(nb, &mut out);
         r.flush(&mut out).unwrap();
@@ -2636,9 +2777,19 @@ mod tests {
 
     #[test]
     fn test_xterm_caps() {
-        assert_eq!(xterm_caps("xterm-256color").0, Capabilities::ALL & !(Capabilities::HPA | Capabilities::CHT | Capabilities::REP));
+        assert_eq!(
+            xterm_caps("xterm-256color").0,
+            Capabilities::ALL & !(Capabilities::HPA | Capabilities::CHT | Capabilities::REP)
+        );
         assert_eq!(xterm_caps("kitty").0, Capabilities::ALL);
-        assert_eq!(xterm_caps("linux").0, Capabilities::VPA | Capabilities::CHA | Capabilities::HPA | Capabilities::ECH | Capabilities::ICH);
+        assert_eq!(
+            xterm_caps("linux").0,
+            Capabilities::VPA
+                | Capabilities::CHA
+                | Capabilities::HPA
+                | Capabilities::ECH
+                | Capabilities::ICH
+        );
         assert_eq!(xterm_caps("").0, 0);
     }
 }

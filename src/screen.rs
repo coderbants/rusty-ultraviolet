@@ -221,7 +221,7 @@ impl<T: Screen + ?Sized> Screen for &mut T {
     fn width_method(&self) -> WidthMethod {
         (**self).width_method()
     }
-    fn as_any_mut<'b>(&'b mut self) -> Option<&'b mut dyn Any> {
+    fn as_any_mut(&mut self) -> Option<&mut dyn Any> {
         (**self).as_any_mut()
     }
 }

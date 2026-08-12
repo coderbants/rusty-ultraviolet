@@ -12,7 +12,9 @@ use crate::cell::{Cell, Link};
 use crate::screen::Rectangle;
 use crate::style::{Attr, Style};
 use charming_x_ansi::method::WidthMethod;
-use charming_x_ansi::parser::{get_parser, decode_sequence, decode_sequence_wc, has_csi_prefix, has_osc_prefix, Cmd, Params};
+use charming_x_ansi::parser::{
+    decode_sequence, decode_sequence_wc, get_parser, has_csi_prefix, has_osc_prefix, Cmd, Params,
+};
 use charming_x_ansi::style::{read_style_color, Color, Underline};
 
 /// StyledString is a string that can be decomposed into a series of styled
@@ -58,7 +60,10 @@ impl StyledString {
             m,
             0,
             0,
-            Rectangle { min: (0, 0), max: (0, 0) },
+            Rectangle {
+                min: (0, 0),
+                max: (0, 0),
+            },
             (0, 0),
             0,
             0,
@@ -168,6 +173,10 @@ impl StyledString {
 /// printString draws a string starting at the given position. If scr is None,
 /// it will build and return a slice of [Line]s instead (unwrapped, ignoring
 /// bounds).
+/// Mirrors the upstream Go signature `printString(scr Screen, m WidthMethod,
+/// x int64, y int, bounds Rectangle, origin Point, areaW, areaH int, str
+/// string, truncate bool, tail string)` 1:1.
+#[allow(clippy::too_many_arguments)]
 fn print_string(
     mut scr: Option<&mut dyn Screen>,
     m: WidthMethod,
@@ -208,7 +217,7 @@ fn print_string(
         state = d.state;
 
         match width {
-            1 | 2 | 3 | 4 => {
+            1..=4 => {
                 // wide cells can go up to 4 cells wide
                 cell.width = width;
                 cell.content = String::from_utf8_lossy(seq).into_owned();
@@ -252,7 +261,11 @@ fn print_string(
                             && pos.y < origin.1 + area_h as i64;
                         if in_area {
                             if pos.x >= 0 && pos.y >= 0 {
-                                if truncate && tailc.width > 0 && x + cell.width as i64 > bounds.max.0 as i64 - tailc.width as i64 {
+                                if truncate
+                                    && tailc.width > 0
+                                    && x + cell.width as i64
+                                        > bounds.max.0 as i64 - tailc.width as i64
+                                {
                                     // Truncate the string and append the tail
                                     // if any.
                                     let mut c = tailc.clone();
@@ -284,7 +297,7 @@ fn print_string(
                 match () {
                     _ if has_csi_prefix(seq) && Cmd(p.command()).final_() == b'm' => {
                         // SGR - Select Graphic Rendition
-                        read_style(Params(&p.params().as_slice().to_vec()), &mut style);
+                        read_style(Params(p.params().as_slice()), &mut style);
                     }
                     _ if has_osc_prefix(seq) && p.command() == 8 => {
                         // Hyperlinks
@@ -394,20 +407,17 @@ pub fn read_style(params: Params<'_>, pen: &mut Style) {
                 let (next_param, _, ok) = params.param(i + 1, 0);
                 if has_more && ok {
                     // Only accept subparameters i.e. separated by ":"
-                    match next_param {
-                        0 | 1 | 2 | 3 | 4 | 5 => {
-                            i += 1;
-                            pen.underline = match next_param {
-                                0 => Underline::None,
-                                1 => Underline::Single,
-                                2 => Underline::Double,
-                                3 => Underline::Curly,
-                                4 => Underline::Dotted,
-                                5 => Underline::Dashed,
-                                _ => unreachable!(),
-                            };
-                        }
-                        _ => {}
+                    if let 0..=5 = next_param {
+                        i += 1;
+                        pen.underline = match next_param {
+                            0 => Underline::None,
+                            1 => Underline::Single,
+                            2 => Underline::Double,
+                            3 => Underline::Curly,
+                            4 => Underline::Dotted,
+                            5 => Underline::Dashed,
+                            _ => unreachable!(),
+                        };
                     }
                 } else {
                     // Single Underline
@@ -552,7 +562,13 @@ mod tests {
     fn test_styled_string_draw_with_style() {
         let mut b = crate::new_buffer(20, 3);
         let ss = new_styled_string("\x1b[1mBold\x1b[0m");
-        ss.draw(&mut b, Rectangle { min: (0, 0), max: (20, 3) });
+        ss.draw(
+            &mut b,
+            Rectangle {
+                min: (0, 0),
+                max: (20, 3),
+            },
+        );
         assert_eq!(b.cell_at(0, 0).unwrap().content, "B");
         assert_ne!(b.cell_at(0, 0).unwrap().style.attrs & Attr::BOLD.bits(), 0);
         assert_eq!(b.cell_at(3, 0).unwrap().content, "d");
@@ -562,7 +578,13 @@ mod tests {
         // Text after the reset is not bold.
         let mut b2 = crate::new_buffer(20, 3);
         let ss2 = new_styled_string("\x1b[1mBold\x1b[0mX");
-        ss2.draw(&mut b2, Rectangle { min: (0, 0), max: (20, 3) });
+        ss2.draw(
+            &mut b2,
+            Rectangle {
+                min: (0, 0),
+                max: (20, 3),
+            },
+        );
         assert_eq!(b2.cell_at(4, 0).unwrap().content, "X");
         assert_eq!(b2.cell_at(4, 0).unwrap().style.attrs & Attr::BOLD.bits(), 0);
     }
@@ -571,7 +593,13 @@ mod tests {
     fn test_styled_string_draw_colors() {
         let mut b = crate::new_buffer(20, 3);
         let ss = new_styled_string("\x1b[38;5;196mRed");
-        ss.draw(&mut b, Rectangle { min: (0, 0), max: (20, 3) });
+        ss.draw(
+            &mut b,
+            Rectangle {
+                min: (0, 0),
+                max: (20, 3),
+            },
+        );
         assert_eq!(b.cell_at(0, 0).unwrap().style.fg, Some(Color::Indexed(196)));
     }
 
@@ -579,7 +607,13 @@ mod tests {
     fn test_styled_string_multiline_draw() {
         let mut b = crate::new_buffer(20, 3);
         let ss = new_styled_string("Hello\nWorld");
-        ss.draw(&mut b, Rectangle { min: (0, 0), max: (20, 3) });
+        ss.draw(
+            &mut b,
+            Rectangle {
+                min: (0, 0),
+                max: (20, 3),
+            },
+        );
         assert_eq!(b.cell_at(4, 0).unwrap().content, "o");
         assert_eq!(b.cell_at(0, 1).unwrap().content, "W");
         assert_eq!(b.cell_at(4, 1).unwrap().content, "d");
@@ -597,7 +631,13 @@ mod tests {
     fn test_styled_string_draw() {
         let mut b = crate::new_buffer(20, 2);
         let ss = new_styled_string("Hi");
-        ss.draw(&mut b, Rectangle { min: (0, 0), max: (20, 2) });
+        ss.draw(
+            &mut b,
+            Rectangle {
+                min: (0, 0),
+                max: (20, 2),
+            },
+        );
         assert_eq!(b.cell_at(0, 0).unwrap().content, "H");
         assert_eq!(b.cell_at(1, 0).unwrap().content, "i");
     }

@@ -25,18 +25,24 @@ jobs:
           fetch-depth: 0
       - name: Compare version with live branch
         run: |
-          if [ "${{ github.event_name }}" = "pull_request" ]; then
-            base=origin/dev
-          else
-            base=HEAD~1
-          fi
           cur=$(grep -m1 '^version' Cargo.toml | sed 's/.*"\(.*\)".*/\1/')
-          prev=$(git show "$base:Cargo.toml" 2>/dev/null | grep -m1 '^version' | sed 's/.*"\(.*\)".*/\1/')
-          if [ "$cur" = "$prev" ]; then
-            echo "::error::Cargo.toml version ($cur) must change on every merge to the live branch (crates.io cannot overwrite an existing version)."
-            exit 1
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            prev=$(git show origin/dev:Cargo.toml 2>/dev/null | grep -m1 '^version' | sed 's/.*"\(.*\)".*/\1/')
+            if [ "$cur" = "$prev" ]; then
+              echo "::error::Cargo.toml version ($cur) must change on every merge to the live branch (crates.io cannot overwrite an existing version)."
+              exit 1
+            fi
+            echo "Version bumped: $prev -> $cur"
+          else
+            # Pushes to the live branch: the version must not already have
+            # been released (tagged). Follow-up commits on an unreleased
+            # version are fine; re-releasing an existing version is not.
+            if git tag | grep -qFx "v$cur"; then
+              echo "::error::Cargo.toml version ($cur) has already been released (tag v$cur exists); bump the version before pushing."
+              exit 1
+            fi
+            echo "Version $cur is unreleased."
           fi
-          echo "Version bumped: $prev -> $cur"
 
   gate:
     name: Lint / Build / Doc / Tests

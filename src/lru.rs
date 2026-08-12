@@ -123,7 +123,10 @@ mod tests {
         for i in 0..SIZE {
             let v = i.to_string();
 
-            assert!(!cache.add(i, v.clone()), "value evicted before size limit at {i}");
+            assert!(
+                !cache.add(i, v.clone()),
+                "value evicted before size limit at {i}"
+            );
 
             let got = cache.get(&i);
             assert!(got.is_some(), "value not found at key {i}");

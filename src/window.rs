@@ -50,10 +50,7 @@ impl Position {
 pub fn rect(x: i64, y: i64, w: i64, h: i64) -> Rectangle {
     Rectangle {
         min: (x.max(0) as usize, y.max(0) as usize),
-        max: (
-            (x + w).max(0) as usize,
-            (y + h).max(0) as usize,
-        ),
+        max: ((x + w).max(0) as usize, (y + h).max(0) as usize),
     }
 }
 
@@ -106,17 +103,15 @@ impl Window {
 
     /// MoveBy moves the window by the specified delta x and delta y.
     pub fn move_by(&mut self, dx: i64, dy: i64) {
-        self.move_to(
-            self.bounds.min.0 as i64 + dx,
-            self.bounds.min.1 as i64 + dy,
-        );
+        self.move_to(self.bounds.min.0 as i64 + dx, self.bounds.min.1 as i64 + dy);
     }
 
     /// Clone creates an exact copy of the window, including its buffer and
     /// values. The cloned window will have the same parent and method as the
     /// original window.
     pub fn clone_window(&self) -> Window {
-        self.clone_area(self.bounds).expect("bounds are always in bounds")
+        self.clone_area(self.bounds)
+            .expect("bounds are always in bounds")
     }
 
     /// CloneArea creates an exact copy of the window, including its buffer
@@ -183,13 +178,7 @@ impl Window {
     /// parent window at the specified position and size.
     ///
     /// This will panic if width or height is negative.
-    pub fn new_window(
-        self: &Rc<Window>,
-        x: i64,
-        y: i64,
-        width: i64,
-        height: i64,
-    ) -> Rc<Window> {
+    pub fn new_window(self: &Rc<Window>, x: i64, y: i64, width: i64, height: i64) -> Rc<Window> {
         new_window_internal(Some(self), x, y, width, height, Some(self.method), false)
     }
 
@@ -198,13 +187,7 @@ impl Window {
     /// same buffer as the parent window.
     ///
     /// This will panic if width or height is negative.
-    pub fn new_view(
-        self: &Rc<Window>,
-        x: i64,
-        y: i64,
-        width: i64,
-        height: i64,
-    ) -> Rc<Window> {
+    pub fn new_view(self: &Rc<Window>, x: i64, y: i64, width: i64, height: i64) -> Rc<Window> {
         new_window_internal(Some(self), x, y, width, height, Some(self.method), true)
     }
 }
@@ -315,7 +298,7 @@ fn clone_buffer(buf: &Buffer, area: Rectangle) -> Option<Buffer> {
                 x += 1;
                 continue;
             }
-            n.set_cell(x - area.min.0, y - area.min.1, Some(&c));
+            n.set_cell(x - area.min.0, y - area.min.1, Some(c));
             x += c.width.max(1);
         }
     }

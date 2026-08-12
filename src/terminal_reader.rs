@@ -219,27 +219,33 @@ impl EventScanner {
             }
 
             // Handle bracketed-paste
-            if self.paste.is_some() {
+            if let Some(paste) = self.paste.as_mut() {
                 let is_paste_end = matches!(event, Some(DecodedEvent::PasteEnd));
                 if !is_paste_end {
                     let in_paste = match event {
                         Some(DecodedEvent::KeyPress(k)) => {
                             if !k.text.is_empty() {
-                                self.paste.as_mut().unwrap().extend_from_slice(k.text.as_bytes());
+                                paste.extend_from_slice(k.text.as_bytes());
                             } else {
                                 let seq = &rest[..n];
                                 let seq_str = String::from_utf8_lossy(seq).into_owned();
-                                let is_win32 = seq_str.starts_with("\x1b[") && seq_str.ends_with('_');
+                                let is_win32 =
+                                    seq_str.starts_with("\x1b[") && seq_str.ends_with('_');
                                 match () {
-                                    _ if is_win32 && k.code == crate::key::KEY_ENTER && k.code == k.base_code => {
-                                        self.paste.as_mut().unwrap().push(b'\n');
+                                    _ if is_win32
+                                        && k.code == crate::key::KEY_ENTER
+                                        && k.code == k.base_code =>
+                                    {
+                                        paste.push(b'\n');
                                     }
                                     _ if is_win32
-                                        && char::from_u32(k.code).map(|c| c.is_control()).unwrap_or(false)
+                                        && char::from_u32(k.code)
+                                            .map(|c| c.is_control())
+                                            .unwrap_or(false)
                                         && k.code == k.base_code =>
                                     {
                                         if let Some(c) = char::from_u32(k.code) {
-                                            self.paste.as_mut().unwrap().extend_from_slice(c.to_string().as_bytes());
+                                            paste.extend_from_slice(c.to_string().as_bytes());
                                         }
                                     }
                                     _ if !is_win32 => {
@@ -249,7 +255,7 @@ impl EventScanner {
                                             // we need to wait for more input.
                                             return (total, events);
                                         }
-                                        self.paste.as_mut().unwrap().extend_from_slice(seq);
+                                        paste.extend_from_slice(seq);
                                     }
                                     _ => {}
                                 }
@@ -287,19 +293,25 @@ impl EventScanner {
                         return (total, events);
                     }
 
-                    if let Some(k) = self.table.get(std::str::from_utf8(&rest[..n]).unwrap_or("")) {
+                    if let Some(k) = self
+                        .table
+                        .get(std::str::from_utf8(&rest[..n]).unwrap_or(""))
+                    {
                         events.push(DecodedEvent::KeyPress(k.clone()));
                         return (total + n, events);
                     }
 
-                    events.push(DecodedEvent::Unknown(String::from_utf8_lossy(&rest[..n]).into_owned()));
+                    events.push(DecodedEvent::Unknown(
+                        String::from_utf8_lossy(&rest[..n]).into_owned(),
+                    ));
                 }
                 Some(DecodedEvent::PasteStart) => {
                     self.paste = Some(Vec::new()); // reset the paste buffer
                     events.push(DecodedEvent::PasteStart);
                 }
                 Some(DecodedEvent::PasteEnd) => {
-                    let mut paste = String::from_utf8_lossy(self.paste.as_deref().unwrap_or(&[])).into_owned();
+                    let mut paste =
+                        String::from_utf8_lossy(self.paste.as_deref().unwrap_or(&[])).into_owned();
                     if paste.is_empty() {
                         paste = String::new();
                     }

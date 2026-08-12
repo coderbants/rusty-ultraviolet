@@ -17,7 +17,7 @@ use std::rc::Rc;
 use charming_x_ansi::method::WidthMethod;
 
 use crate::buffer::{new_buffer, Buffer};
-use crate::cell::Cell;
+use crate::cell::{empty_cell, Cell};
 use crate::screen::Rectangle;
 
 /// Position represents a position in a coordinate system.
@@ -206,6 +206,50 @@ impl Window {
         height: i64,
     ) -> Rc<Window> {
         new_window_internal(Some(self), x, y, width, height, Some(self.method), true)
+    }
+}
+
+impl crate::buffer::Screen for Window {
+    /// Bounds returns the bounds of the window.
+    fn bounds(&self) -> crate::screen::Rectangle {
+        self.bounds
+    }
+
+    /// CellAt returns the cell at the given position.
+    fn cell_at(&self, _x: usize, _y: usize) -> Option<&Cell> {
+        // The window's cells live behind a RefCell; a borrowed cell cannot
+        // be returned from this interface (same as TerminalScreen).
+        None
+    }
+
+    /// SetCell sets the cell at the given position.
+    fn set_cell(&mut self, x: usize, y: usize, c: Option<&Cell>) {
+        Window::set_cell(self, x, y, c.cloned().unwrap_or_else(empty_cell));
+    }
+
+    /// WidthMethod returns the width method used by the window.
+    fn width_method(&self) -> WidthMethod {
+        self.method
+    }
+}
+
+impl Window {
+    /// Fill fills the entire window with the given cell.
+    pub fn fill(&self, c: Option<&Cell>) {
+        self.buffer.borrow_mut().fill(c);
+    }
+
+    /// Clear clears the window, filling it with empty cells.
+    pub fn clear(&self) {
+        self.fill(None);
+    }
+
+    /// Draw draws the window's buffer onto the given screen at the given
+    /// area (upstream `Window.Draw`, which delegates to the embedded
+    /// buffer's [crate::Buffer::draw]).
+    pub fn draw(&self, scr: &mut dyn crate::buffer::Screen, area: crate::screen::Rectangle) {
+        let buf = self.buffer.borrow();
+        buf.draw(scr, area);
     }
 }
 

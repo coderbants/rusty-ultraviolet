@@ -41,7 +41,6 @@ const SET_TAB_EVERY_8_COLUMNS: &str = "\x1b[?5W";
 
 /// The value of `TERM` that disables color support (upstream
 /// `colorprofile.dumbTerm`).
-const DUMB_TERM: &str = "dumb";
 
 /// The color profile used for downsampling colors.
 ///
@@ -269,169 +268,23 @@ fn is_terminal(_fd: i32) -> bool {
     false
 }
 
-/// Detect returns the color profile based on the terminal output and
-/// environment variables. This respects NO_COLOR, CLICOLOR, and
-/// CLICOLOR_FORCE environment variables.
-///
-/// NOTE: local port of `colorprofile.Detect` (v0.3.3) restricted to the
-/// environment-based checks; the terminfo database and tmux upgrades are not
-/// available in this port.
-fn detect_color_profile(fd: Option<i32>, env: &Environ) -> ColorProfile {
-    let isatty = is_tty_forced(env) || fd.is_some_and(is_terminal);
-    let term = env.lookup_env("TERM");
-    let is_dumb = term.is_none() || term.as_deref() == Some(DUMB_TERM);
-    let envp = color_profile(isatty, env);
-    if envp == ColorProfile::TrueColor || env_no_color(env) {
-        // We already know we have TrueColor, or NO_COLOR is set.
-        return envp;
-    }
-
-    if isatty && !is_dumb {
-        // NOTE: upstream takes the maximum of the environment profile, the
-        // terminfo profile, and the tmux profile here; the terminfo database
-        // and tmux environment handling are not ported.
-        return envp;
-    }
-
-    envp
-}
-
-/// colorProfile returns the color profile based on the terminal environment
-/// variables (upstream `colorProfile`).
-fn color_profile(isatty: bool, env: &Environ) -> ColorProfile {
-    let term_ok = env.lookup_env("TERM").is_some();
-    let term = env.lookup_env("TERM").unwrap_or_default();
-    let is_dumb = (!term_ok && cfg!(not(windows))) || term == DUMB_TERM;
-    let envp = env_color_profile(env);
-    let mut p = if !isatty || is_dumb {
-        // Check if the output is a terminal. Treat dumb terminals as NoTTY.
-        ColorProfile::NoTty
-    } else {
-        envp
-    };
-
-    if env_no_color(env) && isatty {
-        if p > ColorProfile::Ascii {
-            p = ColorProfile::Ascii;
-        }
-        return p;
-    }
-
-    if cli_color_forced(env) {
-        if p < ColorProfile::Ansi {
-            p = ColorProfile::Ansi;
-        }
-        if envp > p {
-            p = envp;
-        }
-        return p;
-    }
-
-    if cli_color(env) && isatty && !is_dumb && p < ColorProfile::Ansi {
-        p = ColorProfile::Ansi;
-    }
-
-    p
-}
-
-/// envColorProfile infers the color profile from the environment.
-fn env_color_profile(env: &Environ) -> ColorProfile {
-    let term = env.lookup_env("TERM");
-    let mut p = match term.as_deref() {
-        // NOTE: upstream probes the Windows console API when `TERM` is unset
-        // on Windows; not ported.
-        None => ColorProfile::NoTty,
-        Some(t) if t.is_empty() || t == DUMB_TERM => ColorProfile::NoTty,
-        Some(_) => ColorProfile::Ansi,
-    };
-
-    if let Some(t) = term.as_deref() {
-        if [
-            "alacritty", "contour", "foot", "ghostty", "kitty", "rio", "st", "wezterm",
-        ]
-        .iter()
-        .any(|k| t.contains(k))
-        {
-            return ColorProfile::TrueColor;
-        }
-        if t.starts_with("tmux") || t.starts_with("screen") {
-            if p < ColorProfile::Ansi256 {
-                p = ColorProfile::Ansi256;
-            }
-        }
-        if t.starts_with("xterm") {
-            if p < ColorProfile::Ansi {
-                p = ColorProfile::Ansi;
-            }
-        }
-    }
-
-    if parse_bool(&env.getenv("GOOGLE_CLOUD_SHELL")) {
-        return ColorProfile::TrueColor;
-    }
-
-    // GNU Screen doesn't support TrueColor. Tmux doesn't support $COLORTERM.
-    if color_term(env) {
-        let t = env.getenv("TERM");
-        if !t.starts_with("screen") && !t.starts_with("tmux") {
-            return ColorProfile::TrueColor;
-        }
-    }
-
-    if let Some(t) = term.as_deref() {
-        if t.ends_with("256color") && p < ColorProfile::Ansi256 {
-            p = ColorProfile::Ansi256;
-        }
-        // Direct color terminals support true colors.
-        if t.ends_with("direct") {
-            return ColorProfile::TrueColor;
-        }
-    }
-
-    p
-}
-
-/// Returns true if the environment variables explicitly disable color output
-/// by setting NO_COLOR (https://no-color.org/).
-fn env_no_color(env: &Environ) -> bool {
-    parse_bool(&env.getenv("NO_COLOR"))
-}
-
-/// Returns whether the CLICOLOR environment variable is set (upstream
-/// `cliColor`).
-fn cli_color(env: &Environ) -> bool {
-    parse_bool(&env.getenv("CLICOLOR"))
-}
-
-/// Returns whether the CLICOLOR_FORCE environment variable is set (upstream
-/// `cliColorForced`).
-fn cli_color_forced(env: &Environ) -> bool {
-    parse_bool(&env.getenv("CLICOLOR_FORCE"))
-}
-
-/// Returns whether the TTY_FORCE environment variable is set (upstream
+/// Returns whether `TTY_FORCE` is set in the environment (upstream
 /// `isTTYForced`).
 fn is_tty_forced(env: &Environ) -> bool {
     parse_bool(&env.getenv("TTY_FORCE"))
 }
 
-/// Returns whether COLORTERM indicates a direct-color terminal (upstream
-/// `colorTerm`).
-fn color_term(env: &Environ) -> bool {
-    let color_term = env.getenv("COLORTERM").to_lowercase();
-    color_term == "truecolor"
-        || color_term == "24bit"
-        || color_term == "yes"
-        || color_term == "true"
+/// Mirrors Go's `strconv.ParseBool`: accepts 1, t, T, TRUE, true, True.
+fn parse_bool(v: &str) -> bool {
+    matches!(v, "1" | "t" | "T" | "TRUE" | "true" | "True")
 }
 
-/// Mirrors Go's `strconv.ParseBool`: accepts 1, t, T, TRUE, true, True, 0,
-/// f, F, FALSE, false, False.
-fn parse_bool(v: &str) -> bool {
-    matches!(
-        v,
-        "1" | "t" | "T" | "TRUE" | "true" | "True"
-    )
+/// DetectColorProfile detects the terminal color profile from the given
+/// output file descriptor and environment (upstream
+/// `colorprofile.Detect`).
+pub fn detect_color_profile(fd: Option<i32>, env: &Environ) -> ColorProfile {
+    let isatty = is_tty_forced(env) || fd.is_some_and(is_terminal);
+    charming_colorprofile::detect(isatty, &env.0)
 }
 
 /// BufferWrite lets the screen's byte output buffer use the `push_str`
@@ -578,6 +431,18 @@ impl TerminalScreen {
         self.set_width_method_internal(WidthMethod::GraphemeWidth);
         self.rend.set_grapheme_width(true);
         let _ = self.flush();
+    }
+
+    /// Applies the width-method switch of [TerminalScreen::enable_grapheme_width]
+    /// without writing or flushing. Used when the SET_MODE_UNICODE_CORE
+    /// sequence was already written by the terminal's event loop (the screen
+    /// itself lives on the application thread).
+    pub fn set_grapheme_width_enabled(&mut self) {
+        if self.width_method_override {
+            return;
+        }
+        self.set_width_method_internal(WidthMethod::GraphemeWidth);
+        self.rend.set_grapheme_width(true);
     }
 
     /// SetColorProfile sets the color profile for the terminal screen. This

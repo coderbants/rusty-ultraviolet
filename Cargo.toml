@@ -1,6 +1,6 @@
 [package]
 name = "charming-ultraviolet"
-version = "0.0.0-20260703014108"
+version = "0.0.0-20260812000000"
 edition = "2021"
 description = "Cleanroom Rust port of Charmbracelet's Ultraviolet (pin v0.0.0-20260703014108-f5a850f9c2b7) terminal rendering library"
 license = "MIT"
@@ -13,6 +13,8 @@ unicode-width = "0.1"
 libc = "0.2"
 
 [dev-dependencies]
+charming-testkit = { path = "../charming-testkit" }
+charming-lipgloss = { path = "../charming-lipgloss" }
 
 [lib]
 name = "charming_ultraviolet"

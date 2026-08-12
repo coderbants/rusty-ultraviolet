@@ -149,23 +149,24 @@ pub fn style_diff(from: &Style, to: &Style) -> String {
     if from == to {
         return String::new();
     }
-    if from.is_zero() {
-        return to.string();
-    }
+    // NOTE: upstream only short-circuits for a nil `from` pointer; a zero
+    // (non-nil) style goes through the normal diff path (colors first).
     if to.is_zero() {
         return RESET_STYLE.to_string();
     }
 
     let mut b = AnsiStyle::default();
 
+    // NOTE: upstream emits the default-color reset (SGR 39/49/59) when a
+    // color transitions to nil (e.g. `ForegroundColor(nil)`); mirror that.
     if from.fg != to.fg {
-        b.fg_color = to.fg.map(ansi_color);
+        b.fg_color = Some(to.fg.map(ansi_color).unwrap_or(Color::Default));
     }
     if from.bg != to.bg {
-        b.bg_color = to.bg.map(ansi_color);
+        b.bg_color = Some(to.bg.map(ansi_color).unwrap_or(Color::Default));
     }
     if from.underline_color != to.underline_color {
-        b.ul_color = to.underline_color.map(ansi_color);
+        b.ul_color = Some(to.underline_color.map(ansi_color).unwrap_or(Color::Default));
     }
 
     let from_attrs = from.attrs;
@@ -173,62 +174,120 @@ pub fn style_diff(from: &Style, to: &Style) -> String {
     let from_underline = from.underline != Underline::None;
     let to_underline = to.underline != Underline::None;
 
-    // Resets first: bold/faint/italic/underline/blink/reverse/conceal/strike.
-    if from_attrs & Attr::BOLD.0 != 0 && to_attrs & Attr::BOLD.0 == 0 {
-        b.bold = false;
-        // "22" is the normal-intensity reset in the base style.
-        b.faint = false;
+    let from_bold = from_attrs & Attr::BOLD.0 != 0;
+    let from_faint = from_attrs & Attr::FAINT.0 != 0;
+    let from_italic = from_attrs & Attr::ITALIC.0 != 0;
+    let from_blink = from_attrs & Attr::BLINK.0 != 0;
+    let from_rapid_blink = from_attrs & Attr::RAPID_BLINK.0 != 0;
+    let from_reverse = from_attrs & Attr::REVERSE.0 != 0;
+    let from_conceal = from_attrs & Attr::CONCEAL.0 != 0;
+    let from_strikethrough = from_attrs & Attr::STRIKETHROUGH.0 != 0;
+    let to_bold = to_attrs & Attr::BOLD.0 != 0;
+    let to_faint = to_attrs & Attr::FAINT.0 != 0;
+    let to_italic = to_attrs & Attr::ITALIC.0 != 0;
+    let to_blink = to_attrs & Attr::BLINK.0 != 0;
+    let to_rapid_blink = to_attrs & Attr::RAPID_BLINK.0 != 0;
+    let to_reverse = to_attrs & Attr::REVERSE.0 != 0;
+    let to_conceal = to_attrs & Attr::CONCEAL.0 != 0;
+    let to_strikethrough = to_attrs & Attr::STRIKETHROUGH.0 != 0;
+
+    let bold_changed = from_bold != to_bold;
+    let faint_changed = from_faint != to_faint;
+    let italic_changed = from_italic != to_italic;
+    let underline_changed = from_underline != to_underline || from.underline != to.underline;
+    let blink_changed = from_blink != to_blink;
+    let rapid_blink_changed = from_rapid_blink != to_rapid_blink;
+    let reverse_changed = from_reverse != to_reverse;
+    let conceal_changed = from_conceal != to_conceal;
+    let strikethrough_changed = from_strikethrough != to_strikethrough;
+
+    // Build the SGR params in the upstream construction order: colors
+    // first, then attribute resets, then attribute sets, then the
+    // underline style.
+    let mut params: Vec<String> = Vec::new();
+
+    if let Some(c) = b.fg_color {
+        params.push(charming_x_ansi::style::color_seq(&c, 3));
     }
-    if from_attrs & Attr::FAINT.0 != 0 && to_attrs & Attr::FAINT.0 == 0 {
-        b.faint = false;
+    if let Some(c) = b.bg_color {
+        params.push(charming_x_ansi::style::color_seq(&c, 4));
     }
-    if from_attrs & Attr::ITALIC.0 != 0 && to_attrs & Attr::ITALIC.0 == 0 {
-        b.italic = false;
-    }
-    if from_underline && !to_underline {
-        b.underline = false;
-    }
-    if from_attrs & Attr::BLINK.0 != 0 && to_attrs & Attr::BLINK.0 == 0 {
-        b.blink = false;
-    }
-    if from_attrs & Attr::REVERSE.0 != 0 && to_attrs & Attr::REVERSE.0 == 0 {
-        b.reverse = false;
-    }
-    if from_attrs & Attr::CONCEAL.0 != 0 && to_attrs & Attr::CONCEAL.0 == 0 {
-        b.strikethrough = false;
-    }
-    if from_attrs & Attr::STRIKETHROUGH.0 != 0 && to_attrs & Attr::STRIKETHROUGH.0 == 0 {
-        b.strikethrough = false;
+    if let Some(c) = b.ul_color {
+        params.push(charming_x_ansi::style::color_seq(&c, 5));
     }
 
-    // Then the attributes that are being set.
-    if to_attrs & Attr::BOLD.0 != 0 && from_attrs & Attr::BOLD.0 == 0 {
-        b.bold = true;
+    if bold_changed || faint_changed {
+        if (from_bold && !to_bold) || (from_faint && !to_faint) {
+            params.push("22".to_string());
+        }
     }
-    if to_attrs & Attr::FAINT.0 != 0 && from_attrs & Attr::FAINT.0 == 0 {
-        b.faint = true;
+    if italic_changed && !to_italic {
+        params.push("23".to_string());
     }
-    if to_attrs & Attr::ITALIC.0 != 0 && from_attrs & Attr::ITALIC.0 == 0 {
-        b.italic = true;
+    if underline_changed && !to_underline {
+        params.push("24".to_string());
     }
-    if to_underline && !from_underline {
-        b.underline = true;
-        b.underline_style = to.underline;
+    if blink_changed || rapid_blink_changed {
+        if (from_blink && !to_blink) || (from_rapid_blink && !to_rapid_blink) {
+            params.push("25".to_string());
+        }
     }
-    if to_attrs & Attr::BLINK.0 != 0 && from_attrs & Attr::BLINK.0 == 0 {
-        b.blink = true;
+    if reverse_changed && !to_reverse {
+        params.push("27".to_string());
     }
-    if to_attrs & Attr::REVERSE.0 != 0 && from_attrs & Attr::REVERSE.0 == 0 {
-        b.reverse = true;
+    if conceal_changed && !to_conceal {
+        params.push("8".to_string());
     }
-    if to_attrs & Attr::CONCEAL.0 != 0 && from_attrs & Attr::CONCEAL.0 == 0 {
-        b.strikethrough = false;
-    }
-    if to_attrs & Attr::STRIKETHROUGH.0 != 0 && from_attrs & Attr::STRIKETHROUGH.0 == 0 {
-        b.strikethrough = true;
+    if strikethrough_changed && !to_strikethrough {
+        params.push("29".to_string());
     }
 
-    b.string()
+    if bold_changed && to_bold {
+        params.push("1".to_string());
+    }
+    if faint_changed && to_faint {
+        params.push("2".to_string());
+    }
+    if italic_changed && to_italic {
+        params.push("3".to_string());
+    }
+    if underline_changed && to_underline && to.underline == Underline::Single {
+        params.push("4".to_string());
+    }
+    if blink_changed && to_blink {
+        params.push("5".to_string());
+    }
+    if rapid_blink_changed && to_rapid_blink {
+        params.push("6".to_string());
+    }
+    if reverse_changed && to_reverse {
+        params.push("7".to_string());
+    }
+    if conceal_changed && to_conceal {
+        params.push("8".to_string());
+    }
+    if strikethrough_changed && to_strikethrough {
+        params.push("9".to_string());
+    }
+
+    if underline_changed
+        && to_underline
+        && to.underline != Underline::Single
+        && to.underline != Underline::None
+    {
+        match to.underline {
+            Underline::Double => params.push("21".to_string()),
+            Underline::Curly => params.push("4:3".to_string()),
+            Underline::Dotted => params.push("4:4".to_string()),
+            Underline::Dashed => params.push("4:5".to_string()),
+            _ => {}
+        }
+    }
+
+    if params.is_empty() {
+        return String::new();
+    }
+    format!("\x1b[{}m", params.join(";"))
 }
 
 #[cfg(test)]

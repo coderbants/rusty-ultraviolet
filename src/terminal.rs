@@ -17,9 +17,8 @@ use crate::decoder::DecodedEvent;
 use crate::environ::Environ;
 use crate::event::Size;
 use crate::logger::Logger;
-use crate::terminal_reader::TerminalReader;
 use crate::terminal_screen::{new_terminal_screen, TerminalScreen};
-use std::io::{self, Read, Write};
+use std::io::{self, Read};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{Receiver, Sender, channel};
 use std::sync::Arc;
@@ -34,7 +33,6 @@ pub const DEFAULT_BUFFER_SIZE: usize = 4096;
 pub const DEFAULT_EVENT_TIMEOUT: Duration = Duration::from_millis(100);
 
 /// Options represents options for creating a new [Terminal].
-#[derive(Debug, Clone)]
 pub struct Options {
     /// BufferSize is the size of the input buffer used for reading terminal
     /// events. If zero, [DEFAULT_BUFFER_SIZE] is used.
@@ -78,7 +76,11 @@ pub struct Terminal {
     opts: Options,
     scr: TerminalScreen,
     evc: Sender<DecodedEvent>,
+    evr: Option<Receiver<DecodedEvent>>,
     done: Arc<AtomicBool>,
+    /// Set when the terminal reports Unicode core mode (DEC 2027) support;
+    /// the screen switches to grapheme-width measurement lazily on next use.
+    grapheme_pending: Arc<AtomicBool>,
     input_thread: Option<std::thread::JoinHandle<()>>,
     winch_thread: Option<std::thread::JoinHandle<()>>,
 }
@@ -113,15 +115,24 @@ pub fn new_terminal(con: Option<Console>, opts: Option<Options>) -> Terminal {
     };
     let env = Environ(con.environ().to_vec());
     // The screen shares the console's stdout fd (Go: the renderer writes to
-    // the same underlying file).
-    let scr = new_terminal_screen(Box::new(FdFile::stdout_file()), env);
-    let (evc, _evr) = channel();
+    // the same underlying file). The color profile is detected with the
+    // explicit fd because `writer_fd` cannot downcast through
+    // `Box<dyn Write>`.
+    let out = FdFile::stdout_file();
+    let out_fd = out.fd() as i32;
+    let profile = crate::terminal_screen::detect_color_profile(Some(out_fd), &env);
+    let mut scr = new_terminal_screen(Box::new(out), env);
+    scr.set_color_profile(profile);
+    scr.set_color_profile(profile);
+    let (evc, evr) = channel();
     Terminal {
         con,
         opts,
         scr,
         evc,
+        evr: Some(evr),
         done: Arc::new(AtomicBool::new(false)),
+        grapheme_pending: Arc::new(AtomicBool::new(false)),
         input_thread: None,
         winch_thread: None,
     }
@@ -136,11 +147,11 @@ impl Terminal {
     }
 
     /// GetWinsize returns the current size of the terminal as a
-    /// [crate::mouse::Winsize] struct.
-    pub fn get_winsize(&mut self) -> io::Result<crate::mouse::Winsize> {
+    /// [crate::console::Winsize] struct.
+    pub fn get_winsize(&mut self) -> io::Result<crate::console::Winsize> {
         self.con
             .get_winsize()
-            .map(|ws| crate::mouse::Winsize {
+            .map(|ws| crate::console::Winsize {
                 row: ws.row,
                 col: ws.col,
                 xpixel: ws.xpixel,
@@ -151,12 +162,18 @@ impl Terminal {
 
     /// Screen returns the terminal's screen.
     pub fn screen(&mut self) -> &mut TerminalScreen {
+        if self.grapheme_pending.load(Ordering::SeqCst) {
+            self.grapheme_pending.store(false, Ordering::SeqCst);
+            self.scr.set_grapheme_width_enabled();
+        }
         &mut self.scr
     }
 
     /// Events returns the terminal's event channel.
-    pub fn events(&self) -> Sender<DecodedEvent> {
-        self.evc.clone()
+    pub fn events(&self) -> &Receiver<DecodedEvent> {
+        self.evr
+            .as_ref()
+            .expect("events() called after the receiver was taken")
     }
 
     /// Start starts the terminal application event loop. This is a
@@ -174,12 +191,11 @@ impl Terminal {
         // Input loop: read + decode + forward events. The reader's own
         // esc-timeout handles incomplete sequences.
         let reader: Box<dyn Read + Send> = Box::new(crate::console::FdFile::stdin_file());
-        let mut tr = TerminalReader::new(reader, &term);
+        let mut tr = crate::terminal_reader::new_terminal_reader(reader, &term);
         tr.set_legacy(flags);
         let _ = lookup;
 
         let (evc, evr): (Sender<DecodedEvent>, Receiver<DecodedEvent>) = channel();
-        self.evc = evc.clone();
         let done_input = self.done.clone();
         let reader_sender = evc.clone();
         self.input_thread = Some(std::thread::spawn(move || {
@@ -190,11 +206,8 @@ impl Terminal {
         // Event forwarding: deliver decoded events to subscribers while
         // negotiating grapheme width (DEC mode 2027).
         let done_fwd = self.done.clone();
-        let mut scr = std::mem::replace(
-            &mut self.scr,
-            new_terminal_screen(Box::new(FdFile::stdout_file()), Environ(vec![])),
-        );
-        let out_sender = evc.clone();
+        let out_sender = self.evc.clone();
+        let grapheme_pending = self.grapheme_pending.clone();
         self.winch_thread = Some(std::thread::spawn(move || {
             loop {
                 if done_fwd.load(Ordering::SeqCst) {
@@ -202,10 +215,18 @@ impl Terminal {
                 }
                 match evr.recv_timeout(Duration::from_millis(50)) {
                     Ok(ev) => {
-                        // handleEvent: negotiate Unicode core mode.
+                        // handleEvent: negotiate Unicode core mode. The
+                        // screen lives on the application thread, so a
+                        // reported 2027 support is recorded and the
+                        // SET_MODE_UNICODE_CORE sequence written here; the
+                        // width-method switch is applied lazily by
+                        // [Terminal::screen].
                         if let DecodedEvent::ModeReport { mode, value } = ev {
                             if mode == 2027 && (value == 1 || value == 3) {
-                                scr.enable_grapheme_width();
+                                grapheme_pending.store(true, Ordering::SeqCst);
+                                use std::io::Write as _;
+                                let mut out = FdFile::stdout_file();
+                                let _ = out.write_all(charming_x_ansi::mode::SET_MODE_UNICODE_CORE.as_bytes());
                             }
                         }
                         let _ = out_sender.send(ev);
@@ -215,7 +236,6 @@ impl Terminal {
                 }
             }
         }));
-        self.scr = scr;
 
         // Window-size notifications (SIGWINCH).
         self.start_winch_loop()?;
@@ -293,13 +313,19 @@ impl Terminal {
     }
 
     /// Stop stops the terminal event loop.
+    ///
+    /// NOTE: the input thread is blocked on a terminal read and cannot be
+    /// joined (mirroring the upstream cancelreader, which unblocks the read
+    /// on stop). The threads are detached and die with the process; the
+    /// screen and terminal are restored here so the shutdown output matches
+    /// the upstream sequence.
     pub fn stop(&mut self) -> io::Result<()> {
         self.done.store(true, Ordering::SeqCst);
         if let Some(h) = self.input_thread.take() {
-            let _ = h.join();
+            let _ = h.thread().unpark();
         }
         if let Some(h) = self.winch_thread.take() {
-            let _ = h.join();
+            let _ = h.thread().unpark();
         }
         self.scr.reset();
         self.scr

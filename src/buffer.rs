@@ -815,20 +815,13 @@ pub fn trim_space(s: &str) -> String {
 /// cell_equal reports whether the two cells are equal. A None cell is equal
 /// to a zero cell.
 pub(crate) fn cell_equal(a: Option<&Cell>, b: Option<&Cell>) -> bool {
-    let az = match a {
-        None => true,
-        Some(a) => a.is_zero(),
-    };
-    let bz = match b {
-        None => true,
-        Some(b) => b.is_zero(),
-    };
-    if az && bz {
-        return true;
-    }
+    // Upstream `cellEqual`: nil is nil, a nil cell is never equal to a real
+    // cell (even an empty one) — the empty-line handling in the scroll
+    // optimization depends on this distinction.
     match (a, b) {
+        (None, None) => true,
+        (None, Some(_)) | (Some(_), None) => false,
         (Some(a), Some(b)) => a.equal(b),
-        _ => false,
     }
 }
 
@@ -845,6 +838,17 @@ fn render_line(buf: &mut String, l: &Line) {
             continue;
         }
         if c.equal(&empty_cell()) {
+            // Upstream emits the reset here, before the pending space.
+            if !pen.is_zero() {
+                buf.push_str(charming_x_ansi::style::RESET_STYLE);
+                pen = Style::default();
+            }
+            if let Some(l) = &link {
+                if !l.is_zero() {
+                    buf.push_str(reset_hyperlink());
+                }
+                link = None;
+            }
             pending.push(' ');
             continue;
         }

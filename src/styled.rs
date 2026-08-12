@@ -38,6 +38,13 @@ pub fn new_styled_string(str_: &str) -> StyledString {
     }
 }
 
+impl crate::Drawable for StyledString {
+    /// Draw renders the styled string on the screen for the given area.
+    fn draw(&mut self, scr: &mut dyn Screen, area: Rectangle) {
+        StyledString::draw(self, scr, area);
+    }
+}
+
 impl StyledString {
     /// String returns the text of the styled string.
     pub fn string(&self) -> &str {
@@ -46,7 +53,19 @@ impl StyledString {
 
     /// Lines returns the styled string decomposed into a slice of [Line]s.
     pub fn lines(&self, m: WidthMethod) -> Vec<Line> {
-        print_string(None, m, 0, 0, Rectangle { min: (0, 0), max: (0, 0) }, &self.text, false, "")
+        print_string(
+            None,
+            m,
+            0,
+            0,
+            Rectangle { min: (0, 0), max: (0, 0) },
+            (0, 0),
+            0,
+            0,
+            &self.text,
+            false,
+            "",
+        )
     }
 
     /// Draw renders the styled string to the given buffer at the specified
@@ -66,6 +85,42 @@ impl StyledString {
             area.min.0 as i64,
             area.min.1,
             area,
+            (area.min.0 as i64, area.min.1 as i64),
+            area.dx(),
+            area.dy(),
+            &str_,
+            !self.wrap,
+            &self.tail,
+        );
+    }
+
+    /// DrawAt renders the styled string to the given buffer starting at the
+    /// given (possibly negative) origin, sized to the given width and height
+    /// (mirrors the upstream `StyledString.Draw` with an off-screen origin,
+    /// e.g. the layout example's dialog box). The area is intersected with
+    /// the screen so the upstream's "all cells are in the area bounds" logic
+    /// applies while off-screen cells are clipped by the screen itself.
+    pub fn draw_at(&self, buf: &mut dyn Screen, x: i64, y: i64, w: usize, h: usize) {
+        let str_ = self.text.replace("\r\n", "\n");
+        let method = buf.width_method();
+        let sb = buf.bounds();
+        let x0 = x.max(0) as usize;
+        let y0 = y.max(0) as usize;
+        let x1 = ((x + w as i64).clamp(0, sb.max.0 as i64)) as usize;
+        let y1 = ((y + h as i64).clamp(0, sb.max.1 as i64)) as usize;
+        let bounds = Rectangle {
+            min: (x0, y0),
+            max: (x1.max(x0), y1.max(y0)),
+        };
+        print_string(
+            Some(buf),
+            method,
+            x,
+            y.max(0) as usize,
+            bounds,
+            (x, y),
+            w,
+            h,
             &str_,
             !self.wrap,
             &self.tail,
@@ -119,6 +174,9 @@ fn print_string(
     mut x: i64,
     mut y: usize,
     bounds: Rectangle,
+    origin: (i64, i64),
+    area_w: usize,
+    area_h: usize,
     str_: &str,
     truncate: bool,
     tail: &str,
@@ -131,6 +189,7 @@ fn print_string(
     }
 
     let mut lines: Vec<Line> = Vec::new();
+    let start_x = x;
 
     let mut cell = Cell::default();
     let mut style = Style::default();
@@ -182,22 +241,35 @@ fn print_string(
                         }
 
                         let pos = crate::window::pos(x, y as i64);
-                        if pos.in_rect(bounds) {
-                            if truncate && tailc.width > 0 && x + cell.width as i64 > bounds.max.0 as i64 - tailc.width as i64 {
-                                // Truncate the string and append the tail if
-                                // any.
-                                let mut c = tailc.clone();
-                                c.style = style.clone();
-                                c.link = if link.is_zero() {
-                                    None
+                        // Cells are checked against the drawing area with its
+                        // signed origin (the upstream `pos.In(bounds)` where
+                        // bounds is the box area), and the screen itself clips
+                        // out-of-bounds cells. The cursor advances for every
+                        // in-area cell, mirroring the upstream.
+                        let in_area = pos.x >= origin.0
+                            && pos.x < origin.0 + area_w as i64
+                            && pos.y >= origin.1
+                            && pos.y < origin.1 + area_h as i64;
+                        if in_area {
+                            if pos.x >= 0 && pos.y >= 0 {
+                                if truncate && tailc.width > 0 && x + cell.width as i64 > bounds.max.0 as i64 - tailc.width as i64 {
+                                    // Truncate the string and append the tail
+                                    // if any.
+                                    let mut c = tailc.clone();
+                                    c.style = style.clone();
+                                    c.link = if link.is_zero() {
+                                        None
+                                    } else {
+                                        Some(link.clone())
+                                    };
+                                    scr.set_cell(x as usize, y, Some(&c));
+                                    x += tailc.width as i64;
                                 } else {
-                                    Some(link.clone())
-                                };
-                                scr.set_cell(x as usize, y, Some(&c));
-                                x += tailc.width as i64;
+                                    // Print the cell to the screen
+                                    scr.set_cell(x as usize, y, Some(&cell));
+                                    x += width as i64;
+                                }
                             } else {
-                                // Print the cell to the screen
-                                scr.set_cell(x as usize, y, Some(&cell));
                                 x += width as i64;
                             }
                         }
@@ -228,10 +300,15 @@ fn print_string(
                         }
                         y += 1;
                         // Always treat a NL as CR-LF similar to Termios ONLCR.
+                        // Upstream resets to `bounds.Min.X`; the draw origin
+                        // equals the bounds min for the regular draw path, so
+                        // resetting to the initial x matches both paths (and
+                        // keeps an off-screen origin like the layout example's
+                        // dialog box).
                         if scr.is_none() {
                             x = 0;
                         } else {
-                            x = bounds.min.0 as i64;
+                            x = start_x;
                         }
                     }
                     _ if seq == b"\r" => {

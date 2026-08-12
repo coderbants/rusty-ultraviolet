@@ -1,15 +1,17 @@
-# Ultraviolet
-
-<img width="400" alt="Charm Ultraviolet" src="https://github.com/user-attachments/assets/3484e4b0-3741-4e8c-bebf-9ea51f5bb49c" />
-
 <p>
-    <a href="https://pkg.go.dev/github.com/charmbracelet/ultraviolet?tab=doc"><img src="https://godoc.org/github.com/charmbracelet/ultraviolet?status.svg" alt="GoDoc"></a>
-    <a href="https://github.com/charmbracelet/ultraviolet/actions"><img src="https://github.com/charmbracelet/ultraviolet/actions/workflows/build.yml/badge.svg" alt="Build Status"></a>
+    <a href="charming_ultraviolet.png"><img src="charming_ultraviolet.png" width="400" alt="Charming Ultraviolet"></a><br>
+    <a href="https://crates.io/crates/charming-ultraviolet"><img src="https://img.shields.io/crates/v/charming-ultraviolet.svg" alt="crates.io"></a>
 </p>
 
-Ultraviolet is a set of primitives for manipulating terminal emulators, with a focus on terminal user interfaces (TUIs). It provides a set of tools and abstractions for interaction that can handle user input and display dynamic, cell-based content. It’s the product of many years of research, development, collaboration and ingenuity.
+# Charming Ultraviolet (`charming-ultraviolet`)
 
-Ultraviolet is not a framework by design, however it can be used standalone to create powerful terminal applications. It’s in use in production and powers critical portions of [Bubble Tea v2][bbt] and [Lip Gloss v2][lg], and was instrumental in the development of [Crush][crush].
+**Charming Ultraviolet** is a complete, from-scratch Rust port of [Ultraviolet](https://github.com/charmbracelet/ultraviolet), Charmbracelet's set of primitives for manipulating terminal emulators — cell-based screen buffers, a diffing terminal renderer, and cross-platform input decoding. It tracks upstream on a rolling basis (this crate mirrors the upstream pseudo-version pin `20260703014108`) with a hard goal of **1:1 behavioral parity**: the same escape sequences, cell semantics, and rendering output, favoring fidelity to upstream over Rust-native rewrites whenever the two would diverge.
+
+It's part of the Charming port family of the Bubble Tea ecosystem and builds on [charming-x-ansi](https://github.com/coderbants/charming-x-ansi) (ANSI primitives) and [charming-colorprofile](https://github.com/coderbants/charming-colorprofile) — it powers [charming-bubbletea](https://github.com/coderbants/charming-bubbletea), [charming-lipgloss](https://github.com/coderbants/charming-lipgloss) and [charming-bubbles](https://github.com/coderbants/charming-bubbles).
+
+Ultraviolet is a set of primitives for manipulating terminal emulators, with a focus on terminal user interfaces (TUIs). It provides a set of tools and abstractions for interaction that can handle user input and display dynamic, cell-based content. It's the product of many years of research, development, collaboration and ingenuity.
+
+Ultraviolet is not a framework by design, however it can be used standalone to create powerful terminal applications. It's in use in production and powers critical portions of [Bubble Tea v2][bbt] and [Lip Gloss v2][lg], and was instrumental in the development of [Crush][crush].
 
 [crush]: https://github.com/charmbracelet/crush
 [bbt]: https://github.com/charmbracelet/bubbletea

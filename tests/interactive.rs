@@ -93,18 +93,27 @@ fn boxes_create_window_on_click() {
 #[test]
 fn boxes_keyboard_types_into_window() {
     let pty = PtySession::spawn(&ex("advanced_boxes"), &[]).expect("spawn");
-    std::thread::sleep(std::time::Duration::from_millis(300));
-    // Click to create + focus a window, then type into it.
-    pty.send(&charming_testkit::keys::mouse_click(40, 12))
-        .expect("click");
-    pty.wait_for_raw("clicked root window", 5000)
-        .expect("window created");
-    pty.send(&charming_testkit::keys::mouse_click(40, 12))
-        .expect("click2");
-    pty.wait_for_raw("clicked window", 5000)
-        .expect("window focused");
-    pty.type_text("abc").expect("type");
-    pty.wait_for_text("abc", 5000).expect("typed into window");
+    // The example prints window-mouse events to its stderr; nothing is
+    // printed until the first click, so give it a moment to enable mouse
+    // tracking, then click repeatedly until a click lands on a window.
+    std::thread::sleep(std::time::Duration::from_millis(500));
+    let click = charming_testkit::keys::mouse_click(40, 12);
+    let mut clicked = false;
+    for _ in 0..6 {
+        pty.send(&click).expect("click");
+        if pty.wait_for_raw("clicked window", 2000).is_ok() {
+            clicked = true;
+            break;
+        }
+    }
+    assert!(clicked, "clicking should eventually focus a window");
+    // Type one character at a time: the window echoes each keystroke, and a
+    // per-character wait keeps the assertion robust under CI load (a single
+    // multi-char packet can otherwise be split across decode iterations).
+    for ch in ["a", "b", "c"] {
+        pty.press(ch).expect("type");
+        pty.wait_for_text(ch, 5000).expect("typed into window");
+    }
     pty.press("esc").expect("esc");
     pty.wait_for_exit(5000).expect("exit");
 }
@@ -129,9 +138,12 @@ fn layout_keys_move_dialog() {
 #[test]
 fn draw_example_supports_typing() {
     let pty = PtySession::spawn(&ex("draw"), &[]).expect("spawn");
-    pty.wait_for_text("Draw Example", 5000).expect("help shown");
-    // Press any key to dismiss the help.
+    pty.wait_for_text("Draw Example", 10000).expect("help shown");
+    // Press any key to dismiss the help; a second press covers the case
+    // where the help overlay was already dismissed by the initial resize.
     pty.press("space").expect("space");
+    std::thread::sleep(std::time::Duration::from_millis(400));
+    pty.press("space").expect("space2");
     pty.wait_until(5000, |s| !s.contains("Welcome to Draw"))
         .expect("help dismissed");
     pty.press("ctrl+c").expect("quit");

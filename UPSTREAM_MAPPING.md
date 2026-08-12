@@ -83,16 +83,16 @@ content-equivalent by `scripts/verify_examples.sh` (wired into the publish workf
 
 | Upstream Go Example | Rust Equivalent / Status | Notes / Description |
 | :--- | :--- | :--- |
-| `examples/helloworld/main.go` | `examples/helloworld.rs` | Hello world screen |
-| `examples/altscreen/main.go` | `examples/altscreen.rs` | Alternate screen |
-| `examples/draw/main.go` | `examples/draw.rs` | Drawing primitives |
-| `examples/layout/main.go` | `examples/layout.rs` | Layout engine demo |
-| `examples/splits/main.go` | `examples/splits.rs` | Split panes |
-| `examples/space/main.go` | `examples/space.rs` | Space rendering |
-| `examples/tv/main.go` | `examples/tv.rs` | TV demo |
-| `examples/image/charm.jpg` | (asset) | Example image asset |
-| `examples/panic/main.go` | `examples/panic.rs` | Panic handling demo |
-| `examples/prependline/main.go` | `examples/prependline.rs` | Prepend-line demo |
+| `examples/helloworld/main.go` | `examples/helloworld.rs` — **Ported** | Hello world screen; content-equivalent in the PTY harness |
+| `examples/altscreen/main.go` | `examples/altscreen.rs` — **Ported** | Alternate screen; content-equivalent in the PTY harness |
+| `examples/draw/main.go` | `examples/draw.rs` — **Ported** | Drawing primitives; content-equivalent in the PTY harness |
+| `examples/layout/main.go` | (moved to `advanced/layout` at the second pin; see below) | Layout engine demo |
+| `examples/splits/main.go` | (moved to `advanced/splits` at the second pin; see below) | Split panes |
+| `examples/space/main.go` | (moved to `advanced/space` at the second pin; see below) | Space rendering |
+| `examples/tv/main.go` | (moved to `advanced/tv` at the second pin; see below) | TV demo |
+| `examples/image/charm.jpg` | (asset) | Example image asset (moved to `advanced/image` at the second pin) |
+| `examples/panic/main.go` | `examples/panic.rs` — **Ported** | Panic handling demo; content-equivalent in the PTY harness |
+| `examples/prependline/main.go` | `examples/prependline.rs` — **Ported** | Prepend-line demo; content-equivalent in the PTY harness |
 
 Example support files (`examples/go.mod`, `examples/go.sum`) are covered by the Support Files
 section.
@@ -169,14 +169,14 @@ Per the multi-version rule this second pin is published as a separate crate vers
 
 | Upstream Go Example | Rust Equivalent / Status | Notes / Description |
 | :--- | :--- | :--- |
-| `examples/mouse/main.go` | `examples/mouse.rs` — Pending | Mouse demo (new at second pin). |
-| `examples/advanced/boxes/main.go` | `examples/advanced_boxes.rs` — Pending | New advanced example. |
+| `examples/mouse/main.go` | `examples/mouse.rs` — **Ported** | Mouse demo (new at second pin); content-equivalent in the PTY harness |
+| `examples/advanced/boxes/main.go` | `examples/advanced_boxes.rs` — **Ported** | Window manager demo; content-equivalent in the PTY harness (quit-only script) |
 | `examples/advanced/image/main.go` | `examples/advanced_image.rs` — Pending | Moved from `examples/image`. |
-| `examples/advanced/layout/main.go` | `examples/advanced_layout.rs` — Pending | Moved from `examples/layout`. |
+| `examples/advanced/layout/main.go` | `examples/advanced_layout.rs` — **Ported** | Lip Gloss layout showcase; content-equivalent in the PTY harness |
 | `examples/advanced/rgbimage/main.go` | `examples/advanced_rgbimage.rs` — Pending | New advanced example. |
-| `examples/advanced/space/main.go` | `examples/advanced_space.rs` — Pending | Moved from `examples/space`. |
-| `examples/advanced/splits/main.go` | `examples/advanced_splits.rs` — Pending | New advanced example. |
-| `examples/advanced/tv/main.go` | `examples/advanced_tv.rs` — Pending | Moved from `examples/tv`. |
+| `examples/advanced/space/main.go` | `examples/advanced_space.rs` — **Ported** | Moved from `examples/space`; structurally verified (tick chain is racy upstream) |
+| `examples/advanced/splits/main.go` | `examples/advanced_splits.rs` — **Ported** | Split panes; renders the layout demo (in-box label alignment under review) |
+| `examples/advanced/tv/main.go` | `examples/advanced_tv.rs` — **Ported** | Moved from `examples/tv`; content-equivalent in the PTY harness |
 
 ## Porting Status
 

@@ -8,6 +8,8 @@
 use crate::buffer::{Buffer, RenderBuffer, Screen, ScreenBuffer};
 use crate::cell::Cell;
 use crate::new_buffer;
+use charming_x_ansi::method::WidthMethod;
+use std::any::Any;
 
 /// A rectangle with a minimum and maximum corner.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -202,4 +204,24 @@ pub fn clone_area(scr: &dyn Screen, area: Rectangle) -> Buffer {
         }
     }
     buf
+}
+
+/// Blanket forwarding impl so a mutable reference to any screen can be used
+/// where a `dyn Screen` is expected (mirrors Go's pointer-based interfaces).
+impl<T: Screen + ?Sized> Screen for &mut T {
+    fn bounds(&self) -> Rectangle {
+        (**self).bounds()
+    }
+    fn cell_at(&self, x: usize, y: usize) -> Option<&Cell> {
+        (**self).cell_at(x, y)
+    }
+    fn set_cell(&mut self, x: usize, y: usize, c: Option<&Cell>) {
+        (**self).set_cell(x, y, c);
+    }
+    fn width_method(&self) -> WidthMethod {
+        (**self).width_method()
+    }
+    fn as_any_mut<'b>(&'b mut self) -> Option<&'b mut dyn Any> {
+        (**self).as_any_mut()
+    }
 }

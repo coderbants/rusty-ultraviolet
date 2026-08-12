@@ -33,8 +33,20 @@ jobs:
           ref: dev
       - name: Place sibling crate
         run: mv siblings/charming-x-ansi ../charming-x-ansi
-      - name: Test
+      - name: Format
+        run: cargo fmt --all --check
+      - name: Lint
+        run: cargo clippy --all-targets -- -D warnings
+      - name: Build
+        run: cargo build --all-targets
+      - name: Docgen
+        run: cargo doc --no-deps
+      - name: Test (all targets, all integration tests)
         run: cargo test --all-targets
+      - name: Example E2E sweep (upstream Go vs Rust)
+        run: ./scripts/e2e_examples.sh
+      - name: Byte-for-byte example parity sweep
+        run: ./scripts/verify_examples.sh
       - name: Verify example parity (upstream Go vs Rust)
         run: ./scripts/verify_examples.sh
       - name: Create GitHub Release
@@ -42,9 +54,19 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: gh release create "$GITHUB_REF_NAME" --generate-notes
-      - name: Publish to crates.io
+      - name: Upload source to GitHub Release
         if: startsWith(github.ref, 'refs/tags/v')
-        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          src="${GITHUB_REPOSITORY##*/}-$GITHUB_REF_NAME.tar.gz"
+          git archive --format=tar.gz -o "$src" HEAD
+          gh release upload "$GITHUB_REF_NAME" "$src"
+      # Every merge to the live branch publishes to crates.io. crates.io
+      # rejects re-publishing an existing version, so the version-bump gate
+      # in ci.yml must pass for any merge to land (every merge carries a new
+      # tagged version).
+      - name: Publish to crates.io
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
         run: cargo publish --token ${CARGO_REGISTRY_TOKEN}

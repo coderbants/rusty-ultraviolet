@@ -660,7 +660,7 @@ impl TerminalRenderer {
     fn relative_cursor_move(
         &self,
         newbuf: Option<&RenderBuffer>,
-        fx: i64,
+        mut fx: i64,
         fy: i64,
         tx: i64,
         ty: i64,
@@ -733,6 +733,10 @@ impl TerminalRenderer {
                     if tabs_count > 0 {
                         seq.push_str(&"\t".repeat(tabs_count as usize));
                         n = tx - col;
+                        // Mirror upstream: after emitting the tabs the cursor
+                        // sits at the tab destination, not the original
+                        // column; the overwrite scan below must start there.
+                        fx = col;
                     }
                 }
 
@@ -1069,6 +1073,11 @@ impl TerminalRenderer {
         let inline = (cursor_position((start + 1) as i32, (y + 1) as i32).len()
             .min(charming_x_ansi::horizontal_position_absolute((start + 1) as i32).len()))
         .min(cursor_forward((start + 1) as i32).len());
+        // Go tolerates out-of-order ranges (upstream's `emitRange` no-ops
+        // on negative counts); mirror that instead of overflowing.
+        if start > end {
+            return false;
+        }
         if end - start + 1 > inline {
             let mut j = start;
             let mut same = 0;
@@ -1292,7 +1301,9 @@ impl TerminalRenderer {
             && !cell_equal(new_line.0.get(n_last_cell as usize), old_line.0.get(o_last_cell as usize))
         {
             self.move_to_pos(Some(newbuf), first_cell as i64, y as i64);
-            if o_last_cell - n_last_cell > self.el0_cost() as i64 {
+            // Upstream uses signed ints; a negative difference falls through
+            // to the else branch, which saturating subtraction reproduces.
+            if o_last_cell.saturating_sub(n_last_cell) > self.el0_cost() as i64 {
                 if self.put_range(newbuf, &old_line.0, &new_line.0, y as i64, first_cell, n_last_cell as usize) {
                     self.move_to_pos(Some(newbuf), n_last_cell + 1, y as i64);
                 }
@@ -1311,10 +1322,21 @@ impl TerminalRenderer {
                 new_line.0.get(n_last_cell as usize),
                 old_line.0.get(o_last_cell as usize),
             ) {
-                if !cell_equal(
-                    new_line.0.get(n_last_cell as usize - 1),
-                    old_line.0.get(o_last_cell as usize - 1),
-                ) {
+                // Upstream's `Line.At(-1)` returns nil; `cellEqual(nil, nil)`
+                // is true, so the loop decrements through 0 down to -1 and
+                // breaks. Mirror that with explicit bounds checks instead of
+                // overflowing the usize cast.
+                let new_before = if n_last_cell == 0 {
+                    None
+                } else {
+                    new_line.0.get(n_last_cell as usize - 1)
+                };
+                let old_before = if o_last_cell == 0 {
+                    None
+                } else {
+                    old_line.0.get(o_last_cell as usize - 1)
+                };
+                if !cell_equal(new_before, old_before) {
                     break;
                 }
                 n_last_cell -= 1;
@@ -1450,11 +1472,13 @@ impl TerminalRenderer {
 
         self.update_pen(Some(blank));
         self.push(ERASE_SCREEN_BELOW);
-        // Clear the rest of the current line
+        // Clear the rest of the current line. Upstream uses signed ints and
+        // lets ClearArea clamp negative widths; saturating subtraction
+        // mirrors that without overflowing.
         self.curbuf.clear_area(rect(
             col.max(0) as usize,
             row as usize,
-            self.curbuf.width() - col.max(0) as usize,
+            self.curbuf.width().saturating_sub(col.max(0) as usize),
             1,
         ));
         // Clear everything below the current line
@@ -1462,7 +1486,7 @@ impl TerminalRenderer {
             0,
             row as usize + 1,
             self.curbuf.width(),
-            self.curbuf.height() - row as usize - 1,
+            self.curbuf.height().saturating_sub(row as usize + 1),
         ));
     }
 
@@ -2099,8 +2123,10 @@ impl TerminalRenderer {
             cost_before_move = self.update_cost(&oto, &nto);
         }
 
-        // Add cost of updating source line
-        cost_before_move += self.update_cost(&ofrom, &nfrom);
+        // Add cost of updating source line. (Upstream uses the line the
+        // source *moves from* — `curbuf.Line(newFrom)` — not the source's
+        // current row.)
+        cost_before_move += self.update_cost(&onew_from, &nfrom);
 
         // Calculate costs after moving.
         let mut cost_after_move;
@@ -2206,6 +2232,15 @@ impl TerminalRenderer {
             }
 
             non_empty = self.clear_bottom(newbuf, non_empty);
+            if std::env::var("UV_DEBUG").is_ok() {
+                eprintln!("NONEMPTY: {} height: {} touched: {:?}", non_empty, new_height, newbuf.touched.iter().map(|t| t.as_ref().map(|ld| (ld.first_cell, ld.last_cell))).collect::<Vec<_>>());
+                for y in 0..new_height {
+                    if let Some(line) = newbuf.line(y) {
+                        let content: String = line.0.iter().map(|c| c.content.clone()).collect();
+                        eprintln!("LINE {}: {:?}", y, content);
+                    }
+                }
+            }
             let mut i = 0usize;
             while i < non_empty.min(new_height) {
                 let touched = newbuf.touched.get(i);
@@ -2472,7 +2507,6 @@ pub fn erase(r: &mut TerminalRenderer) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::buffer::Screen as _;
 
     fn env() -> Environ {
         Environ(vec![

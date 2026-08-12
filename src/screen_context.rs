@@ -41,8 +41,8 @@ const ATTR_CONCEAL: u8 = 1 << 6;
 const ATTR_STRIKETHROUGH: u8 = 1 << 7;
 
 /// Context represents a drawing context for rendering operations on a screen.
-pub struct Context {
-    scr: Box<dyn Screen>,
+pub struct Context<'a> {
+    scr: Box<dyn Screen + 'a>,
 
     style: Style,
     link: Link,
@@ -51,7 +51,7 @@ pub struct Context {
 }
 
 /// NewContext creates a new drawing context for the given screen.
-pub fn new_context(scr: Box<dyn Screen>) -> Context {
+pub fn new_context<'a>(scr: Box<dyn Screen + 'a>) -> Context<'a> {
     let mut c = Context {
         scr,
         style: Style::default(),
@@ -68,16 +68,16 @@ pub fn new_context(scr: Box<dyn Screen>) -> Context {
 ///
 /// Once the ported [Screen] trait exposes `width_method`, this constructor
 /// will be subsumed by the screen's own method (see the module docs).
-pub fn new_context_with_width_method(
-    scr: Box<dyn Screen>,
+pub fn new_context_with_width_method<'a>(
+    scr: Box<dyn Screen + 'a>,
     wm: WidthMethod,
-) -> Context {
+) -> Context<'a> {
     let mut c = new_context(scr);
     c.wm = wm;
     c
 }
 
-impl Context {
+impl<'a> Context<'a> {
     /// Reset resets the context to its default state.
     pub fn reset(&mut self) {
         self.style = Style::default();
@@ -91,7 +91,7 @@ impl Context {
     }
 
     /// WithStyle returns a copy of the context with the given style.
-    pub fn with_style(mut self, style: Style) -> Context {
+    pub fn with_style(mut self, style: Style) -> Context<'a> {
         self.set_style(style);
         self
     }
@@ -102,7 +102,7 @@ impl Context {
     }
 
     /// WithLink returns a copy of the context with the given link.
-    pub fn with_link(mut self, link: Link) -> Context {
+    pub fn with_link(mut self, link: Link) -> Context<'a> {
         self.set_link(link);
         self
     }
@@ -113,7 +113,7 @@ impl Context {
     }
 
     /// WithAttrs returns a copy of the context with the given attributes.
-    pub fn with_attrs(mut self, attrs: u8) -> Context {
+    pub fn with_attrs(mut self, attrs: u8) -> Context<'a> {
         self.set_attrs(attrs);
         self
     }
@@ -129,7 +129,7 @@ impl Context {
     pub fn with_background(
         mut self,
         bg: Option<charming_x_ansi::style::Color>,
-    ) -> Context {
+    ) -> Context<'a> {
         self.set_background(bg);
         self
     }
@@ -145,7 +145,7 @@ impl Context {
     pub fn with_foreground(
         mut self,
         fg: Option<charming_x_ansi::style::Color>,
-    ) -> Context {
+    ) -> Context<'a> {
         self.set_foreground(fg);
         self
     }
@@ -160,7 +160,7 @@ impl Context {
     }
 
     /// WithBold returns a copy of the context with the given bold attribute.
-    pub fn with_bold(mut self, bold: bool) -> Context {
+    pub fn with_bold(mut self, bold: bool) -> Context<'a> {
         self.set_bold(bold);
         self
     }
@@ -176,7 +176,7 @@ impl Context {
 
     /// WithItalic returns a copy of the context with the given italic
     /// attribute.
-    pub fn with_italic(mut self, italic: bool) -> Context {
+    pub fn with_italic(mut self, italic: bool) -> Context<'a> {
         self.set_italic(italic);
         self
     }
@@ -193,7 +193,7 @@ impl Context {
 
     /// WithStrikethrough returns a copy of the context with the given
     /// strikethrough attribute.
-    pub fn with_strikethrough(mut self, strikethrough: bool) -> Context {
+    pub fn with_strikethrough(mut self, strikethrough: bool) -> Context<'a> {
         self.set_strikethrough(strikethrough);
         self
     }
@@ -209,7 +209,7 @@ impl Context {
 
     /// WithFaint returns a copy of the context with the given faint
     /// attribute.
-    pub fn with_faint(mut self, faint: bool) -> Context {
+    pub fn with_faint(mut self, faint: bool) -> Context<'a> {
         self.set_faint(faint);
         self
     }
@@ -225,7 +225,7 @@ impl Context {
 
     /// WithBlink returns a copy of the context with the given blink
     /// attribute.
-    pub fn with_blink(mut self, blink: bool) -> Context {
+    pub fn with_blink(mut self, blink: bool) -> Context<'a> {
         self.set_blink(blink);
         self
     }
@@ -241,7 +241,7 @@ impl Context {
 
     /// WithReverse returns a copy of the context with the given reverse
     /// attribute.
-    pub fn with_reverse(mut self, reverse: bool) -> Context {
+    pub fn with_reverse(mut self, reverse: bool) -> Context<'a> {
         self.set_reverse(reverse);
         self
     }
@@ -257,7 +257,7 @@ impl Context {
 
     /// WithConceal returns a copy of the context with the given conceal
     /// attribute.
-    pub fn with_conceal(mut self, conceal: bool) -> Context {
+    pub fn with_conceal(mut self, conceal: bool) -> Context<'a> {
         self.set_conceal(conceal);
         self
     }
@@ -269,7 +269,7 @@ impl Context {
 
     /// WithUnderlineStyle returns a copy of the context with the given
     /// underline style.
-    pub fn with_underline_style(mut self, u: Underline) -> Context {
+    pub fn with_underline_style(mut self, u: Underline) -> Context<'a> {
         self.set_underline_style(u);
         self
     }
@@ -290,7 +290,7 @@ impl Context {
 
     /// WithUnderline returns a copy of the context with the given underline
     /// attribute.
-    pub fn with_underline(mut self, underline: bool) -> Context {
+    pub fn with_underline(mut self, underline: bool) -> Context<'a> {
         self.set_underline(underline);
         self
     }
@@ -306,7 +306,7 @@ impl Context {
     pub fn with_underline_color(
         mut self,
         color: Option<charming_x_ansi::style::Color>,
-    ) -> Context {
+    ) -> Context<'a> {
         self.set_underline_color(color);
         self
     }
@@ -322,7 +322,7 @@ impl Context {
     }
 
     /// WithURL returns a copy of the context with the given URL link.
-    pub fn with_url(mut self, url: &str, params: &[&str]) -> Context {
+    pub fn with_url(mut self, url: &str, params: &[&str]) -> Context<'a> {
         self.set_url(url, params);
         self
     }
@@ -341,7 +341,7 @@ impl Context {
     }
 
     /// WithPosition returns a copy of the context with the given position.
-    pub fn with_position(mut self, x: i64, y: i64) -> Context {
+    pub fn with_position(mut self, x: i64, y: i64) -> Context<'a> {
         self.move_to(x, y);
         self
     }
@@ -413,7 +413,7 @@ impl Context {
 /// Write implements the `std::io::Write` interface for the context, writing
 /// the given byte slice to the screen at the current position, updating the
 /// position accordingly.
-impl io::Write for Context {
+impl<'a> io::Write for Context<'a> {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         let s = std::str::from_utf8(buf).map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
         self.write_str_impl(s);
@@ -427,14 +427,14 @@ impl io::Write for Context {
 
 /// WriteString writes the given string to the screen at the current
 /// position, updating the position accordingly.
-impl std::fmt::Write for Context {
+impl<'a> std::fmt::Write for Context<'a> {
     fn write_str(&mut self, s: &str) -> std::fmt::Result {
         self.write_str_impl(s);
         Ok(())
     }
 }
 
-impl Context {
+impl<'a> Context<'a> {
     /// Returns a mutable reference to the underlying screen.
     #[cfg(test)]
     fn scr_mut(&mut self) -> &mut dyn Screen {

@@ -324,7 +324,6 @@ fn border_cell(scr: &dyn Screen, b: &Side) -> Cell {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::buffer::Screen as _;
 
     #[test]
     fn test_normal_border() {

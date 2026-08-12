@@ -138,7 +138,8 @@ fn layout_keys_move_dialog() {
 #[test]
 fn draw_example_supports_typing() {
     let pty = PtySession::spawn(&ex("draw"), &[]).expect("spawn");
-    pty.wait_for_text("Draw Example", 10000).expect("help shown");
+    pty.wait_for_text("Draw Example", 10000)
+        .expect("help shown");
     // Press any key to dismiss the help; a second press covers the case
     // where the help overlay was already dismissed by the initial resize.
     pty.press("space").expect("space");

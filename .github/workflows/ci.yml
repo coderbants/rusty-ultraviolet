@@ -99,3 +99,6 @@ jobs:
         run: ./scripts/e2e_examples.sh
       - name: verify_examples
         run: ./scripts/verify_examples.sh
+
+      - name: verify_mapping
+        run: ./scripts/verify_mapping.sh

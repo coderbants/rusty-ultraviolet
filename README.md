@@ -1,6 +1,7 @@
 <p>
     <a href="charming_ultraviolet.png"><img src="charming_ultraviolet.png" width="400" alt="Charming Ultraviolet"></a><br>
     <a href="https://crates.io/crates/charming-ultraviolet"><img src="https://img.shields.io/crates/v/charming-ultraviolet.svg" alt="crates.io"></a>
+    <a href="https://github.com/coderbants/charming-ultraviolet/actions"><img src="https://github.com/coderbants/charming-ultraviolet/actions/workflows/ci.yml/badge.svg" alt="Build Status"></a>
 </p>
 
 # Charming Ultraviolet (`charming-ultraviolet`)
@@ -29,6 +30,57 @@ cargo add charming-ultraviolet
 
 Ultraviolet provides cell-based screen buffers, a diffing terminal renderer and
 cross-platform input decoding for building terminal user interfaces.
+
+## Quick start
+
+A minimal full-screen application: enter the alternate screen, draw a centered
+message, and exit on any key press.
+
+```rust
+use charming_ultraviolet::decoder::DecodedEvent;
+use charming_ultraviolet::screen::clear;
+use charming_ultraviolet::screen_context::new_context;
+use charming_ultraviolet::terminal::default_terminal;
+use charming_ultraviolet::terminal_screen::TerminalScreen;
+
+fn draw(scr: &mut TerminalScreen) {
+    clear(scr);
+    let bounds = scr.bounds();
+    let w = scr.string_width("Hello, World!");
+    let x = (bounds.dx() as i64 - w as i64) / 2;
+    let y = bounds.dy() as i64 / 2;
+    new_context(Box::new(&mut *scr)).draw_string("Hello, World!", x, y);
+    scr.render();
+    let _ = scr.flush();
+}
+
+fn main() {
+    let mut t = default_terminal();
+    t.screen().enter_alt_screen();
+    if let Err(e) = t.start() {
+        eprintln!("error: {e}");
+        std::process::exit(1);
+    }
+
+    draw(t.screen());
+
+    loop {
+        match t.events().recv() {
+            Ok(DecodedEvent::KeyPress(_)) => break,
+            Ok(_) => {}
+            Err(_) => break,
+        }
+    }
+
+    draw(t.screen()); // last render before exit
+    let _ = t.stop();
+}
+```
+
+For a longer walkthrough — window resize handling, the inline (non-alternate)
+screen, mouse events, and drawing with `Drawable` components — see
+[TUTORIAL.md](./TUTORIAL.md), and the [examples](https://github.com/coderbants/charming-ultraviolet/tree/dev/examples)
+directory for complete programs.
 
 ## Features
 
@@ -131,10 +183,3 @@ We’d love to hear your thoughts on this project. Feel free to drop us a note!
 
 [MIT](./LICENSE)
 
----
-
-Part of [Charm](https://charm.land).
-
-<a href="https://charm.sh/"><img alt="The Charm logo" width="400" src="https://stuff.charm.sh/charm-banner-next.jpg" /></a>
-
-Charm热爱开源 • Charm loves open source • نحنُ نحب المصادر المفتوحة

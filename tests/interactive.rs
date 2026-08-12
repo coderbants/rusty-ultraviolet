@@ -5,7 +5,30 @@
 use charming_testkit::PtySession;
 
 fn ex(name: &str) -> String {
-    format!("target/debug/examples/{name}")
+    let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("target/debug/examples");
+    let plain = dir.join(name);
+    if plain.exists() {
+        return plain.to_string_lossy().into_owned();
+    }
+    // Newer cargo versions disambiguate example binaries that collide with
+    // other targets by appending a metadata hash to the file name; fall back
+    // to the first `name-*` match.
+    let mut candidates: Vec<_> = std::fs::read_dir(&dir)
+        .expect("examples dir")
+        .filter_map(|e| e.ok())
+        .map(|e| e.path())
+        .filter(|p| {
+            p.file_name()
+                .and_then(|n| n.to_str())
+                .is_some_and(|n| n.starts_with(&format!("{name}-")))
+        })
+        .collect();
+    candidates.sort();
+    candidates
+        .first()
+        .unwrap_or_else(|| panic!("example binary for {name} not built"))
+        .to_string_lossy()
+        .into_owned()
 }
 
 #[test]

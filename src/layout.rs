@@ -761,11 +761,9 @@ fn configure_fill_constraints(
                 valid_constraints.push(c);
                 valid_segments.push(seg);
             }
-            Constraint::Min(_) => {
-                if flex != Flex::FlexLegacy {
-                    valid_constraints.push(c);
-                    valid_segments.push(seg);
-                }
+            Constraint::Min(_) if flex != Flex::FlexLegacy => {
+                valid_constraints.push(c);
+                valid_segments.push(seg);
             }
             _ => {}
         }

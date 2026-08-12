@@ -1645,7 +1645,7 @@ impl TerminalRenderer {
             }
 
             if top < total {
-                self.move_to_pos(Some(newbuf), 0, top.saturating_sub(1).max(0) as i64); // top is 1-based
+                self.move_to_pos(Some(newbuf), 0, top.saturating_sub(1) as i64); // top is 1-based
                 self.clear_to_bottom(&blank);
                 if !self.oldhash.is_empty() && !self.newhash.is_empty() && row >= 0 {
                     for r in top..newbuf.height() {

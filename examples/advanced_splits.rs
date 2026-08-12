@@ -165,10 +165,8 @@ fn main() {
                     scr.resize(s.width, s.height);
                     charming_ultraviolet::screen::clear(scr);
                 }
-                DecodedEvent::KeyPress(k) => {
-                    if k.match_string(&["ctrl+c", "q"]) {
-                        break 'events;
-                    }
+                DecodedEvent::KeyPress(k) if k.match_string(&["ctrl+c", "q"]) => {
+                    break 'events;
                 }
                 _ => {}
             },

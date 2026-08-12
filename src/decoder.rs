@@ -887,35 +887,33 @@ impl EventDecoder {
                             );
                         }
                     }
-                    48 => {
+                    48 if params_len == 5 => {
                         // In band terminal size report.
-                        if params_len == 5 {
-                            let (cell_height, _, ch_ok) = param_get(pa, 1, 0);
-                            let (cell_width, _, cw_ok) = param_get(pa, 2, 0);
-                            let (pixel_height, _, ph_ok) = param_get(pa, 3, 0);
-                            let (pixel_width, _, pw_ok) = param_get(pa, 4, 0);
-                            if !ch_ok || !cw_ok || !ph_ok || !pw_ok {
-                                return (
-                                    i,
-                                    Some(DecodedEvent::UnknownCsi(
-                                        String::from_utf8_lossy(&b[..i]).into_owned(),
-                                    )),
-                                );
-                            }
+                        let (cell_height, _, ch_ok) = param_get(pa, 1, 0);
+                        let (cell_width, _, cw_ok) = param_get(pa, 2, 0);
+                        let (pixel_height, _, ph_ok) = param_get(pa, 3, 0);
+                        let (pixel_width, _, pw_ok) = param_get(pa, 4, 0);
+                        if !ch_ok || !cw_ok || !ph_ok || !pw_ok {
                             return (
                                 i,
-                                Some(DecodedEvent::Multi(vec![
-                                    DecodedEvent::WindowSize(Size {
-                                        width: cell_width as usize,
-                                        height: cell_height as usize,
-                                    }),
-                                    DecodedEvent::PixelSize(Size {
-                                        width: pixel_width as usize,
-                                        height: pixel_height as usize,
-                                    }),
-                                ])),
+                                Some(DecodedEvent::UnknownCsi(
+                                    String::from_utf8_lossy(&b[..i]).into_owned(),
+                                )),
                             );
                         }
+                        return (
+                            i,
+                            Some(DecodedEvent::Multi(vec![
+                                DecodedEvent::WindowSize(Size {
+                                    width: cell_width as usize,
+                                    height: cell_height as usize,
+                                }),
+                                DecodedEvent::PixelSize(Size {
+                                    width: pixel_width as usize,
+                                    height: pixel_height as usize,
+                                }),
+                            ])),
+                        );
                     }
                     _ => {}
                 }
@@ -2537,10 +2535,7 @@ fn base64_decode(b: &[u8]) -> Option<Vec<u8>> {
         if c == b'=' {
             break;
         }
-        let v = match ALPHABET.iter().position(|&a| a == c) {
-            Some(v) => v as u32,
-            None => return None,
-        };
+        let v = ALPHABET.iter().position(|&a| a == c)? as u32;
         buf = (buf << 6) | v;
         bits += 6;
         if bits >= 8 {

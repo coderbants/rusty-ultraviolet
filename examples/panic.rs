@@ -45,10 +45,8 @@ fn main() {
                     DecodedEvent::WindowSize(s) => {
                         scr.resize(s.width, 2);
                     }
-                    DecodedEvent::KeyPress(k) => {
-                        if k.match_string(&["q", "ctrl+c"]) {
-                            break 'outer;
-                        }
+                    DecodedEvent::KeyPress(k) if k.match_string(&["q", "ctrl+c"]) => {
+                        break 'outer;
                     }
                     _ => {}
                 }

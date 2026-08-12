@@ -197,7 +197,7 @@ impl PollReader for PollReaderUnix {
         self.canceled = true;
 
         // send cancel signal
-        let b = [b'c'];
+        let b = b"c";
         let n = unsafe { libc::write(self.cancel_writer, b.as_ptr() as *const libc::c_void, 1) };
         n == 1
     }

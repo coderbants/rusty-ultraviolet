@@ -86,7 +86,12 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/v')
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release create "$GITHUB_REF_NAME" --generate-notes
+        run: |
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            echo "Release $GITHUB_REF_NAME already exists; skipping."
+          else
+            gh release create "$GITHUB_REF_NAME" --generate-notes
+          fi
       - name: Upload source to GitHub Release
         if: startsWith(github.ref, 'refs/tags/v')
         env:

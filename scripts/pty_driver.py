@@ -43,8 +43,11 @@ def run(cmd, args, width, height, keys, delay, settle, timeout):
     sent_at = None
     exited = False
     while time.time() - start < timeout:
-        # Send the key sequence once after `delay` seconds.
-        if not sent and time.time() - start >= delay:
+        # Send the key sequence once after `delay` seconds AND after the
+        # child has produced its first output: a cold-started binary under
+        # load can otherwise take longer than the delay to render, and the
+        # capture would miss it entirely.
+        if not sent and time.time() - start >= delay and len(out) > 0:
             os.write(master, keys)
             sent = True
             sent_at = time.time()

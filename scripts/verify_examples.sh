@@ -204,6 +204,8 @@ for entry in $PAIRS; do
       echo "CONTENT-EQUIVALENT: $go_dir (on retry)"
     else
       echo "DIFFERS:   $go_dir"
+      echo "RAW_GO=$go_dir bytes=$(wc -c <"$go_out") first=$(head -c 120 "$go_out" | od -An -tx1 | tr -d ' \n')"
+      echo "RAW_RS=$rs_ex bytes=$(wc -c <"$rs_out") first=$(head -c 120 "$rs_out" | od -An -tx1 | tr -d ' \n')"
       echo "----- first differing lines ($go_dir) -----" >&2
       diff <(normalize <"$go_out") <(normalize <"$rs_out") | head -12 >&2
       fails=1

@@ -39,7 +39,7 @@ jobs:
       - name: Fetch upstream Go source (pinned)
         run: |
           git clone --quiet https://github.com/charmbracelet/ultraviolet.git upstream-go
-          cd upstream-go && git checkout --quiet 1948445e3318
+          cd upstream-go && git checkout --quiet f5a850f9c2b7ed4def3807fe12d0b5e76d345bdc
       - name: Fetch sibling charming-bubbletea (pinned)
         uses: actions/checkout@v4
         with:

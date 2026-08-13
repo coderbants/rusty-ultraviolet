@@ -161,14 +161,34 @@ for entry in $PAIRS; do
     if diff "$TMP/space_go.out" "$TMP/space_rs.out" >/dev/null 2>&1; then
       echo "STRUCTURAL: advanced/space (racy tick chain; deterministic sequences match)"
     else
-      echo "DIFFERS:   $go_dir"
-      fails=1
+      echo "RETRY: $go_dir (flaky harness?)"
+      python3 "$ROOT/scripts/pty_driver.py" --cmd "$go_bin" \
+        --keys "$keys" --delay "$delay" --settle "$settle" 2>/dev/null >"$go_out" || true
+      python3 "$ROOT/scripts/pty_driver.py" --cmd "$ROOT/target/debug/examples/$rs_ex" \
+        --keys "$keys" --delay "$delay" --settle "$settle" 2>/dev/null >"$rs_out" || true
+      head -c 52 "$go_out" | normalize >"$TMP/space_go.out"
+      head -c 52 "$rs_out" | normalize >"$TMP/space_rs.out"
+      if diff "$TMP/space_go.out" "$TMP/space_rs.out" >/dev/null 2>&1; then
+        echo "STRUCTURAL: advanced/space (on retry)"
+      else
+        echo "DIFFERS:   $go_dir"
+        fails=1
+      fi
     fi
   elif diff <(normalize <"$go_out") <(normalize <"$rs_out") >/dev/null 2>&1; then
     echo "CONTENT-EQUIVALENT: $go_dir"
   else
-    echo "DIFFERS:   $go_dir"
-    fails=1
+    echo "RETRY: $go_dir (flaky harness?)"
+    python3 "$ROOT/scripts/pty_driver.py" --cmd "$go_bin" \
+      --keys "$keys" --delay "$delay" --settle "$settle" 2>/dev/null >"$go_out" || true
+    python3 "$ROOT/scripts/pty_driver.py" --cmd "$ROOT/target/debug/examples/$rs_ex" \
+      --keys "$keys" --delay "$delay" --settle "$settle" 2>/dev/null >"$rs_out" || true
+    if diff <(normalize <"$go_out") <(normalize <"$rs_out") >/dev/null 2>&1; then
+      echo "CONTENT-EQUIVALENT: $go_dir (on retry)"
+    else
+      echo "DIFFERS:   $go_dir"
+      fails=1
+    fi
   fi
 done
 

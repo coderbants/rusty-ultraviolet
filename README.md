@@ -1,4 +1,4 @@
-<p>
+<p align="center">
     <a href="rusty_ultraviolet.png"><img src="rusty_ultraviolet.png" width="400" alt="Rusty Ultraviolet"></a><br>
     <a href="https://crates.io/crates/rusty-ultraviolet"><img src="https://img.shields.io/crates/v/rusty-ultraviolet.svg" alt="crates.io"></a>
     <a href="https://github.com/coderbants/rusty-ultraviolet/actions"><img src="https://github.com/coderbants/rusty-ultraviolet/actions/workflows/ci.yml/badge.svg" alt="Build Status"></a>

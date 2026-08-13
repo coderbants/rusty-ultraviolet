@@ -20,16 +20,16 @@ use crate::screen::rect;
 use crate::style::{Attr, Style};
 use crate::tabstop::{default_tab_stops, TabStops};
 use crate::terminal_screen::ColorProfile;
-use charming_x_ansi::color::{ansi256_to_16, convert_16, convert_256};
-use charming_x_ansi::cursor::{cursor_backward_tab, REVERSE_INDEX};
-use charming_x_ansi::hyperlink::{reset_hyperlink, set_hyperlink};
-use charming_x_ansi::method::WidthMethod;
-use charming_x_ansi::mode::{
+use rusty_x_ansi::color::{ansi256_to_16, convert_16, convert_256};
+use rusty_x_ansi::cursor::{cursor_backward_tab, REVERSE_INDEX};
+use rusty_x_ansi::hyperlink::{reset_hyperlink, set_hyperlink};
+use rusty_x_ansi::method::WidthMethod;
+use rusty_x_ansi::mode::{
     RESET_MODE_AUTO_WRAP, RESET_MODE_INSERT_REPLACE, SET_MODE_AUTO_WRAP, SET_MODE_INSERT_REPLACE,
 };
-use charming_x_ansi::parser::{DEL, US};
-use charming_x_ansi::style::Color;
-use charming_x_ansi::{
+use rusty_x_ansi::parser::{DEL, US};
+use rusty_x_ansi::style::Color;
+use rusty_x_ansi::{
     cursor_backward, cursor_down, cursor_forward, cursor_horizontal_absolute, cursor_position,
     cursor_up, delete_character, delete_line, erase_character, insert_character, insert_line,
     repeat_previous_character, scroll_down, scroll_up, set_top_bottom_margins,
@@ -550,7 +550,7 @@ impl TerminalRenderer {
         }
 
         // XXX: Disable styles if there's any. Some move operations such as
-        // [charming_x_ansi::cursor_down] can apply styles to the new cursor
+        // [rusty_x_ansi::cursor_down] can apply styles to the new cursor
         // position, thus, we need to reset the styles before moving the
         // cursor.
         let blank = self.cur.cell.clone();
@@ -695,7 +695,7 @@ impl TerminalRenderer {
     /// relativeCursorMove returns the relative cursor movement sequence using
     /// one or two of [cursor_up], [cursor_down], [cursor_forward],
     /// [cursor_backward], [vertical_position_absolute],
-    /// [charming_x_ansi::horizontal_position_absolute].
+    /// [rusty_x_ansi::horizontal_position_absolute].
     /// Mirrors the upstream Go signature
     /// `relativeCursorMove(newbuf, fx, fy, tx, ty, overwrite, useTabs,
     /// useBackspace)` 1:1.
@@ -753,7 +753,7 @@ impl TerminalRenderer {
             let mut xseq = String::new();
             if !self.flags.contains(TFlag::RELATIVE_CURSOR) {
                 if self.caps.contains(Capabilities::HPA) {
-                    xseq = charming_x_ansi::horizontal_position_absolute((tx + 1) as i32);
+                    xseq = rusty_x_ansi::horizontal_position_absolute((tx + 1) as i32);
                 } else if self.caps.contains(Capabilities::CHA) {
                     xseq = cursor_horizontal_absolute((tx + 1) as i32);
                 }
@@ -1001,7 +1001,7 @@ impl TerminalRenderer {
     }
 
     /// canClearWith checks whether the given cell can be used by clearing
-    /// commands like [charming_x_ansi::erase_line] to clear the screen.
+    /// commands like [rusty_x_ansi::erase_line] to clear the screen.
     fn can_clear_with(c: Option<&Cell>) -> bool {
         match c {
             None => true,
@@ -1011,7 +1011,7 @@ impl TerminalRenderer {
                 }
                 // NOTE: This assumes that the terminal supports bce terminfo
                 // capability.
-                c.style.underline == charming_x_ansi::style::Underline::None
+                c.style.underline == rusty_x_ansi::style::Underline::None
                     && c.style.attrs
                         & !(Attr::BOLD.bits()
                             | Attr::FAINT.bits()
@@ -1026,8 +1026,8 @@ impl TerminalRenderer {
 
     /// emitRange emits a range of cells to the buffer. It is equivalent to
     /// calling [Self::put_cell] for each cell in the range. This is optimized
-    /// to use [charming_x_ansi::erase_character] and
-    /// [charming_x_ansi::repeat_previous_character].
+    /// to use [rusty_x_ansi::erase_character] and
+    /// [rusty_x_ansi::repeat_previous_character].
     /// Returns whether the cursor is at the end of interval or somewhere in
     /// the middle.
     fn emit_range(&mut self, newbuf: &RenderBuffer, line: &[Cell], n: usize) -> bool {
@@ -1130,7 +1130,7 @@ impl TerminalRenderer {
     ) -> bool {
         let inline = (cursor_position((start + 1) as i32, (y + 1) as i32)
             .len()
-            .min(charming_x_ansi::horizontal_position_absolute((start + 1) as i32).len()))
+            .min(rusty_x_ansi::horizontal_position_absolute((start + 1) as i32).len()))
         .min(cursor_forward((start + 1) as i32).len());
         // Go tolerates out-of-order ranges (upstream's `emitRange` no-ops
         // on negative counts); mirror that instead of overflowing.
@@ -1215,7 +1215,7 @@ impl TerminalRenderer {
         }
     }
 
-    /// el0Cost returns the cost of using [charming_x_ansi::erase_line] 0.
+    /// el0Cost returns the cost of using [rusty_x_ansi::erase_line] 0.
     fn el0_cost(&self) -> usize {
         if self.caps.0 != 0 {
             return 0;
@@ -1970,8 +1970,8 @@ impl TerminalRenderer {
     }
 
     /// scrollIdl scrolls the screen n lines by using
-    /// [charming_x_ansi::delete_line] at del and using
-    /// [charming_x_ansi::insert_line] at ins.
+    /// [rusty_x_ansi::delete_line] at del and using
+    /// [rusty_x_ansi::insert_line] at ins.
     fn scroll_idl(
         &mut self,
         newbuf: &RenderBuffer,

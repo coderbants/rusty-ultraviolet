@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # POSIX-flavored so it sources cleanly from bash (3.2+) and zsh.
 
-# Machine-wide shared Cargo cache environment for the charming-* workspace.
+# Machine-wide shared Cargo cache environment for the rusty-* workspace.
 #
 # Every Cargo entrypoint in this repository (development launchers, test and
 # parity scripts, CI jobs) must source this file and call

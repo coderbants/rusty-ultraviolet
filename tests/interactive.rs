@@ -2,7 +2,7 @@
 //! through a real pseudo-terminal: mouse clicks and drags, keyboard input,
 //! and assertions on the reconstructed on-screen state.
 
-use charming_testkit::PtySession;
+use rusty_testkit::PtySession;
 
 /// The package's Cargo target directory. `cargo metadata` is authoritative:
 /// it honours `CARGO_TARGET_DIR` from the shared machine-wide Cargo cache
@@ -107,7 +107,7 @@ fn mouse_click_reports_position() {
     pty.wait_for_text("Button:", 30000).expect("shown");
     std::thread::sleep(std::time::Duration::from_millis(300));
     // Click at cell (10, 5): the example logs the pixel-adjusted position.
-    pty.send(&charming_testkit::keys::mouse_click(10, 5))
+    pty.send(&rusty_testkit::keys::mouse_click(10, 5))
         .expect("click");
     pty.wait_for_raw("Position:", 30000).expect("event logged");
     pty.press("q").expect("quit");
@@ -121,17 +121,17 @@ fn boxes_create_window_on_click() {
     pty.wait_for_raw("?1002", 30000).expect("mouse mode");
     std::thread::sleep(std::time::Duration::from_millis(300));
     // Click in the root window: a new window is created.
-    pty.send(&charming_testkit::keys::mouse_click(40, 12))
+    pty.send(&rusty_testkit::keys::mouse_click(40, 12))
         .expect("click");
     pty.wait_for_raw("clicked root window", 30000)
         .expect("window created");
     // Click again: now the new window is hit and focused.
-    pty.send(&charming_testkit::keys::mouse_click(40, 12))
+    pty.send(&rusty_testkit::keys::mouse_click(40, 12))
         .expect("click2");
     pty.wait_for_raw("clicked window", 30000)
         .expect("window focused");
     // Right-click destroys it.
-    pty.send(&charming_testkit::keys::mouse_right_click(40, 12))
+    pty.send(&rusty_testkit::keys::mouse_right_click(40, 12))
         .expect("right click");
     pty.wait_for_raw("destroying", 30000)
         .expect("window destroyed");
@@ -147,7 +147,7 @@ fn boxes_keyboard_types_into_window() {
     // printed until the first click, so give it a moment to enable mouse
     // tracking, then click repeatedly until a click lands on a window.
     std::thread::sleep(std::time::Duration::from_millis(500));
-    let click = charming_testkit::keys::mouse_click(40, 12);
+    let click = rusty_testkit::keys::mouse_click(40, 12);
     let mut clicked = false;
     for _ in 0..6 {
         pty.send(&click).expect("click");
@@ -256,14 +256,14 @@ fn draw_mouse_drawing() {
     pty.wait_until(5000, |s| !s.contains("Welcome to Draw"))
         .expect("help dismissed");
     // Drag with the left button (SGR motion while pressed).
-    pty.send(&charming_testkit::keys::mouse_drag(
-        charming_testkit::keys::MOUSE_LEFT,
+    pty.send(&rusty_testkit::keys::mouse_drag(
+        rusty_testkit::keys::MOUSE_LEFT,
         20,
         5,
     ))
     .expect("drag");
-    pty.send(&charming_testkit::keys::mouse_drag(
-        charming_testkit::keys::MOUSE_LEFT,
+    pty.send(&rusty_testkit::keys::mouse_drag(
+        rusty_testkit::keys::MOUSE_LEFT,
         30,
         5,
     ))

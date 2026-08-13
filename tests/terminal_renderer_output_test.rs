@@ -4,10 +4,10 @@
 //! Golden tests for the terminal renderer's diff output, matching the
 //! upstream ultraviolet test cases byte-for-byte.
 
-use charming_ultraviolet::buffer::new_screen_buffer;
-use charming_ultraviolet::environ::Environ;
-use charming_ultraviolet::styled::new_styled_string;
-use charming_ultraviolet::terminal_renderer::TerminalRenderer;
+use rusty_ultraviolet::buffer::new_screen_buffer;
+use rusty_ultraviolet::environ::Environ;
+use rusty_ultraviolet::styled::new_styled_string;
+use rusty_ultraviolet::terminal_renderer::TerminalRenderer;
 
 const LOREM_IPSUM: [&str; 5] = [
     "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Vivamus at ornare risus, quis lacinia magna. Suspendisse egestas purus risus, id rutrum diam porta non. Duis luctus tempus dictum. Maecenas luctus metus vitae nulla consectetur egestas. Curabitur faucibus nunc vel eros semper scelerisque. Proin dictum aliquam lacus dignissim fringilla. Praesent ut quam id dui aliquam vehicula in vitae orci. Fusce imperdiet aliquam quam. Nullam euismod magna tincidunt nisl ullamcorper, dignissim rutrum arcu rutrum. Nulla ac fringilla velit. Duis non pellentesque erat.",

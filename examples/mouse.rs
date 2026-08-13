@@ -1,19 +1,19 @@
 //! Cleanroom Rust port of upstream Go example: `examples/mouse/main.go`
 //! Upstream Target Tag / Version: `v0.0.0-20260703014108-f5a850f9c2b7`
 
-use charming_ultraviolet::cell::{empty_cell, Cell};
-use charming_ultraviolet::decoder::DecodedEvent;
-use charming_ultraviolet::mouse::mouse_pixel_to_cell;
-use charming_ultraviolet::screen::{fill_area, rect};
-use charming_ultraviolet::style::Style;
-use charming_ultraviolet::terminal::default_terminal;
-use charming_ultraviolet::terminal_screen::TerminalScreen;
-use charming_x_ansi::style::Color;
+use rusty_ultraviolet::cell::{empty_cell, Cell};
+use rusty_ultraviolet::decoder::DecodedEvent;
+use rusty_ultraviolet::mouse::mouse_pixel_to_cell;
+use rusty_ultraviolet::screen::{fill_area, rect};
+use rusty_ultraviolet::style::Style;
+use rusty_ultraviolet::terminal::default_terminal;
+use rusty_ultraviolet::terminal_screen::TerminalScreen;
+use rusty_x_ansi::style::Color;
 
 fn display(
     scr: &mut TerminalScreen,
     width: usize,
-    last_btn: &charming_x_ansi::mouse::MouseButton,
+    last_btn: &rusty_x_ansi::mouse::MouseButton,
     last_x: i32,
     last_y: i32,
 ) {
@@ -62,11 +62,11 @@ fn main() {
     }
 
     t.screen()
-        .set_mouse_mode(charming_ultraviolet::mouse::MouseMode::MouseModeMotion);
+        .set_mouse_mode(rusty_ultraviolet::mouse::MouseMode::MouseModeMotion);
     t.screen()
-        .set_mouse_encoding(charming_ultraviolet::mouse::MouseEncoding::MouseEncodingSGRPixel);
+        .set_mouse_encoding(rusty_ultraviolet::mouse::MouseEncoding::MouseEncodingSGRPixel);
 
-    let mut last_btn: charming_x_ansi::mouse::MouseButton = charming_x_ansi::mouse::MOUSE_NONE;
+    let mut last_btn: rusty_x_ansi::mouse::MouseButton = rusty_x_ansi::mouse::MOUSE_NONE;
     let mut last_x: i32 = 0;
     let mut last_y: i32 = 0;
     let mut width = 0usize;
@@ -87,8 +87,8 @@ fn main() {
 
                 // Query the pixel dimensions of the window in-case this platform
                 // doesn't report them via the terminal's get_winsize.
-                let _ = scr.write_string(&charming_x_ansi::winop::window_op(
-                    charming_x_ansi::winop::RESIZE_WINDOW_WIN_OP,
+                let _ = scr.write_string(&rusty_x_ansi::winop::window_op(
+                    rusty_x_ansi::winop::RESIZE_WINDOW_WIN_OP,
                     &[],
                 ));
 
@@ -107,7 +107,7 @@ fn main() {
                 let m = mouse_pixel_to_cell(m, &ws);
                 last_x = m.x;
                 last_y = m.y;
-                if m.button != charming_ultraviolet::mouse::MOUSE_NONE {
+                if m.button != rusty_ultraviolet::mouse::MOUSE_NONE {
                     last_btn = m.button;
                 }
                 let ev_desc = m.string();

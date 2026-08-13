@@ -9,11 +9,11 @@
 use crate::key::Key;
 use crate::mouse::Mouse;
 use crate::screen::Rectangle;
-use charming_x_ansi::kitty::{
+use rusty_x_ansi::kitty::{
     KITTY_DISAMBIGUATE_ESCAPE_CODES, KITTY_REPORT_ALL_KEYS_AS_ESCAPE_CODES,
     KITTY_REPORT_ALTERNATE_KEYS, KITTY_REPORT_EVENT_TYPES,
 };
-use charming_x_ansi::mode::ModeSetting;
+use rusty_x_ansi::mode::ModeSetting;
 
 /// Event represents an input event that can be received from an input source.
 pub trait Event: std::fmt::Debug {}
@@ -349,7 +349,7 @@ pub struct ModeReportEvent {
 
 /// ForegroundColorEvent represents a foreground color event.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct ForegroundColorEvent(pub Option<charming_x_ansi::color::RGBColor>);
+pub struct ForegroundColorEvent(pub Option<rusty_x_ansi::color::RGBColor>);
 
 impl ForegroundColorEvent {
     /// String returns the hex representation of the color.
@@ -365,7 +365,7 @@ impl ForegroundColorEvent {
 
 /// BackgroundColorEvent represents a background color event.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct BackgroundColorEvent(pub Option<charming_x_ansi::color::RGBColor>);
+pub struct BackgroundColorEvent(pub Option<rusty_x_ansi::color::RGBColor>);
 
 impl BackgroundColorEvent {
     /// String returns the hex representation of the color.
@@ -381,7 +381,7 @@ impl BackgroundColorEvent {
 
 /// CursorColorEvent represents a cursor color change event.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct CursorColorEvent(pub Option<charming_x_ansi::color::RGBColor>);
+pub struct CursorColorEvent(pub Option<rusty_x_ansi::color::RGBColor>);
 
 impl CursorColorEvent {
     /// String returns the hex representation of the color.
@@ -430,7 +430,7 @@ pub struct ClipboardEvent {
 }
 
 /// colorToHex returns the hex representation of the color.
-pub(crate) fn color_to_hex(c: Option<charming_x_ansi::color::RGBColor>) -> String {
+pub(crate) fn color_to_hex(c: Option<rusty_x_ansi::color::RGBColor>) -> String {
     match c {
         None => String::new(),
         Some(c) => format!("#{:02x}{:02x}{:02x}", c.r, c.g, c.b),
@@ -438,7 +438,7 @@ pub(crate) fn color_to_hex(c: Option<charming_x_ansi::color::RGBColor>) -> Strin
 }
 
 /// isDarkColor returns whether the given color is dark.
-pub(crate) fn is_dark_color(c: Option<charming_x_ansi::color::RGBColor>) -> bool {
+pub(crate) fn is_dark_color(c: Option<rusty_x_ansi::color::RGBColor>) -> bool {
     let (r, g, b) = match c {
         None => return true,
         Some(c) => (c.r, c.g, c.b),
@@ -496,17 +496,17 @@ mod tests {
 
     #[test]
     fn test_color_hex() {
-        let c = charming_x_ansi::color::RGBColor { r: 255, g: 0, b: 0 };
+        let c = rusty_x_ansi::color::RGBColor { r: 255, g: 0, b: 0 };
         assert_eq!(color_to_hex(Some(c)), "#ff0000");
         assert_eq!(color_to_hex(None), "");
     }
 
     #[test]
     fn test_is_dark() {
-        let black = charming_x_ansi::color::RGBColor { r: 0, g: 0, b: 0 };
+        let black = rusty_x_ansi::color::RGBColor { r: 0, g: 0, b: 0 };
         assert!(is_dark_color(Some(black)));
         assert!(is_dark_color(None));
-        let white = charming_x_ansi::color::RGBColor {
+        let white = rusty_x_ansi::color::RGBColor {
             r: 255,
             g: 255,
             b: 255,

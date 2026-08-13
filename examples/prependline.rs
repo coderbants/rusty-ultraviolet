@@ -1,13 +1,13 @@
 //! Cleanroom Rust port of upstream Go example: `examples/prependline/main.go`
 //! Upstream Target Tag / Version: `v0.0.0-20260703014108-f5a850f9c2b7`
 
-use charming_ultraviolet::cell::{empty_cell, Cell};
-use charming_ultraviolet::decoder::DecodedEvent;
-use charming_ultraviolet::screen::{fill_area, rect};
-use charming_ultraviolet::style::Style;
-use charming_ultraviolet::terminal::default_terminal;
-use charming_ultraviolet::terminal_screen::TerminalScreen;
-use charming_x_ansi::style::Color;
+use rusty_ultraviolet::cell::{empty_cell, Cell};
+use rusty_ultraviolet::decoder::DecodedEvent;
+use rusty_ultraviolet::screen::{fill_area, rect};
+use rusty_ultraviolet::style::Style;
+use rusty_ultraviolet::terminal::default_terminal;
+use rusty_ultraviolet::terminal_screen::TerminalScreen;
+use rusty_x_ansi::style::Color;
 
 fn main() {
     let mut t = default_terminal();
@@ -18,7 +18,7 @@ fn main() {
     }
 
     t.screen()
-        .write_string(&charming_x_ansi::screen::set_window_title("Hello, World!"));
+        .write_string(&rusty_x_ansi::screen::set_window_title("Hello, World!"));
 
     let mut st = Style::default();
     let mut bg: u8 = 1;
@@ -81,7 +81,7 @@ fn main() {
     }
 
     t.screen()
-        .write_string(&charming_x_ansi::screen::set_window_title(""));
+        .write_string(&rusty_x_ansi::screen::set_window_title(""));
 
     let _ = t.stop();
 }

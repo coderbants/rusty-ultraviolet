@@ -19,18 +19,18 @@ use crate::{
     new_cursor, Cursor, CursorShape, Drawable, KeyboardEnhancements, MouseEncoding, MouseMode,
     ProgressBar, ProgressBarState,
 };
-use charming_x_ansi::background::{
+use rusty_x_ansi::background::{
     RESET_BACKGROUND_COLOR, RESET_CURSOR_COLOR, RESET_FOREGROUND_COLOR,
 };
-use charming_x_ansi::cursor::{cursor_down, cursor_up, set_cursor_style};
-use charming_x_ansi::kitty::kitty_keyboard;
-use charming_x_ansi::method::WidthMethod;
-use charming_x_ansi::mode::{
+use rusty_x_ansi::cursor::{cursor_down, cursor_up, set_cursor_style};
+use rusty_x_ansi::kitty::kitty_keyboard;
+use rusty_x_ansi::method::WidthMethod;
+use rusty_x_ansi::mode::{
     HIDE_CURSOR, RESET_MODE_ALT_SCREEN_SAVE_CURSOR, RESET_MODE_BRACKETED_PASTE,
     RESET_MODE_SYNCHRONIZED_OUTPUT, SET_MODE_ALT_SCREEN_SAVE_CURSOR, SET_MODE_BRACKETED_PASTE,
     SET_MODE_SYNCHRONIZED_OUTPUT, SHOW_CURSOR,
 };
-use charming_x_ansi::progress::RESET_PROGRESS_BAR;
+use rusty_x_ansi::progress::RESET_PROGRESS_BAR;
 use std::any::Any;
 use std::io::{self, Write};
 use std::rc::Rc;
@@ -41,9 +41,9 @@ const SET_TAB_EVERY_8_COLUMNS: &str = "\x1b[?5W";
 
 /// The color profile used for downsampling colors.
 ///
-/// This is `charming_colorprofile::Profile`; the upstream ultraviolet uses
+/// This is `rusty_colorprofile::Profile`; the upstream ultraviolet uses
 /// the colorprofile package directly.
-pub type ColorProfile = charming_colorprofile::Profile;
+pub type ColorProfile = rusty_colorprofile::Profile;
 
 /// TerminalRenderer is the internal interface of the terminal output
 /// renderer.
@@ -118,8 +118,8 @@ pub struct TerminalScreen {
     /// [TerminalScreen::show_cursor], [TerminalScreen::set_cursor_style], or
     /// [TerminalScreen::set_cursor_color] has no known position.
     cursor_position_known: bool,
-    background_color: Option<charming_x_ansi::color::RGBColor>,
-    foreground_color: Option<charming_x_ansi::color::RGBColor>,
+    background_color: Option<rusty_x_ansi::color::RGBColor>,
+    foreground_color: Option<rusty_x_ansi::color::RGBColor>,
     progress_bar: Option<ProgressBar>,
     window_title: String,
     sync_updates: bool, // mode 2026
@@ -281,7 +281,7 @@ fn parse_bool(v: &str) -> bool {
 /// `colorprofile.Detect`).
 pub fn detect_color_profile(fd: Option<i32>, env: &Environ) -> ColorProfile {
     let isatty = is_tty_forced(env) || fd.is_some_and(is_terminal);
-    charming_colorprofile::detect(isatty, &env.0)
+    rusty_colorprofile::detect(isatty, &env.0)
 }
 
 /// BufferWrite lets the screen's byte output buffer use the `push_str`
@@ -408,7 +408,7 @@ impl TerminalScreen {
     /// grapheme clustering. The response arrives as a mode report event.
     pub fn request_grapheme_width(&mut self) {
         self.buf
-            .push_str(charming_x_ansi::mode::REQUEST_MODE_UNICODE_CORE);
+            .push_str(rusty_x_ansi::mode::REQUEST_MODE_UNICODE_CORE);
     }
 
     /// EnableGraphemeWidth enables Unicode core mode (DEC mode 2027) on the
@@ -426,7 +426,7 @@ impl TerminalScreen {
             return;
         }
         self.buf
-            .push_str(charming_x_ansi::mode::SET_MODE_UNICODE_CORE);
+            .push_str(rusty_x_ansi::mode::SET_MODE_UNICODE_CORE);
         self.set_width_method_internal(WidthMethod::GraphemeWidth);
         self.rend.set_grapheme_width(true);
         let _ = self.flush();
@@ -745,7 +745,7 @@ impl TerminalScreen {
     ///
     /// The changes can be committed to the underlying writer by calling the
     /// [TerminalScreen::flush] method.
-    pub fn set_cursor_color(&mut self, c: Option<charming_x_ansi::color::RGBColor>) {
+    pub fn set_cursor_color(&mut self, c: Option<rusty_x_ansi::color::RGBColor>) {
         let _ = crate::encode_cursor_color(&mut self.buf, c.as_ref());
         if self.cursor.is_none() {
             self.cursor = Some(new_cursor(0, 0));
@@ -760,7 +760,7 @@ impl TerminalScreen {
     ///
     /// A None color indicates that the cursor color is the default terminal
     /// cursor color.
-    pub fn cursor_color(&self) -> Option<&charming_x_ansi::color::RGBColor> {
+    pub fn cursor_color(&self) -> Option<&rusty_x_ansi::color::RGBColor> {
         self.cursor.as_ref().and_then(|c| c.color.as_ref())
     }
 
@@ -768,7 +768,7 @@ impl TerminalScreen {
     ///
     /// The changes can be committed to the underlying writer by calling the
     /// [TerminalScreen::flush] method.
-    pub fn set_background_color(&mut self, c: Option<charming_x_ansi::color::RGBColor>) {
+    pub fn set_background_color(&mut self, c: Option<rusty_x_ansi::color::RGBColor>) {
         let _ = crate::encode_background_color(&mut self.buf, c.as_ref());
         self.background_color = c;
     }
@@ -777,7 +777,7 @@ impl TerminalScreen {
     ///
     /// A None color indicates that the background color is the default
     /// terminal background color.
-    pub fn background_color(&self) -> Option<&charming_x_ansi::color::RGBColor> {
+    pub fn background_color(&self) -> Option<&rusty_x_ansi::color::RGBColor> {
         self.background_color.as_ref()
     }
 
@@ -785,7 +785,7 @@ impl TerminalScreen {
     ///
     /// The changes can be committed to the underlying writer by calling the
     /// [TerminalScreen::flush] method.
-    pub fn set_foreground_color(&mut self, c: Option<charming_x_ansi::color::RGBColor>) {
+    pub fn set_foreground_color(&mut self, c: Option<rusty_x_ansi::color::RGBColor>) {
         let _ = crate::encode_foreground_color(&mut self.buf, c.as_ref());
         self.foreground_color = c;
     }
@@ -794,7 +794,7 @@ impl TerminalScreen {
     ///
     /// A None color indicates that the foreground color is the default
     /// terminal foreground color.
-    pub fn foreground_color(&self) -> Option<&charming_x_ansi::color::RGBColor> {
+    pub fn foreground_color(&self) -> Option<&rusty_x_ansi::color::RGBColor> {
         self.foreground_color.as_ref()
     }
 
@@ -1206,8 +1206,8 @@ impl Screen for TerminalScreen {
 mod tests {
     use super::*;
     use crate::buffer::Line;
-    use charming_x_ansi::color::RGBColor;
-    use charming_x_ansi::cursor_position;
+    use rusty_x_ansi::color::RGBColor;
+    use rusty_x_ansi::cursor_position;
 
     /// A test renderer that writes markers into the output buffer to record
     /// which methods the screen drove.
@@ -1363,8 +1363,8 @@ mod tests {
                 content: "你".to_string(),
                 width: 2,
                 style: crate::style::Style {
-                    bg: Some(charming_x_ansi::style::Color::Basic(
-                        charming_x_ansi::color::RED,
+                    bg: Some(rusty_x_ansi::style::Color::Basic(
+                        rusty_x_ansi::color::RED,
                     )),
                     ..Default::default()
                 },

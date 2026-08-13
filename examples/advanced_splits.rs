@@ -1,22 +1,22 @@
 //! Cleanroom Rust port of upstream Go example: `examples/advanced/splits/main.go`
 //! Upstream Target Tag / Version: `v0.0.0-20260703014108-f5a850f9c2b7`
 
-use charming_ultraviolet::cell::Cell;
-use charming_ultraviolet::decoder::DecodedEvent;
-use charming_ultraviolet::layout::Constraint;
-use charming_ultraviolet::screen::fill_area;
-use charming_ultraviolet::screen_context::new_context;
-use charming_ultraviolet::terminal::default_terminal;
-use charming_ultraviolet::terminal_screen::TerminalScreen;
-use charming_x_ansi::style::Color;
+use rusty_ultraviolet::cell::Cell;
+use rusty_ultraviolet::decoder::DecodedEvent;
+use rusty_ultraviolet::layout::Constraint;
+use rusty_ultraviolet::screen::fill_area;
+use rusty_ultraviolet::screen_context::new_context;
+use rusty_ultraviolet::terminal::default_terminal;
+use rusty_ultraviolet::terminal_screen::TerminalScreen;
+use rusty_x_ansi::style::Color;
 
 const LINES: &str = "Horizontal Layout Example. Press q to quit
 Each line has 2 constraints, plus Min(0) to fill the remaining space.
 E.g. the second line of the Len/Min box is [Len(2), Min(2), Min(0)]
 Note: constraint labels that don't fit are truncated";
 
-fn zero_rect() -> charming_ultraviolet::screen::Rectangle {
-    charming_ultraviolet::screen::Rectangle {
+fn zero_rect() -> rusty_ultraviolet::screen::Rectangle {
+    rusty_ultraviolet::screen::Rectangle {
         min: (0, 0),
         max: (0, 0),
     }
@@ -26,7 +26,7 @@ fn cell(bg: Color) -> Cell {
     Cell {
         content: " ".to_string(),
         width: 1,
-        style: charming_ultraviolet::style::Style {
+        style: rusty_ultraviolet::style::Style {
             bg: Some(bg),
             ..Default::default()
         },
@@ -47,12 +47,12 @@ fn constraint_label(c: &Constraint) -> String {
 
 fn render_example(
     scr: &mut TerminalScreen,
-    area: charming_ultraviolet::screen::Rectangle,
+    area: rusty_ultraviolet::screen::Rectangle,
     constraints: &[Constraint],
 ) {
-    let l = charming_ultraviolet::layout::horizontal(constraints);
+    let l = rusty_ultraviolet::layout::horizontal(constraints);
     let splits = l.split(area);
-    let zero = charming_ultraviolet::screen::Rectangle {
+    let zero = rusty_ultraviolet::screen::Rectangle {
         min: (0, 0),
         max: (0, 0),
     };
@@ -94,12 +94,12 @@ fn render_example(
 
 fn render_example_combinations(
     scr: &mut TerminalScreen,
-    area: charming_ultraviolet::screen::Rectangle,
+    area: rusty_ultraviolet::screen::Rectangle,
     title: &str,
-    pairs: &[([Constraint; 2], charming_ultraviolet::screen::Rectangle)],
+    pairs: &[([Constraint; 2], rusty_ultraviolet::screen::Rectangle)],
 ) {
-    let rows = charming_ultraviolet::layout::vertical(&vec![Constraint::Len(1); pairs.len() + 1])
-        .with_padding(charming_ultraviolet::layout::pad(&[1]))
+    let rows = rusty_ultraviolet::layout::vertical(&vec![Constraint::Len(1); pairs.len() + 1])
+        .with_padding(rusty_ultraviolet::layout::pad(&[1]))
         .split(area);
 
     if let Some(first) = rows.get(0) {
@@ -134,7 +134,7 @@ fn main() {
         std::process::exit(1);
     }
 
-    let mut area = charming_ultraviolet::screen::Rectangle {
+    let mut area = rusty_ultraviolet::screen::Rectangle {
         min: (0, 0),
         max: (0, 0),
     };
@@ -157,13 +157,13 @@ fn main() {
         {
             Ok(ev) => match ev {
                 DecodedEvent::WindowSize(s) => {
-                    area = charming_ultraviolet::screen::Rectangle {
+                    area = rusty_ultraviolet::screen::Rectangle {
                         min: (0, 0),
                         max: (s.width, s.height),
                     };
                     let scr = t.screen();
                     scr.resize(s.width, s.height);
-                    charming_ultraviolet::screen::clear(scr);
+                    rusty_ultraviolet::screen::clear(scr);
                 }
                 DecodedEvent::KeyPress(k) if k.match_string(&["ctrl+c", "q"]) => {
                     break 'events;
@@ -178,7 +178,7 @@ fn main() {
     let _ = t.stop();
 }
 
-fn render(scr: &mut TerminalScreen, area: charming_ultraviolet::screen::Rectangle) {
+fn render(scr: &mut TerminalScreen, area: rusty_ultraviolet::screen::Rectangle) {
     let mut text_area = area;
     let mut rest = area;
 
@@ -186,7 +186,7 @@ fn render(scr: &mut TerminalScreen, area: charming_ultraviolet::screen::Rectangl
     // (the remainder) replaces `area`, so the rows below split the
     // remaining space, not the full area.
     let mut assign_areas = [Some(&mut text_area), Some(&mut rest)];
-    charming_ultraviolet::layout::vertical(&[Constraint::Len(7), Constraint::Min(0)])
+    rusty_ultraviolet::layout::vertical(&[Constraint::Len(7), Constraint::Min(0)])
         .split(area)
         .assign(&mut assign_areas);
     let area = rest;
@@ -196,7 +196,7 @@ fn render(scr: &mut TerminalScreen, area: charming_ultraviolet::screen::Rectangl
         ctx.draw_string_wrapped(LINES, text_area.min.0 as i64, text_area.min.1 as i64);
     }
 
-    let rows = charming_ultraviolet::layout::vertical(&[
+    let rows = rusty_ultraviolet::layout::vertical(&[
         Constraint::Len(9),
         Constraint::Len(9),
         Constraint::Len(9),
@@ -206,10 +206,10 @@ fn render(scr: &mut TerminalScreen, area: charming_ultraviolet::screen::Rectangl
     ])
     .split(area);
 
-    let mut areas: Vec<charming_ultraviolet::screen::Rectangle> = Vec::new();
+    let mut areas: Vec<rusty_ultraviolet::screen::Rectangle> = Vec::new();
 
     for row in rows.iter() {
-        let cols = charming_ultraviolet::layout::horizontal(&[
+        let cols = rusty_ultraviolet::layout::horizontal(&[
             Constraint::Len(14),
             Constraint::Len(14),
             Constraint::Len(14),

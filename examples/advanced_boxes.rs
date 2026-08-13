@@ -1,14 +1,14 @@
 //! Cleanroom Rust port of upstream Go example: `examples/advanced/boxes/main.go`
 //! Upstream Target Tag / Version: `v0.0.0-20260703014108-f5a850f9c2b7`
 
-use charming_ultraviolet::cell::Cell;
-use charming_ultraviolet::decoder::DecodedEvent;
-use charming_ultraviolet::mouse::MouseMode;
-use charming_ultraviolet::style::Style;
-use charming_ultraviolet::terminal::{new_terminal, Options};
-use charming_ultraviolet::window::{new_window, pos, Window};
-use charming_ultraviolet::{console::new_console, screen::Rectangle};
-use charming_x_ansi::style::Color;
+use rusty_ultraviolet::cell::Cell;
+use rusty_ultraviolet::decoder::DecodedEvent;
+use rusty_ultraviolet::mouse::MouseMode;
+use rusty_ultraviolet::style::Style;
+use rusty_ultraviolet::terminal::{new_terminal, Options};
+use rusty_ultraviolet::window::{new_window, pos, Window};
+use rusty_ultraviolet::{console::new_console, screen::Rectangle};
+use rusty_x_ansi::style::Color;
 use std::rc::Rc;
 
 const ROOT_ID: &str = "root";
@@ -18,7 +18,7 @@ struct AppWindow {
     win: Rc<Window>,
     z: i64,
     st: Style,
-    ctx: charming_ultraviolet::screen_context::Context<'static>,
+    ctx: rusty_ultraviolet::screen_context::Context<'static>,
 }
 
 impl AppWindow {
@@ -26,7 +26,7 @@ impl AppWindow {
         self.win.bounds()
     }
 
-    fn draw(&self, scr: &mut dyn charming_ultraviolet::buffer::Screen, rect: Rectangle) {
+    fn draw(&self, scr: &mut dyn rusty_ultraviolet::buffer::Screen, rect: Rectangle) {
         self.win.draw(scr, rect);
     }
 }
@@ -46,17 +46,17 @@ impl App {
         let _scr = new_window(
             width,
             height,
-            Some(charming_x_ansi::method::WidthMethod::GraphemeWidth),
+            Some(rusty_x_ansi::method::WidthMethod::GraphemeWidth),
         );
         let root_win = new_window(
             0,
             0,
-            Some(charming_x_ansi::method::WidthMethod::GraphemeWidth),
+            Some(rusty_x_ansi::method::WidthMethod::GraphemeWidth),
         );
         let mut root_win = Rc::try_unwrap(root_win).expect("fresh window");
         root_win.resize(width, height);
         let root_rc = Rc::new(root_win);
-        let ctx = charming_ultraviolet::screen_context::new_context(Box::new(WindowDrawProxy(
+        let ctx = rusty_ultraviolet::screen_context::new_context(Box::new(WindowDrawProxy(
             root_rc.clone(),
         )));
         let root = AppWindow {
@@ -71,7 +71,7 @@ impl App {
             win: root.win.clone(),
             z: 0,
             st: Style::default(),
-            ctx: charming_ultraviolet::screen_context::new_context(Box::new(WindowDrawProxy(
+            ctx: rusty_ultraviolet::screen_context::new_context(Box::new(WindowDrawProxy(
                 root.win.clone(),
             ))),
         }];
@@ -97,7 +97,7 @@ impl App {
                 win: aw.win.clone(),
                 z: aw.z,
                 st: aw.st.clone(),
-                ctx: charming_ultraviolet::screen_context::new_context(Box::new(WindowDrawProxy(
+                ctx: rusty_ultraviolet::screen_context::new_context(Box::new(WindowDrawProxy(
                     aw.win.clone(),
                 ))),
             };
@@ -139,7 +139,7 @@ impl App {
             win: win.clone(),
             z: self.zwins.len() as i64,
             st: style,
-            ctx: charming_ultraviolet::screen_context::new_context(Box::new(WindowDrawProxy(
+            ctx: rusty_ultraviolet::screen_context::new_context(Box::new(WindowDrawProxy(
                 win.clone(),
             ))),
         };
@@ -150,7 +150,7 @@ impl App {
                 win: aw.win.clone(),
                 z: aw.z,
                 st: aw.st.clone(),
-                ctx: charming_ultraviolet::screen_context::new_context(Box::new(WindowDrawProxy(
+                ctx: rusty_ultraviolet::screen_context::new_context(Box::new(WindowDrawProxy(
                     aw.win.clone(),
                 ))),
             },
@@ -160,7 +160,7 @@ impl App {
             win: aw.win.clone(),
             z: aw.z,
             st: aw.st.clone(),
-            ctx: charming_ultraviolet::screen_context::new_context(Box::new(WindowDrawProxy(
+            ctx: rusty_ultraviolet::screen_context::new_context(Box::new(WindowDrawProxy(
                 aw.win.clone(),
             ))),
         });
@@ -209,7 +209,7 @@ impl App {
         String::new()
     }
 
-    fn draw(&mut self, scr: &mut dyn charming_ultraviolet::buffer::Screen, _area: Rectangle) {
+    fn draw(&mut self, scr: &mut dyn rusty_ultraviolet::buffer::Screen, _area: Rectangle) {
         self.zwins.sort_by_key(|aw| aw.z);
         self.root.win.clear();
         for zw in &self.zwins {
@@ -283,8 +283,8 @@ impl App {
             }
             DecodedEvent::MouseClick(m) => {
                 self.mouse_down = true;
-                let is_left = m.button == charming_ultraviolet::mouse::MOUSE_LEFT;
-                let is_right = m.button == charming_ultraviolet::mouse::MOUSE_RIGHT;
+                let is_left = m.button == rusty_ultraviolet::mouse::MOUSE_LEFT;
+                let is_right = m.button == rusty_ultraviolet::mouse::MOUSE_RIGHT;
                 if is_left {
                     eprintln!("mouse left click for {id:?} at ({}, {})", m.x, m.y);
                     let mut clicked: Option<String> = None;
@@ -425,7 +425,7 @@ impl App {
 /// requiring an exclusive borrow of the shared `Rc<Window>`.
 struct WindowDrawProxy(Rc<Window>);
 
-impl charming_ultraviolet::buffer::Screen for WindowDrawProxy {
+impl rusty_ultraviolet::buffer::Screen for WindowDrawProxy {
     fn bounds(&self) -> Rectangle {
         self.0.bounds()
     }
@@ -437,10 +437,10 @@ impl charming_ultraviolet::buffer::Screen for WindowDrawProxy {
             x,
             y,
             c.cloned()
-                .unwrap_or_else(charming_ultraviolet::cell::empty_cell),
+                .unwrap_or_else(rusty_ultraviolet::cell::empty_cell),
         );
     }
-    fn width_method(&self) -> charming_x_ansi::method::WidthMethod {
+    fn width_method(&self) -> rusty_x_ansi::method::WidthMethod {
         self.0.width_method()
     }
     fn as_any_mut(&mut self) -> Option<&mut dyn std::any::Any> {
@@ -450,8 +450,8 @@ impl charming_ultraviolet::buffer::Screen for WindowDrawProxy {
 
 struct DrawableApp<'a>(&'a mut App);
 
-impl charming_ultraviolet::Drawable for DrawableApp<'_> {
-    fn draw(&mut self, scr: &mut dyn charming_ultraviolet::buffer::Screen, area: Rectangle) {
+impl rusty_ultraviolet::Drawable for DrawableApp<'_> {
+    fn draw(&mut self, scr: &mut dyn rusty_ultraviolet::buffer::Screen, area: Rectangle) {
         self.0.draw(scr, area);
     }
 }
@@ -472,7 +472,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 fn term_size() -> Result<(usize, usize), Box<dyn std::error::Error>> {
-    let mut con = charming_ultraviolet::console::default_console();
+    let mut con = rusty_ultraviolet::console::default_console();
     let ws = con.get_winsize()?;
     Ok((ws.col as usize, ws.row as usize))
 }

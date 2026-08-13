@@ -3,14 +3,14 @@
 //!
 //! The Lip Gloss layout showcase rendered through the ultraviolet terminal.
 
-use charming_lipgloss::color::Color;
-use charming_lipgloss::position::place;
-use charming_lipgloss::style::Style;
-use charming_lipgloss::whitespace::{with_whitespace_chars, with_whitespace_style};
-use charming_lipgloss::{border, join, size, BOTTOM, CENTER, LEFT, RIGHT, TOP};
-use charming_ultraviolet::decoder::DecodedEvent;
-use charming_ultraviolet::styled::new_styled_string;
-use charming_ultraviolet::terminal::default_terminal;
+use rusty_lipgloss::color::Color;
+use rusty_lipgloss::position::place;
+use rusty_lipgloss::style::Style;
+use rusty_lipgloss::whitespace::{with_whitespace_chars, with_whitespace_style};
+use rusty_lipgloss::{border, join, size, BOTTOM, CENTER, LEFT, RIGHT, TOP};
+use rusty_ultraviolet::decoder::DecodedEvent;
+use rusty_ultraviolet::styled::new_styled_string;
+use rusty_ultraviolet::terminal::default_terminal;
 
 const WIDTH: usize = 96;
 const COLUMN_WIDTH: usize = 30;
@@ -205,7 +205,7 @@ fn apply_gradient(base: Style, input: &str, from: &str, to: &str) -> String {
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let has_dark_bg = charming_lipgloss::compat::has_dark_background();
+    let has_dark_bg = rusty_lipgloss::compat::has_dark_background();
     let light_dark = |light: &str, dark: &str| -> String {
         if has_dark_bg {
             dark.to_string()
@@ -229,7 +229,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             .render(s)
     };
 
-    let active_tab_border = charming_lipgloss::border::Border {
+    let active_tab_border = rusty_lipgloss::border::Border {
         top: "─".to_string(),
         bottom: " ".to_string(),
         left: "│".to_string(),
@@ -240,7 +240,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         bottom_right: "└".to_string(),
         ..Default::default()
     };
-    let tab_border = charming_lipgloss::border::Border {
+    let tab_border = rusty_lipgloss::border::Border {
         top: "─".to_string(),
         bottom: "─".to_string(),
         left: "│".to_string(),
@@ -546,8 +546,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     {
         let scr = t.screen();
         scr.enter_alt_screen();
-        use charming_x_ansi::mode::{Mode, MODE_MOUSE_BUTTON_EVENT, MODE_MOUSE_EXT_SGR};
-        scr.write_string(&charming_x_ansi::mode::set_mode(&[
+        use rusty_x_ansi::mode::{Mode, MODE_MOUSE_BUTTON_EVENT, MODE_MOUSE_EXT_SGR};
+        scr.write_string(&rusty_x_ansi::mode::set_mode(&[
             Mode::Dec(MODE_MOUSE_BUTTON_EVENT),
             Mode::Dec(MODE_MOUSE_EXT_SGR),
         ]));
@@ -561,14 +561,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut dialog_y = 12i64;
     let main_doc = doc_style.render(&doc);
 
-    let display = |scr: &mut charming_ultraviolet::terminal_screen::TerminalScreen,
+    let display = |scr: &mut rusty_ultraviolet::terminal_screen::TerminalScreen,
                    dialog_x: i64,
                    dialog_y: i64| {
         // Mirrors the upstream display(): clear once, draw the main doc,
         // draw the dialog box on top, then render and flush once. The box
         // origin is signed: when the pre-resize screen width is 0 the box
         // sits partially off-screen and the left columns are clipped.
-        charming_ultraviolet::screen::clear(scr);
+        rusty_ultraviolet::screen::clear(scr);
         let bounds = scr.bounds();
         let main_ss = new_styled_string(&main_doc);
         main_ss.draw(scr, bounds);
@@ -616,8 +616,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     {
         let scr = t.screen();
-        use charming_x_ansi::mode::{Mode, MODE_MOUSE_BUTTON_EVENT, MODE_MOUSE_EXT_SGR};
-        scr.write_string(&charming_x_ansi::mode::reset_mode(&[
+        use rusty_x_ansi::mode::{Mode, MODE_MOUSE_BUTTON_EVENT, MODE_MOUSE_EXT_SGR};
+        scr.write_string(&rusty_x_ansi::mode::reset_mode(&[
             Mode::Dec(MODE_MOUSE_BUTTON_EVENT),
             Mode::Dec(MODE_MOUSE_EXT_SGR),
         ]));

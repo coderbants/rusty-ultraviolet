@@ -28,8 +28,8 @@ use crate::key::{
 use crate::mouse::{
     Mouse, MOUSE_BACKWARD, MOUSE_LEFT, MOUSE_NONE, MOUSE_WHEEL_RIGHT, MOUSE_WHEEL_UP,
 };
-use charming_x_ansi::mouse::MouseButton;
-use charming_x_ansi::parser::{HAS_MORE_FLAG, MISSING_PARAM};
+use rusty_x_ansi::mouse::MouseButton;
+use rusty_x_ansi::parser::{HAS_MORE_FLAG, MISSING_PARAM};
 use unicode_segmentation::UnicodeSegmentation;
 
 // Flags to control the behavior of the parser.
@@ -208,11 +208,11 @@ pub enum DecodedEvent {
     /// ModeReportEvent represents a mode report event (DECRPM).
     ModeReport { mode: i32, value: u8 },
     /// ForegroundColorEvent represents a foreground color event.
-    ForegroundColor(Option<charming_x_ansi::color::RGBColor>),
+    ForegroundColor(Option<rusty_x_ansi::color::RGBColor>),
     /// BackgroundColorEvent represents a background color event.
-    BackgroundColor(Option<charming_x_ansi::color::RGBColor>),
+    BackgroundColor(Option<rusty_x_ansi::color::RGBColor>),
     /// CursorColorEvent represents a cursor color event.
-    CursorColor(Option<charming_x_ansi::color::RGBColor>),
+    CursorColor(Option<rusty_x_ansi::color::RGBColor>),
     /// WindowOpEvent is a window operation report event.
     WindowOp { op: i32, args: Vec<i32> },
     /// CapabilityEvent represents a Termcap/Terminfo response event.
@@ -2493,9 +2493,9 @@ fn parse_apc_data(b: &[u8]) -> Option<DecodedEvent> {
 }
 
 /// parseXParseColor parses an XParseColor string.
-fn parse_xparse_color(data: &[u8]) -> Option<charming_x_ansi::color::RGBColor> {
+fn parse_xparse_color(data: &[u8]) -> Option<rusty_x_ansi::color::RGBColor> {
     let s = std::str::from_utf8(data).unwrap_or("");
-    charming_x_ansi::util::x_parse_color(s)
+    rusty_x_ansi::util::x_parse_color(s)
 }
 
 /// hex_decode decodes a hex string.

@@ -336,13 +336,13 @@ mod tests {
     #[test]
     fn test_border_style() {
         let b = normal_border().style(Style {
-            fg: Some(charming_x_ansi::style::Color::Basic(1)),
+            fg: Some(rusty_x_ansi::style::Color::Basic(1)),
             ..Style::default()
         });
         assert_eq!(b.top.style, b.bottom.style);
         assert_eq!(
             b.top.style.fg,
-            Some(charming_x_ansi::style::Color::Basic(1))
+            Some(rusty_x_ansi::style::Color::Basic(1))
         );
     }
 

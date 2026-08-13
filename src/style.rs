@@ -6,8 +6,8 @@
 //! diffing for efficient terminal rendering.
 //! </public-docs>
 
-use charming_x_ansi::style::{Color, Underline, RESET_STYLE};
-use charming_x_ansi::Style as AnsiStyle;
+use rusty_x_ansi::style::{Color, Underline, RESET_STYLE};
+use rusty_x_ansi::Style as AnsiStyle;
 
 /// These are the available text attributes that can be combined to create
 /// different styles.
@@ -139,7 +139,7 @@ impl Style {
 }
 
 /// Maps the ultraviolet color to the base ansi style color.
-fn ansi_color(c: Color) -> charming_x_ansi::style::Color {
+fn ansi_color(c: Color) -> rusty_x_ansi::style::Color {
     c
 }
 
@@ -207,13 +207,13 @@ pub fn style_diff(from: &Style, to: &Style) -> String {
     let mut params: Vec<String> = Vec::new();
 
     if let Some(c) = b.fg_color {
-        params.push(charming_x_ansi::style::color_seq(&c, 3));
+        params.push(rusty_x_ansi::style::color_seq(&c, 3));
     }
     if let Some(c) = b.bg_color {
-        params.push(charming_x_ansi::style::color_seq(&c, 4));
+        params.push(rusty_x_ansi::style::color_seq(&c, 4));
     }
     if let Some(c) = b.ul_color {
-        params.push(charming_x_ansi::style::color_seq(&c, 5));
+        params.push(rusty_x_ansi::style::color_seq(&c, 5));
     }
 
     if (bold_changed || faint_changed) && ((from_bold && !to_bold) || (from_faint && !to_faint)) {

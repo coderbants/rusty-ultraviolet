@@ -1,14 +1,16 @@
 <p>
-    <a href="charming_ultraviolet.png"><img src="charming_ultraviolet.png" width="400" alt="Charming Ultraviolet"></a><br>
-    <a href="https://crates.io/crates/charming-ultraviolet"><img src="https://img.shields.io/crates/v/charming-ultraviolet.svg" alt="crates.io"></a>
-    <a href="https://github.com/coderbants/charming-ultraviolet/actions"><img src="https://github.com/coderbants/charming-ultraviolet/actions/workflows/ci.yml/badge.svg" alt="Build Status"></a>
+    <a href="rusty_ultraviolet.png"><img src="rusty_ultraviolet.png" width="400" alt="Rusty Ultraviolet"></a><br>
+    <a href="https://crates.io/crates/rusty-ultraviolet"><img src="https://img.shields.io/crates/v/rusty-ultraviolet.svg" alt="crates.io"></a>
+    <a href="https://github.com/coderbants/rusty-ultraviolet/actions"><img src="https://github.com/coderbants/rusty-ultraviolet/actions/workflows/ci.yml/badge.svg" alt="Build Status"></a>
 </p>
 
-# Charming Ultraviolet (`charming-ultraviolet`)
+# Rusty Ultraviolet (`rusty-ultraviolet`)
 
-**Charming Ultraviolet** is a complete, from-scratch Rust port of [Ultraviolet](https://github.com/charmbracelet/ultraviolet), Charmbracelet's set of primitives for manipulating terminal emulators — cell-based screen buffers, a diffing terminal renderer, and cross-platform input decoding. It tracks upstream on a rolling basis. **Version policy: the crate version and every release tag must equal the tracked upstream version exactly (for untagged upstreams, the full pseudo-version including its commit suffix) — never ahead, never behind** (enforced by `scripts/verify_upstream_version.sh` in CI and on every release). It holds a hard goal of **1:1 behavioural, visual and license parity**: the same escape sequences, cell semantics, and rendering output, favoring fidelity to upstream over Rust-native rewrites whenever the two would diverge.
+**Rusty Ultraviolet** is a complete, from-scratch Rust port of [Ultraviolet](https://github.com/charmbracelet/ultraviolet), Charmbracelet's set of primitives for manipulating terminal emulators — cell-based screen buffers, a diffing terminal renderer, and cross-platform input decoding. It tracks upstream on a rolling basis. **Version policy: the crate version and every release tag must equal the tracked upstream version exactly (for untagged upstreams, the full pseudo-version including its commit suffix) — never ahead, never behind** (enforced by `scripts/verify_upstream_version.sh` in CI and on every release). It holds a hard goal of **1:1 behavioural, visual and license parity**: the same escape sequences, cell semantics, and rendering output, favoring fidelity to upstream over Rust-native rewrites whenever the two would diverge.
 
-It's part of the Charming port family of the Bubble Tea ecosystem and builds on [charming-x-ansi](https://github.com/coderbants/charming-x-ansi) (ANSI primitives) and [charming-colorprofile](https://github.com/coderbants/charming-colorprofile) — it powers [charming-bubbletea](https://github.com/coderbants/charming-bubbletea), [charming-lipgloss](https://github.com/coderbants/charming-lipgloss) and [charming-bubbles](https://github.com/coderbants/charming-bubbles).
+It's part of the Rusty port family of the Bubble Tea ecosystem and builds on [rusty-x-ansi](https://github.com/coderbants/rusty-x-ansi) (ANSI primitives) and [rusty-colorprofile](https://github.com/coderbants/rusty-colorprofile) — it powers [rusty-bubbletea](https://github.com/coderbants/rusty-bubbletea), [rusty-lipgloss](https://github.com/coderbants/rusty-lipgloss) and [rusty-bubbles](https://github.com/coderbants/rusty-bubbles).
+
+***About Ultraviolet***
 
 Ultraviolet is a set of primitives for manipulating terminal emulators, with a focus on terminal user interfaces (TUIs). It provides a set of tools and abstractions for interaction that can handle user input and display dynamic, cell-based content. It's the product of many years of research, development, collaboration and ingenuity.
 
@@ -25,7 +27,7 @@ Ultraviolet is not a framework by design, however it can be used standalone to c
 ## Installation
 
 ```sh
-cargo add charming-ultraviolet
+cargo add rusty-ultraviolet
 ```
 
 Ultraviolet provides cell-based screen buffers, a diffing terminal renderer and
@@ -37,11 +39,11 @@ A minimal full-screen application: enter the alternate screen, draw a centered
 message, and exit on any key press.
 
 ```rust
-use charming_ultraviolet::decoder::DecodedEvent;
-use charming_ultraviolet::screen::clear;
-use charming_ultraviolet::screen_context::new_context;
-use charming_ultraviolet::terminal::default_terminal;
-use charming_ultraviolet::terminal_screen::TerminalScreen;
+use rusty_ultraviolet::decoder::DecodedEvent;
+use rusty_ultraviolet::screen::clear;
+use rusty_ultraviolet::screen_context::new_context;
+use rusty_ultraviolet::terminal::default_terminal;
+use rusty_ultraviolet::terminal_screen::TerminalScreen;
 
 fn draw(scr: &mut TerminalScreen) {
     clear(scr);
@@ -79,7 +81,7 @@ fn main() {
 
 For a longer walkthrough — window resize handling, the inline (non-alternate)
 screen, mouse events, and drawing with `Drawable` components — see
-[TUTORIAL.md](./TUTORIAL.md), and the [examples](https://github.com/coderbants/charming-ultraviolet/tree/dev/examples)
+[TUTORIAL.md](./TUTORIAL.md), and the [examples](https://github.com/coderbants/rusty-ultraviolet/tree/dev/examples)
 directory for complete programs.
 
 ## Features

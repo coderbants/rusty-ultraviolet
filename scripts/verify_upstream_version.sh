@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# Enforces the Charming version policy:
+# Enforces the Rusty version policy:
 #
 #   THE CRATE VERSION AND EVERY RELEASE TAG MUST EQUAL THE TRACKED UPSTREAM
 #   VERSION — NEVER AHEAD, NEVER BEHIND.

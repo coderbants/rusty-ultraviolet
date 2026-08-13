@@ -8,7 +8,7 @@
 
 use crate::console::Winsize;
 use crate::key::{KeyMod, MOD_ALT, MOD_CTRL, MOD_SHIFT};
-use charming_x_ansi::mouse::MouseButton;
+use rusty_x_ansi::mouse::MouseButton;
 
 /// MouseMode represents the mouse tracking mode for the terminal.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -39,29 +39,29 @@ pub enum MouseEncoding {
 /// Mouse event buttons.
 ///
 /// This is based on X11 mouse button codes.
-pub const MOUSE_NONE: MouseButton = charming_x_ansi::mouse::MOUSE_NONE;
+pub const MOUSE_NONE: MouseButton = rusty_x_ansi::mouse::MOUSE_NONE;
 /// Left button.
-pub const MOUSE_LEFT: MouseButton = charming_x_ansi::mouse::MOUSE_BUTTON_1;
+pub const MOUSE_LEFT: MouseButton = rusty_x_ansi::mouse::MOUSE_BUTTON_1;
 /// Middle button (pressing the scroll wheel).
-pub const MOUSE_MIDDLE: MouseButton = charming_x_ansi::mouse::MOUSE_BUTTON_2;
+pub const MOUSE_MIDDLE: MouseButton = rusty_x_ansi::mouse::MOUSE_BUTTON_2;
 /// Right button.
-pub const MOUSE_RIGHT: MouseButton = charming_x_ansi::mouse::MOUSE_BUTTON_3;
+pub const MOUSE_RIGHT: MouseButton = rusty_x_ansi::mouse::MOUSE_BUTTON_3;
 /// Turn scroll wheel up.
-pub const MOUSE_WHEEL_UP: MouseButton = charming_x_ansi::mouse::MOUSE_BUTTON_4;
+pub const MOUSE_WHEEL_UP: MouseButton = rusty_x_ansi::mouse::MOUSE_BUTTON_4;
 /// Turn scroll wheel down.
-pub const MOUSE_WHEEL_DOWN: MouseButton = charming_x_ansi::mouse::MOUSE_BUTTON_5;
+pub const MOUSE_WHEEL_DOWN: MouseButton = rusty_x_ansi::mouse::MOUSE_BUTTON_5;
 /// Push scroll wheel left.
-pub const MOUSE_WHEEL_LEFT: MouseButton = charming_x_ansi::mouse::MOUSE_BUTTON_6;
+pub const MOUSE_WHEEL_LEFT: MouseButton = rusty_x_ansi::mouse::MOUSE_BUTTON_6;
 /// Push scroll wheel right.
-pub const MOUSE_WHEEL_RIGHT: MouseButton = charming_x_ansi::mouse::MOUSE_BUTTON_7;
+pub const MOUSE_WHEEL_RIGHT: MouseButton = rusty_x_ansi::mouse::MOUSE_BUTTON_7;
 /// 4th button (aka browser backward button).
-pub const MOUSE_BACKWARD: MouseButton = charming_x_ansi::mouse::MOUSE_BUTTON_8;
+pub const MOUSE_BACKWARD: MouseButton = rusty_x_ansi::mouse::MOUSE_BUTTON_8;
 /// 5th button (aka browser forward button).
-pub const MOUSE_FORWARD: MouseButton = charming_x_ansi::mouse::MOUSE_BUTTON_9;
+pub const MOUSE_FORWARD: MouseButton = rusty_x_ansi::mouse::MOUSE_BUTTON_9;
 /// Button 10.
-pub const MOUSE_BUTTON_10: MouseButton = charming_x_ansi::mouse::MOUSE_BUTTON_10;
+pub const MOUSE_BUTTON_10: MouseButton = rusty_x_ansi::mouse::MOUSE_BUTTON_10;
 /// Button 11.
-pub const MOUSE_BUTTON_11: MouseButton = charming_x_ansi::mouse::MOUSE_BUTTON_11;
+pub const MOUSE_BUTTON_11: MouseButton = rusty_x_ansi::mouse::MOUSE_BUTTON_11;
 
 /// Mouse represents a Mouse message.
 ///

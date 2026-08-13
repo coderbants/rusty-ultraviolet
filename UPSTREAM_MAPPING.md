@@ -1,12 +1,12 @@
-# Upstream Go File Mapping: `charming-ultraviolet`
+# Upstream Go File Mapping: `rusty-ultraviolet`
 
 Target Upstream Tag: `github.com/charmbracelet/ultraviolet@v0.0.0-20251205161215-1948445e3318` (first pin)
 
 This mapping accounts for **every** file in the upstream repository at this pin (source,
 tests, examples, docs, and support files). The full repo history is checked out locally in
 `upstream-go/` (gitignored) so the diff-forward workflow for the second required pin
-(`v0.0.0-20260703014108-f5a850f9c2b7`, used by charming-bubbletea v2.0.8) can run via
-`git diff 1948445..f5a850f` per [`/Users/jonny/Projects/charming/DEPENDENCY_PLAN.md`](../DEPENDENCY_PLAN.md) §6.
+(`v0.0.0-20260703014108-f5a850f9c2b7`, used by rusty-bubbletea v2.0.8) can run via
+`git diff 1948445..f5a850f` per [`/Users/jonny/Projects/rusty/DEPENDENCY_PLAN.md`](../DEPENDENCY_PLAN.md) §6.
 
 ## Source Files (package `ultraviolet`)
 
@@ -19,7 +19,7 @@ tests, examples, docs, and support files). The full repo history is checked out 
 | `buffer.go` | `src/buffer.rs` | `Buffer`, `ScreenBuffer`, `Line`, render/trim helpers |
 | `screen/screen.go` | `src/screen.rs` | `Screen`/`Renderable` interfaces, `Rectangle` |
 | `styled.go` | `src/styled.rs` — **Ported** | StyledString + printString + ReadStyle/ReadLink (SGR/hyperlink parsing; Go-verified zero-bounds Lines quirk) | `StyledString` drawable |
-| `style.go` (in `styled.go` context) | `src/style.rs` | SGR `Style` (thin wrapper over `charming-x-ansi`) |
+| `style.go` (in `styled.go` context) | `src/style.rs` | SGR `Style` (thin wrapper over `rusty-x-ansi`) |
 | `event.go` | `src/event.rs` | `Event` interface and typed event wrappers |
 | `environ.go` | `src/environ.rs` | `Environ` helpers (`Getenv`, `LookupEnv`) |
 | `logger.go` | `src/logger.rs` | `Logger` interface |
@@ -114,11 +114,11 @@ section.
 
 | Go dependency | Version | Rust handling |
 | --- | --- | --- |
-| `charmbracelet/colorprofile` | v0.3.3 | `charming-colorprofile` v0.3.3 (sibling repo) |
-| `charmbracelet/x/ansi` | v0.11.2 | `charming-x-ansi` v0.11.2 (sibling repo) |
-| `charmbracelet/x/term` | v0.2.2 | `charming-x-term` v0.2.2 (sibling repo) |
-| `charmbracelet/x/termios` | v0.1.1 | `charming-x-termios` v0.1.1 (sibling repo) |
-| `charmbracelet/x/windows` | v0.2.2 | `charming-x-windows` v0.2.2 (sibling repo) |
+| `charmbracelet/colorprofile` | v0.3.3 | `rusty-colorprofile` v0.3.3 (sibling repo) |
+| `charmbracelet/x/ansi` | v0.11.2 | `rusty-x-ansi` v0.11.2 (sibling repo) |
+| `charmbracelet/x/term` | v0.2.2 | `rusty-x-term` v0.2.2 (sibling repo) |
+| `charmbracelet/x/termios` | v0.1.1 | `rusty-x-termios` v0.1.1 (sibling repo) |
+| `charmbracelet/x/windows` | v0.2.2 | `rusty-x-windows` v0.2.2 (sibling repo) |
 | `clipperhouse/{displaywidth,stringish,uax29/v2}` | various | `unicode-width`/`unicode-segmentation` crates |
 | `lucasb-eyer/go-colorful` | v1.3.0 | In-line color math |
 | `mattn/go-runewidth` | v0.0.19 | `unicode-width` crate |
@@ -129,7 +129,7 @@ section.
 
 ## Second Pin (diff-forward target)
 
-`v0.0.0-20260703014108-f5a850f9c2b7` (charming-bubbletea v2.0.8): ported after this pin by
+`v0.0.0-20260703014108-f5a850f9c2b7` (rusty-bubbletea v2.0.8): ported after this pin by
 diffing `git diff 1948445..f5a850f -- '*.go'` inside `upstream-go/` and applying the changes.
 Per the multi-version rule this second pin is published as a separate crate version
 (`0.0.0-20260703014108`) with its own mapping entries appended to this document when ported.

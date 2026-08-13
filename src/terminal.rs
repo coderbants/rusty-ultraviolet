@@ -227,7 +227,7 @@ impl Terminal {
                                 use std::io::Write as _;
                                 let mut out = FdFile::stdout_file();
                                 let _ = out.write_all(
-                                    charming_x_ansi::mode::SET_MODE_UNICODE_CORE.as_bytes(),
+                                    rusty_x_ansi::mode::SET_MODE_UNICODE_CORE.as_bytes(),
                                 );
                             }
                         }

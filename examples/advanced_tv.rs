@@ -1,13 +1,13 @@
 //! Cleanroom Rust port of upstream Go example: `examples/advanced/tv/main.go`
 //! Upstream Target Tag / Version: `v0.0.0-20260703014108-f5a850f9c2b7`
 
-use charming_ultraviolet::cell::empty_cell;
-use charming_ultraviolet::decoder::DecodedEvent;
-use charming_ultraviolet::screen::{clear, fill_area, rect};
-use charming_ultraviolet::terminal::default_terminal;
-use charming_ultraviolet::terminal_screen::TerminalScreen;
-use charming_x_ansi::color::RGBColor;
-use charming_x_ansi::style::Color;
+use rusty_ultraviolet::cell::empty_cell;
+use rusty_ultraviolet::decoder::DecodedEvent;
+use rusty_ultraviolet::screen::{clear, fill_area, rect};
+use rusty_ultraviolet::terminal::default_terminal;
+use rusty_ultraviolet::terminal_screen::TerminalScreen;
+use rusty_x_ansi::color::RGBColor;
+use rusty_x_ansi::style::Color;
 
 const BAR_COUNT: usize = 7;
 const BOT_BAR_COUNT: usize = 6;

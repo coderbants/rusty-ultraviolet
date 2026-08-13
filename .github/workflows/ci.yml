@@ -79,51 +79,51 @@ jobs:
         run: |
           git clone --quiet https://github.com/charmbracelet/ultraviolet.git upstream-go
           cd upstream-go && git checkout --quiet f5a850f9c2b7ed4def3807fe12d0b5e76d345bdc
-      - name: Fetch sibling charming-bubbletea (pinned)
+      - name: Fetch sibling rusty-bubbletea (pinned)
         uses: actions/checkout@v4
         with:
-          repository: coderbants/charming-bubbletea
-          path: siblings/charming-bubbletea
+          repository: coderbants/rusty-bubbletea
+          path: siblings/rusty-bubbletea
           ref: dev
-      - name: Fetch sibling charming-bubbles (pinned)
+      - name: Fetch sibling rusty-bubbles (pinned)
         uses: actions/checkout@v4
         with:
-          repository: coderbants/charming-bubbles
-          path: siblings/charming-bubbles
+          repository: coderbants/rusty-bubbles
+          path: siblings/rusty-bubbles
           ref: dev
-      - name: Fetch sibling charming-colorprofile (pinned)
+      - name: Fetch sibling rusty-colorprofile (pinned)
         uses: actions/checkout@v4
         with:
-          repository: coderbants/charming-colorprofile
-          path: siblings/charming-colorprofile
+          repository: coderbants/rusty-colorprofile
+          path: siblings/rusty-colorprofile
           ref: dev
-      - name: Fetch sibling charming-lipgloss (pinned)
+      - name: Fetch sibling rusty-lipgloss (pinned)
         uses: actions/checkout@v4
         with:
-          repository: coderbants/charming-lipgloss
-          path: siblings/charming-lipgloss
+          repository: coderbants/rusty-lipgloss
+          path: siblings/rusty-lipgloss
           ref: dev
-      - name: Fetch sibling charming-testkit (pinned)
+      - name: Fetch sibling rusty-testkit (pinned)
         uses: actions/checkout@v4
         with:
-          repository: coderbants/charming-testkit
-          path: siblings/charming-testkit
+          repository: coderbants/rusty-testkit
+          path: siblings/rusty-testkit
           ref: dev
-      - name: Fetch sibling charming-x-ansi (pinned)
+      - name: Fetch sibling rusty-x-ansi (pinned)
         uses: actions/checkout@v4
         with:
-          repository: coderbants/charming-x-ansi
-          path: siblings/charming-x-ansi
+          repository: coderbants/rusty-x-ansi
+          path: siblings/rusty-x-ansi
           ref: dev
       - name: Place sibling crates
         run: |
           mkdir -p ../siblings && true
-          mv siblings/charming-bubbletea ../charming-bubbletea
-          mv siblings/charming-bubbles ../charming-bubbles
-          mv siblings/charming-colorprofile ../charming-colorprofile
-          mv siblings/charming-lipgloss ../charming-lipgloss
-          mv siblings/charming-testkit ../charming-testkit
-          mv siblings/charming-x-ansi ../charming-x-ansi
+          mv siblings/rusty-bubbletea ../rusty-bubbletea
+          mv siblings/rusty-bubbles ../rusty-bubbles
+          mv siblings/rusty-colorprofile ../rusty-colorprofile
+          mv siblings/rusty-lipgloss ../rusty-lipgloss
+          mv siblings/rusty-testkit ../rusty-testkit
+          mv siblings/rusty-x-ansi ../rusty-x-ansi
       - name: Format
         run: cargo fmt --all --check
       - name: Lint

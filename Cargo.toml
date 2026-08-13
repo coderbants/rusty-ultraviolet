@@ -1,21 +1,21 @@
 [package]
-name = "charming-ultraviolet"
-version = "0.0.0-20260813000000"
+name = "rusty-ultraviolet"
+version = "0.0.0-20260703014108-f5a850f9c2b7"
 edition = "2021"
 description = "Cleanroom Rust port of Charmbracelet's Ultraviolet (pin v0.0.0-20260703014108-f5a850f9c2b7) terminal rendering library"
 license = "MIT"
 
 [dependencies]
-charming-colorprofile = { version = "0.4.5", path = "../charming-colorprofile" }
-charming-x-ansi = { version = "0.0.0-20260813000000", path = "../charming-x-ansi" }
+rusty-colorprofile = { version = "0.4.3", path = "../rusty-colorprofile" }
+rusty-x-ansi = { version = "0.11.7", path = "../rusty-x-ansi" }
 unicode-segmentation = "1.10.1"
 unicode-width = "0.1"
 libc = "0.2"
 
 [dev-dependencies]
-charming-testkit = { version = "0.1.1", path = "../charming-testkit" }
-charming-lipgloss = { version = "2.0.7", path = "../charming-lipgloss" }
+rusty-testkit = { version = "0.1.1", path = "../rusty-testkit" }
+rusty-lipgloss = { version = "2.0.5", path = "../rusty-lipgloss" }
 
 [lib]
-name = "charming_ultraviolet"
+name = "rusty_ultraviolet"
 path = "src/lib.rs"

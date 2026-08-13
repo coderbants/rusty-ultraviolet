@@ -1,14 +1,14 @@
 //! Cleanroom Rust port of upstream Go example: `examples/draw/main.go`
 //! Upstream Target Tag / Version: `v0.0.0-20260703014108-f5a850f9c2b7`
 
-use charming_ultraviolet::cell::{empty_cell, Cell};
-use charming_ultraviolet::decoder::DecodedEvent;
-use charming_ultraviolet::mouse::Mouse;
-use charming_ultraviolet::screen::{clear, clone_area, rect};
-use charming_ultraviolet::styled::new_styled_string;
-use charming_ultraviolet::terminal::default_terminal;
-use charming_ultraviolet::terminal_screen::TerminalScreen;
-use charming_x_ansi::mode::{Mode, MODE_FOCUS_EVENT, MODE_MOUSE_BUTTON_EVENT, MODE_MOUSE_EXT_SGR};
+use rusty_ultraviolet::cell::{empty_cell, Cell};
+use rusty_ultraviolet::decoder::DecodedEvent;
+use rusty_ultraviolet::mouse::Mouse;
+use rusty_ultraviolet::screen::{clear, clone_area, rect};
+use rusty_ultraviolet::styled::new_styled_string;
+use rusty_ultraviolet::terminal::default_terminal;
+use rusty_ultraviolet::terminal_screen::TerminalScreen;
+use rusty_x_ansi::mode::{Mode, MODE_FOCUS_EVENT, MODE_MOUSE_BUTTON_EVENT, MODE_MOUSE_EXT_SGR};
 
 const HELP: &str = "Welcome to Draw Example!
 
@@ -25,7 +25,7 @@ Press any key to continue...";
 fn display_help(
     scr: &mut TerminalScreen,
     show: bool,
-    prev_help_buf: &mut Option<charming_ultraviolet::Buffer>,
+    prev_help_buf: &mut Option<rusty_ultraviolet::Buffer>,
 ) {
     let help_comp = new_styled_string(HELP);
     let help_area = help_comp.bounds();
@@ -135,14 +135,14 @@ fn main() {
 
     {
         let scr = t.screen();
-        scr.write_string(&charming_x_ansi::mode::set_mode(&[
+        scr.write_string(&rusty_x_ansi::mode::set_mode(&[
             Mode::Dec(MODE_MOUSE_BUTTON_EVENT),
             Mode::Dec(MODE_MOUSE_EXT_SGR),
             Mode::Dec(MODE_FOCUS_EVENT),
         ]));
     }
 
-    let mut prev_help_buf: Option<charming_ultraviolet::Buffer> = None;
+    let mut prev_help_buf: Option<rusty_ultraviolet::Buffer> = None;
     let mut showing_help = true;
     display_help(t.screen(), showing_help, &mut prev_help_buf);
 
@@ -190,10 +190,10 @@ fn main() {
                     let ch = text.chars().next().unwrap_or(' ');
                     if text.len() == 1 && ch.is_ascii_digit() {
                         let fg = (ch as u32) - '0' as u32;
-                        pen.style.fg = Some(charming_x_ansi::style::Color::Basic(fg as u8));
+                        pen.style.fg = Some(rusty_x_ansi::style::Color::Basic(fg as u8));
                     } else {
                         pen.content = text.clone();
-                        pen.width = charming_x_ansi::width::string_width(&text).max(1);
+                        pen.width = rusty_x_ansi::width::string_width(&text).max(1);
                     }
                 }
             }
@@ -204,7 +204,7 @@ fn main() {
                 run_draw(t.screen(), &pen, &m);
             }
             DecodedEvent::MouseMotion(m) => {
-                if showing_help || m.button == charming_ultraviolet::mouse::MOUSE_NONE {
+                if showing_help || m.button == rusty_ultraviolet::mouse::MOUSE_NONE {
                     continue;
                 }
                 run_draw(t.screen(), &pen, &m);
@@ -215,7 +215,7 @@ fn main() {
 
     {
         let scr = t.screen();
-        scr.write_string(&charming_x_ansi::mode::reset_mode(&[
+        scr.write_string(&rusty_x_ansi::mode::reset_mode(&[
             Mode::Dec(MODE_MOUSE_BUTTON_EVENT),
             Mode::Dec(MODE_MOUSE_EXT_SGR),
             Mode::Dec(MODE_FOCUS_EVENT),

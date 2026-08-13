@@ -143,9 +143,9 @@ pub trait WidthMethod {
     fn string_width(&self, s: &str) -> usize;
 }
 
-impl WidthMethod for charming_x_ansi::method::WidthMethod {
+impl WidthMethod for rusty_x_ansi::method::WidthMethod {
     fn string_width(&self, s: &str) -> usize {
-        charming_x_ansi::method::WidthMethod::string_width(self, s)
+        rusty_x_ansi::method::WidthMethod::string_width(self, s)
     }
 }
 
@@ -193,7 +193,7 @@ pub struct Cursor {
     pub position: Position,
 
     /// Color is a color that determines the cursor's color.
-    pub color: Option<charming_x_ansi::color::RGBColor>,
+    pub color: Option<rusty_x_ansi::color::RGBColor>,
 
     /// Shape is a [CursorShape] that determines the cursor's shape.
     pub shape: CursorShape,
@@ -303,13 +303,13 @@ pub fn new_keyboard_enhancements(flags: i32) -> KeyboardEnhancements {
     }
     let f = flags as u8;
     KeyboardEnhancements {
-        disambiguate_escape_codes: f & charming_x_ansi::kitty::KITTY_DISAMBIGUATE_ESCAPE_CODES != 0,
-        report_event_types: f & charming_x_ansi::kitty::KITTY_REPORT_EVENT_TYPES != 0,
-        report_alternate_keys: f & charming_x_ansi::kitty::KITTY_REPORT_ALTERNATE_KEYS != 0,
+        disambiguate_escape_codes: f & rusty_x_ansi::kitty::KITTY_DISAMBIGUATE_ESCAPE_CODES != 0,
+        report_event_types: f & rusty_x_ansi::kitty::KITTY_REPORT_EVENT_TYPES != 0,
+        report_alternate_keys: f & rusty_x_ansi::kitty::KITTY_REPORT_ALTERNATE_KEYS != 0,
         report_all_keys_as_escape_codes: f
-            & charming_x_ansi::kitty::KITTY_REPORT_ALL_KEYS_AS_ESCAPE_CODES
+            & rusty_x_ansi::kitty::KITTY_REPORT_ALL_KEYS_AS_ESCAPE_CODES
             != 0,
-        report_associated_text: f & charming_x_ansi::kitty::KITTY_REPORT_ASSOCIATED_KEYS != 0,
+        report_associated_text: f & rusty_x_ansi::kitty::KITTY_REPORT_ASSOCIATED_KEYS != 0,
     }
 }
 
@@ -319,19 +319,19 @@ impl KeyboardEnhancements {
     pub fn flags(&self) -> i32 {
         let mut bits: u8 = 0;
         if self.disambiguate_escape_codes {
-            bits |= charming_x_ansi::kitty::KITTY_DISAMBIGUATE_ESCAPE_CODES;
+            bits |= rusty_x_ansi::kitty::KITTY_DISAMBIGUATE_ESCAPE_CODES;
         }
         if self.report_event_types {
-            bits |= charming_x_ansi::kitty::KITTY_REPORT_EVENT_TYPES;
+            bits |= rusty_x_ansi::kitty::KITTY_REPORT_EVENT_TYPES;
         }
         if self.report_alternate_keys {
-            bits |= charming_x_ansi::kitty::KITTY_REPORT_ALTERNATE_KEYS;
+            bits |= rusty_x_ansi::kitty::KITTY_REPORT_ALTERNATE_KEYS;
         }
         if self.report_all_keys_as_escape_codes {
-            bits |= charming_x_ansi::kitty::KITTY_REPORT_ALL_KEYS_AS_ESCAPE_CODES;
+            bits |= rusty_x_ansi::kitty::KITTY_REPORT_ALL_KEYS_AS_ESCAPE_CODES;
         }
         if self.report_associated_text {
-            bits |= charming_x_ansi::kitty::KITTY_REPORT_ASSOCIATED_KEYS;
+            bits |= rusty_x_ansi::kitty::KITTY_REPORT_ASSOCIATED_KEYS;
         }
         bits as i32
     }
@@ -341,11 +341,11 @@ impl KeyboardEnhancements {
 /// Use None to reset the background color to the default.
 pub fn encode_background_color(
     w: &mut dyn Write,
-    c: Option<&charming_x_ansi::color::RGBColor>,
+    c: Option<&rusty_x_ansi::color::RGBColor>,
 ) -> io::Result<()> {
     let seq = match c {
-        None => charming_x_ansi::background::RESET_BACKGROUND_COLOR.to_string(),
-        Some(col) => charming_x_ansi::background::set_background_color(&col.hex()),
+        None => rusty_x_ansi::background::RESET_BACKGROUND_COLOR.to_string(),
+        Some(col) => rusty_x_ansi::background::set_background_color(&col.hex()),
     };
     w.write_all(seq.as_bytes())?;
     Ok(())
@@ -355,11 +355,11 @@ pub fn encode_background_color(
 /// Use None to reset the foreground color to the default.
 pub fn encode_foreground_color(
     w: &mut dyn Write,
-    c: Option<&charming_x_ansi::color::RGBColor>,
+    c: Option<&rusty_x_ansi::color::RGBColor>,
 ) -> io::Result<()> {
     let seq = match c {
-        None => charming_x_ansi::background::RESET_FOREGROUND_COLOR.to_string(),
-        Some(col) => charming_x_ansi::background::set_foreground_color(&col.hex()),
+        None => rusty_x_ansi::background::RESET_FOREGROUND_COLOR.to_string(),
+        Some(col) => rusty_x_ansi::background::set_foreground_color(&col.hex()),
     };
     w.write_all(seq.as_bytes())?;
     Ok(())
@@ -369,11 +369,11 @@ pub fn encode_foreground_color(
 /// to reset the cursor color to the default.
 pub fn encode_cursor_color(
     w: &mut dyn Write,
-    c: Option<&charming_x_ansi::color::RGBColor>,
+    c: Option<&rusty_x_ansi::color::RGBColor>,
 ) -> io::Result<()> {
     let seq = match c {
-        None => charming_x_ansi::background::RESET_CURSOR_COLOR.to_string(),
-        Some(col) => charming_x_ansi::background::set_cursor_color(&col.hex()),
+        None => rusty_x_ansi::background::RESET_CURSOR_COLOR.to_string(),
+        Some(col) => rusty_x_ansi::background::set_cursor_color(&col.hex()),
     };
     w.write_all(seq.as_bytes())?;
     Ok(())
@@ -381,7 +381,7 @@ pub fn encode_cursor_color(
 
 /// EncodeCursorStyle encodes the cursor style to the given writer.
 pub fn encode_cursor_style(w: &mut dyn Write, shape: CursorShape, blink: bool) -> io::Result<()> {
-    let seq = charming_x_ansi::cursor::set_cursor_style(shape.encode(blink));
+    let seq = rusty_x_ansi::cursor::set_cursor_style(shape.encode(blink));
     w.write_all(seq.as_bytes())?;
     Ok(())
 }
@@ -390,9 +390,9 @@ pub fn encode_cursor_style(w: &mut dyn Write, shape: CursorShape, blink: bool) -
 /// writer.
 pub fn encode_bracketed_paste(w: &mut dyn Write, enable: bool) -> io::Result<()> {
     let seq = if enable {
-        charming_x_ansi::mode::SET_MODE_BRACKETED_PASTE
+        rusty_x_ansi::mode::SET_MODE_BRACKETED_PASTE
     } else {
-        charming_x_ansi::mode::RESET_MODE_BRACKETED_PASTE
+        rusty_x_ansi::mode::RESET_MODE_BRACKETED_PASTE
     };
     w.write_all(seq.as_bytes())?;
     Ok(())
@@ -402,15 +402,15 @@ pub fn encode_bracketed_paste(w: &mut dyn Write, enable: bool) -> io::Result<()>
 pub fn encode_mouse_mode(w: &mut dyn Write, mode: MouseMode) -> io::Result<()> {
     let seq = match mode {
         MouseMode::MouseModeNone => {
-            charming_x_ansi::mode::RESET_MODE_MOUSE_X10.to_owned()
-                + charming_x_ansi::mode::RESET_MODE_MOUSE_NORMAL
-                + charming_x_ansi::mode::RESET_MODE_MOUSE_BUTTON_EVENT
-                + charming_x_ansi::mode::RESET_MODE_MOUSE_ANY_EVENT
+            rusty_x_ansi::mode::RESET_MODE_MOUSE_X10.to_owned()
+                + rusty_x_ansi::mode::RESET_MODE_MOUSE_NORMAL
+                + rusty_x_ansi::mode::RESET_MODE_MOUSE_BUTTON_EVENT
+                + rusty_x_ansi::mode::RESET_MODE_MOUSE_ANY_EVENT
         }
-        MouseMode::MouseModePress => charming_x_ansi::mode::SET_MODE_MOUSE_X10.to_string(),
-        MouseMode::MouseModeClick => charming_x_ansi::mode::SET_MODE_MOUSE_NORMAL.to_string(),
-        MouseMode::MouseModeDrag => charming_x_ansi::mode::SET_MODE_MOUSE_BUTTON_EVENT.to_string(),
-        MouseMode::MouseModeMotion => charming_x_ansi::mode::SET_MODE_MOUSE_ANY_EVENT.to_string(),
+        MouseMode::MouseModePress => rusty_x_ansi::mode::SET_MODE_MOUSE_X10.to_string(),
+        MouseMode::MouseModeClick => rusty_x_ansi::mode::SET_MODE_MOUSE_NORMAL.to_string(),
+        MouseMode::MouseModeDrag => rusty_x_ansi::mode::SET_MODE_MOUSE_BUTTON_EVENT.to_string(),
+        MouseMode::MouseModeMotion => rusty_x_ansi::mode::SET_MODE_MOUSE_ANY_EVENT.to_string(),
     };
     w.write_all(seq.as_bytes())?;
     Ok(())
@@ -422,15 +422,15 @@ pub fn encode_mouse_mode(w: &mut dyn Write, mode: MouseMode) -> io::Result<()> {
 pub fn encode_mouse_encoding(w: &mut dyn Write, enc: MouseEncoding) -> io::Result<()> {
     let seq = match enc {
         MouseEncoding::MouseEncodingLegacy => {
-            charming_x_ansi::mode::RESET_MODE_MOUSE_EXT_SGR.to_owned()
-                + charming_x_ansi::mode::RESET_MODE_MOUSE_EXT_URXVT
-                + charming_x_ansi::mode::RESET_MODE_MOUSE_EXT_SGR_PIXEL
+            rusty_x_ansi::mode::RESET_MODE_MOUSE_EXT_SGR.to_owned()
+                + rusty_x_ansi::mode::RESET_MODE_MOUSE_EXT_URXVT
+                + rusty_x_ansi::mode::RESET_MODE_MOUSE_EXT_SGR_PIXEL
         }
         MouseEncoding::MouseEncodingSGR => {
-            charming_x_ansi::mode::SET_MODE_MOUSE_EXT_SGR.to_string()
+            rusty_x_ansi::mode::SET_MODE_MOUSE_EXT_SGR.to_string()
         }
         MouseEncoding::MouseEncodingSGRPixel => {
-            charming_x_ansi::mode::SET_MODE_MOUSE_EXT_SGR_PIXEL.to_string()
+            rusty_x_ansi::mode::SET_MODE_MOUSE_EXT_SGR_PIXEL.to_string()
         }
     };
     w.write_all(seq.as_bytes())?;
@@ -451,19 +451,19 @@ pub fn encode_progress_bar(w: &mut dyn Write, pb: Option<&ProgressBar>) -> io::R
         let percent = clamp(pb.value, 0, 100);
         match pb.state {
             ProgressBarState::ProgressBarNone => {
-                charming_x_ansi::progress::RESET_PROGRESS_BAR.to_string()
+                rusty_x_ansi::progress::RESET_PROGRESS_BAR.to_string()
             }
             ProgressBarState::ProgressBarDefault => {
-                charming_x_ansi::progress::set_progress_bar(percent)
+                rusty_x_ansi::progress::set_progress_bar(percent)
             }
             ProgressBarState::ProgressBarError => {
-                charming_x_ansi::progress::set_error_progress_bar(percent)
+                rusty_x_ansi::progress::set_error_progress_bar(percent)
             }
             ProgressBarState::ProgressBarIndeterminate => {
-                charming_x_ansi::progress::SET_INDETERMINATE_PROGRESS_BAR.to_string()
+                rusty_x_ansi::progress::SET_INDETERMINATE_PROGRESS_BAR.to_string()
             }
             ProgressBarState::ProgressBarWarning => {
-                charming_x_ansi::progress::set_warning_progress_bar(percent)
+                rusty_x_ansi::progress::set_warning_progress_bar(percent)
             }
         }
     };
@@ -534,7 +534,7 @@ mod tests {
         out.clear();
         encode_foreground_color(&mut out, None).unwrap();
         assert_eq!(out, b"\x1b]110\x07");
-        let rgb = charming_x_ansi::color::RGBColor { r: 255, g: 0, b: 0 };
+        let rgb = rusty_x_ansi::color::RGBColor { r: 255, g: 0, b: 0 };
         encode_foreground_color(&mut out, Some(&rgb)).unwrap();
         assert_eq!(out, b"\x1b]110\x07\x1b]10;#ff0000\x07");
     }

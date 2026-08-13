@@ -11,11 +11,11 @@ use crate::buffer::{Line, Screen};
 use crate::cell::{Cell, Link};
 use crate::screen::Rectangle;
 use crate::style::{Attr, Style};
-use charming_x_ansi::method::WidthMethod;
-use charming_x_ansi::parser::{
+use rusty_x_ansi::method::WidthMethod;
+use rusty_x_ansi::parser::{
     decode_sequence, decode_sequence_wc, get_parser, has_csi_prefix, has_osc_prefix, Cmd, Params,
 };
-use charming_x_ansi::style::{read_style_color, Color, Underline};
+use rusty_x_ansi::style::{read_style_color, Color, Underline};
 
 /// StyledString is a string that can be decomposed into a series of styled
 /// lines and cells. It is used to disassemble a rendered string with ANSI
@@ -203,7 +203,7 @@ fn print_string(
     let mut cell = Cell::default();
     let mut style = Style::default();
     let mut link = Link::default();
-    let mut state = charming_x_ansi::parser::NORMAL_STATE;
+    let mut state = rusty_x_ansi::parser::NORMAL_STATE;
     let mut rest = str_;
     while !rest.is_empty() {
         let d = if m == WidthMethod::GraphemeWidth {
@@ -651,7 +651,7 @@ mod tests {
         assert_ne!(style.attrs & Attr::ITALIC.bits(), 0);
         assert_eq!(
             style.fg,
-            Some(Color::RGB(charming_x_ansi::color::RGBColor {
+            Some(Color::RGB(rusty_x_ansi::color::RGBColor {
                 r: 100,
                 g: 200,
                 b: 50

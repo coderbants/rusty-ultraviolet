@@ -1,4 +1,4 @@
-use charming_ultraviolet::decoder::EventDecoder;
+use rusty_ultraviolet::decoder::EventDecoder;
 
 #[test]
 fn dbg() {

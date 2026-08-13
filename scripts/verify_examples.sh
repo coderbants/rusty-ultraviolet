@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Interactive example equivalence verification for charming-ultraviolet.
+# Interactive example equivalence verification for rusty-ultraviolet.
 #
 # Ultraviolet examples are interactive screen programs; both the upstream Go
 # binary and the Rust example are driven through the SAME pseudo-terminal

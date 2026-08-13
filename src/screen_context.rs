@@ -19,8 +19,8 @@
 //! </public-docs>
 use std::io;
 
-use charming_x_ansi::method::WidthMethod;
-use charming_x_ansi::style::Underline;
+use rusty_x_ansi::method::WidthMethod;
+use rusty_x_ansi::style::Underline;
 use unicode_segmentation::UnicodeSegmentation;
 
 use crate::buffer::Screen;
@@ -120,26 +120,26 @@ impl<'a> Context<'a> {
 
     /// SetBackground sets the background color of the context. Use None to
     /// reset to default.
-    pub fn set_background(&mut self, bg: Option<charming_x_ansi::style::Color>) {
+    pub fn set_background(&mut self, bg: Option<rusty_x_ansi::style::Color>) {
         self.style.bg = bg;
     }
 
     /// WithBackground returns a copy of the context with the given background
     /// color.
-    pub fn with_background(mut self, bg: Option<charming_x_ansi::style::Color>) -> Context<'a> {
+    pub fn with_background(mut self, bg: Option<rusty_x_ansi::style::Color>) -> Context<'a> {
         self.set_background(bg);
         self
     }
 
     /// SetForeground sets the foreground color of the context. Use None to
     /// reset to default.
-    pub fn set_foreground(&mut self, fg: Option<charming_x_ansi::style::Color>) {
+    pub fn set_foreground(&mut self, fg: Option<rusty_x_ansi::style::Color>) {
         self.style.fg = fg;
     }
 
     /// WithForeground returns a copy of the context with the given foreground
     /// color.
-    pub fn with_foreground(mut self, fg: Option<charming_x_ansi::style::Color>) -> Context<'a> {
+    pub fn with_foreground(mut self, fg: Option<rusty_x_ansi::style::Color>) -> Context<'a> {
         self.set_foreground(fg);
         self
     }
@@ -291,7 +291,7 @@ impl<'a> Context<'a> {
 
     /// SetUnderlineColor sets the underline color of the context. Use None to
     /// reset to default.
-    pub fn set_underline_color(&mut self, color: Option<charming_x_ansi::style::Color>) {
+    pub fn set_underline_color(&mut self, color: Option<rusty_x_ansi::style::Color>) {
         self.style.underline_color = color;
     }
 
@@ -299,7 +299,7 @@ impl<'a> Context<'a> {
     /// underline color.
     pub fn with_underline_color(
         mut self,
-        color: Option<charming_x_ansi::style::Color>,
+        color: Option<rusty_x_ansi::style::Color>,
     ) -> Context<'a> {
         self.set_underline_color(color);
         self

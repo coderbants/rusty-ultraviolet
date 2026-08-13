@@ -8,7 +8,7 @@
 //! The upstream build-tag split (`console_unix.go` -> `TTY`, `console_windows.go`
 //! -> `WinCon`) is represented with the `TTY` and `WinCon` type aliases.
 //! The raw-mode state type comes from `charmbracelet/x/term` upstream; here it
-//! is implemented directly on `libc` termios (Unix) since `charming-x-term` is
+//! is implemented directly on `libc` termios (Unix) since `rusty-x-term` is
 //! not a dependency of this crate.
 //! </public-docs>
 

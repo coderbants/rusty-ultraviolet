@@ -1,11 +1,11 @@
 //! Cleanroom Rust port of upstream Go example: `examples/panic/main.go`
 //! Upstream Target Tag / Version: `v0.0.0-20260703014108-f5a850f9c2b7`
 
-use charming_ultraviolet::decoder::DecodedEvent;
-use charming_ultraviolet::screen::clear;
-use charming_ultraviolet::styled::new_styled_string;
-use charming_ultraviolet::terminal::default_terminal;
-use charming_ultraviolet::terminal_screen::TerminalScreen;
+use rusty_ultraviolet::decoder::DecodedEvent;
+use rusty_ultraviolet::screen::clear;
+use rusty_ultraviolet::styled::new_styled_string;
+use rusty_ultraviolet::terminal::default_terminal;
+use rusty_ultraviolet::terminal_screen::TerminalScreen;
 use std::time::{Duration, Instant};
 
 fn main() {

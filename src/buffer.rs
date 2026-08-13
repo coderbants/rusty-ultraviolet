@@ -10,8 +10,8 @@
 use crate::cell::{empty_cell, Cell};
 use crate::screen::Rectangle;
 use crate::style::Style;
-use charming_x_ansi::hyperlink::{reset_hyperlink, set_hyperlink};
-use charming_x_ansi::method::WidthMethod;
+use rusty_x_ansi::hyperlink::{reset_hyperlink, set_hyperlink};
+use rusty_x_ansi::method::WidthMethod;
 use std::any::Any;
 
 /// A row of cells.
@@ -581,14 +581,14 @@ impl RenderBuffer {
     }
 
     /// InsertLine inserts n lines at the given line position, with the given
-    /// optional cell. This follows terminal [charming_x_ansi] IL behavior.
+    /// optional cell. This follows terminal [rusty_x_ansi] IL behavior.
     pub fn insert_line(&mut self, y: usize, n: usize, c: Option<&Cell>) {
         self.insert_line_area(y, n, c, self.bounds());
     }
 
     /// InsertLineArea inserts new lines at the given line position, with the
     /// given optional cell, within the rectangle bounds. This follows
-    /// terminal [charming_x_ansi] IL behavior.
+    /// terminal [rusty_x_ansi] IL behavior.
     pub fn insert_line_area(&mut self, y: usize, n: usize, c: Option<&Cell>, area: Rectangle) {
         insert_line_area(&mut self.buffer, y, n, c, area);
         for i in area.min.1..area.max.1 {
@@ -600,7 +600,7 @@ impl RenderBuffer {
     }
 
     /// DeleteLine deletes n lines at the given line position, with the given
-    /// optional cell. This follows terminal [charming_x_ansi] DL behavior.
+    /// optional cell. This follows terminal [rusty_x_ansi] DL behavior.
     pub fn delete_line(&mut self, y: usize, n: usize, c: Option<&Cell>) {
         self.delete_line_area(y, n, c, self.bounds());
     }
@@ -619,7 +619,7 @@ impl RenderBuffer {
     }
 
     /// InsertCell inserts new cells at the given position, with the given
-    /// optional cell. This follows terminal [charming_x_ansi] ICH behavior.
+    /// optional cell. This follows terminal [rusty_x_ansi] ICH behavior.
     pub fn insert_cell(&mut self, x: usize, y: usize, n: usize, c: Option<&Cell>) {
         self.insert_cell_area(x, y, n, c, self.bounds());
     }
@@ -643,7 +643,7 @@ impl RenderBuffer {
     }
 
     /// DeleteCell deletes cells at the given position, with the given
-    /// optional cell. This follows terminal [charming_x_ansi] DCH behavior.
+    /// optional cell. This follows terminal [rusty_x_ansi] DCH behavior.
     pub fn delete_cell(&mut self, x: usize, y: usize, n: usize, c: Option<&Cell>) {
         self.delete_cell_area(x, y, n, c, self.bounds());
     }
@@ -854,7 +854,7 @@ fn render_line(buf: &mut String, l: &Line) {
         if c.equal(&empty_cell()) {
             // Upstream emits the reset here, before the pending space.
             if !pen.is_zero() {
-                buf.push_str(charming_x_ansi::style::RESET_STYLE);
+                buf.push_str(rusty_x_ansi::style::RESET_STYLE);
                 pen = Style::default();
             }
             if let Some(l) = &link {
@@ -873,7 +873,7 @@ fn render_line(buf: &mut String, l: &Line) {
         }
 
         if c.style.is_zero() && !pen.is_zero() {
-            buf.push_str(charming_x_ansi::style::RESET_STYLE);
+            buf.push_str(rusty_x_ansi::style::RESET_STYLE);
             pen = Style::default();
         }
         if !c.style.equal(&pen) {
@@ -913,13 +913,13 @@ fn render_line(buf: &mut String, l: &Line) {
         }
     }
     if !pen.is_zero() {
-        buf.push_str(charming_x_ansi::style::RESET_STYLE);
+        buf.push_str(rusty_x_ansi::style::RESET_STYLE);
     }
 }
 
 /// InsertLineArea inserts new lines at the given line position, with the
 /// given optional cell, within the rectangle bounds. This follows terminal
-/// [charming_x_ansi] IL behavior.
+/// [rusty_x_ansi] IL behavior.
 pub(crate) fn insert_line_area(
     b: &mut Buffer,
     y: usize,
@@ -958,7 +958,7 @@ pub(crate) fn insert_line_area(
 
 /// DeleteLineArea deletes lines at the given line position, with the given
 /// optional cell, within the rectangle bounds. This follows terminal
-/// [charming_x_ansi] DL behavior.
+/// [rusty_x_ansi] DL behavior.
 pub(crate) fn delete_line_area(
     b: &mut Buffer,
     y: usize,
@@ -998,7 +998,7 @@ pub(crate) fn delete_line_area(
 
 /// InsertCellArea inserts new cells at the given position, with the given
 /// optional cell, within the rectangle bounds. This follows terminal
-/// [charming_x_ansi] ICH behavior.
+/// [rusty_x_ansi] ICH behavior.
 pub(crate) fn insert_cell_area(
     b: &mut Buffer,
     x: usize,
@@ -1044,7 +1044,7 @@ pub(crate) fn insert_cell_area(
 
 /// DeleteCellArea deletes cells at the given position, with the given
 /// optional cell, within the rectangle bounds. This follows terminal
-/// [charming_x_ansi] DCH behavior.
+/// [rusty_x_ansi] DCH behavior.
 pub(crate) fn delete_cell_area(
     b: &mut Buffer,
     x: usize,

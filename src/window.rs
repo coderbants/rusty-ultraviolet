@@ -14,7 +14,7 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use charming_x_ansi::method::WidthMethod;
+use rusty_x_ansi::method::WidthMethod;
 
 use crate::buffer::{new_buffer, Buffer};
 use crate::cell::{empty_cell, Cell};

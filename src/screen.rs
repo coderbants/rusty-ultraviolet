@@ -8,7 +8,7 @@
 use crate::buffer::{Buffer, RenderBuffer, Screen, ScreenBuffer};
 use crate::cell::Cell;
 use crate::new_buffer;
-use charming_x_ansi::method::WidthMethod;
+use rusty_x_ansi::method::WidthMethod;
 use std::any::Any;
 
 /// A rectangle with a minimum and maximum corner.

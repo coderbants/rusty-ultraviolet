@@ -1,10 +1,10 @@
-# Contributing to `charming-ultraviolet`
+# Contributing to `rusty-ultraviolet`
 
-Thanks for your interest in contributing! `charming-ultraviolet` is a cleanroom Rust port
+Thanks for your interest in contributing! `rusty-ultraviolet` is a cleanroom Rust port
 of the upstream Go [charmbracelet/ultraviolet](https://github.com/charmbracelet/ultraviolet)
 library (input, window and rendering primitives), pinned to upstream pseudo-versions
 `v0.0.0-20251205161215-1948445e3318` (first pin) and
-`v0.0.0-20260703014108-f5a850f9c2b7` (second pin, used by charming-bubbletea v2.0.8).
+`v0.0.0-20260703014108-f5a850f9c2b7` (second pin, used by rusty-bubbletea v2.0.8).
 
 Please read the workspace rules in [`AGENTS.md`](AGENTS.md) (and the root
 [`AGENTS.md`](../AGENTS.md)) before contributing. This file summarizes the practical

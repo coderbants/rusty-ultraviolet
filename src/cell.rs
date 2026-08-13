@@ -45,7 +45,7 @@ impl Cell {
         }
         Cell {
             content: gr.to_string(),
-            width: charming_x_ansi::util::string_width(gr),
+            width: rusty_x_ansi::util::string_width(gr),
             ..Cell::default()
         }
     }

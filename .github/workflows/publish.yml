@@ -98,8 +98,10 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           src="${GITHUB_REPOSITORY##*/}-$GITHUB_REF_NAME.tar.gz"
-          git archive --format=tar.gz -o "$src" HEAD
-          gh release upload "$GITHUB_REF_NAME" "$src" --clobber
+          # Keep the archive out of the repo working tree so `cargo publish`
+          # sees a clean checkout.
+          git archive --format=tar.gz -o "$RUNNER_TEMP/$src" HEAD
+          gh release upload "$GITHUB_REF_NAME" "$RUNNER_TEMP/$src" --clobber
       # Releases are tag-gated: only pushes of a v* tag publish. crates.io
       # rejects re-publishing an existing version, so the version-bump gate
       # in ci.yml keeps every release on a fresh, unreleased version.

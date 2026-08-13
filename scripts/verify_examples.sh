@@ -13,6 +13,14 @@ set -u
 
 cd "$(dirname "$0")/.."
 ROOT="$PWD"
+# Shared machine-wide Cargo cache (see "$ROOT/scripts/cargo-env.sh"): the registry
+# cache, final artifacts, and intermediate state live in ~/.cache/cargo and
+# are reused by every Rust repository on this machine.
+. "$ROOT/scripts/cargo-env.sh" || exit 1
+configure_shared_cargo_cache_environment || {
+  echo "ERROR: failed to configure the shared Cargo cache environment" >&2
+  exit 1
+}
 UPSTREAM="$ROOT/upstream-go/examples"
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
@@ -146,12 +154,12 @@ for entry in $PAIRS; do
   python3 "$ROOT/scripts/pty_driver.py" --cmd "$go_bin" \
     --keys "$keys" --delay "$delay" --settle "$settle" 2>/dev/null >/dev/null || true
   cargo build --quiet --example "$rs_ex" 2>/dev/null
-  python3 "$ROOT/scripts/pty_driver.py" --cmd "$ROOT/target/debug/examples/$rs_ex" \
+  python3 "$ROOT/scripts/pty_driver.py" --cmd "$(cargo_target_dir)/debug/examples/$rs_ex" \
     --keys "$keys" --delay "$delay" --settle "$settle" 2>/dev/null >/dev/null || true
 
   python3 "$ROOT/scripts/pty_driver.py" --cmd "$go_bin" \
     --keys "$keys" --delay "$delay" --settle "$settle" 2>/dev/null >"$go_out" || true
-  python3 "$ROOT/scripts/pty_driver.py" --cmd "$ROOT/target/debug/examples/$rs_ex" \
+  python3 "$ROOT/scripts/pty_driver.py" --cmd "$(cargo_target_dir)/debug/examples/$rs_ex" \
     --keys "$keys" --delay "$delay" --settle "$settle" 2>/dev/null >"$rs_out" || true
 
   if [ "$go_dir" = "advanced/space" ]; then
@@ -171,7 +179,7 @@ for entry in $PAIRS; do
       echo "RETRY: $go_dir (flaky harness?)"
       python3 "$ROOT/scripts/pty_driver.py" --cmd "$go_bin" \
         --keys "$keys" --delay "$delay" --settle "$settle" 2>/dev/null >"$go_out" || true
-      python3 "$ROOT/scripts/pty_driver.py" --cmd "$ROOT/target/debug/examples/$rs_ex" \
+      python3 "$ROOT/scripts/pty_driver.py" --cmd "$(cargo_target_dir)/debug/examples/$rs_ex" \
         --keys "$keys" --delay "$delay" --settle "$settle" 2>/dev/null >"$rs_out" || true
       head -c 52 "$go_out" | normalize >"$TMP/space_go.out"
       head -c 52 "$rs_out" | normalize >"$TMP/space_rs.out"
@@ -188,7 +196,7 @@ for entry in $PAIRS; do
     echo "RETRY: $go_dir (flaky harness?)"
     python3 "$ROOT/scripts/pty_driver.py" --cmd "$go_bin" \
       --keys "$keys" --delay "$delay" --settle "$settle" 2>/dev/null >"$go_out" || true
-    python3 "$ROOT/scripts/pty_driver.py" --cmd "$ROOT/target/debug/examples/$rs_ex" \
+    python3 "$ROOT/scripts/pty_driver.py" --cmd "$(cargo_target_dir)/debug/examples/$rs_ex" \
       --keys "$keys" --delay "$delay" --settle "$settle" 2>/dev/null >"$rs_out" || true
     if diff <(normalize <"$go_out") <(normalize <"$rs_out") >/dev/null 2>&1; then
       echo "CONTENT-EQUIVALENT: $go_dir (on retry)"

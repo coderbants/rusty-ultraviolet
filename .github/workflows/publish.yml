@@ -16,6 +16,19 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
+      - name: Configure shared Cargo cache
+        run: |
+          . scripts/cargo-env.sh
+          configure_shared_cargo_cache_environment
+          {
+            echo "CARGO_SHARED_CACHE_DIRECTORY=$CARGO_SHARED_CACHE_DIRECTORY"
+            echo "CARGO_HOME=$CARGO_HOME"
+            echo "CARGO_TARGET_DIR=$CARGO_TARGET_DIR"
+            echo "CARGO_BUILD_BUILD_DIR=$CARGO_BUILD_BUILD_DIR"
+            echo "CARGO_INSTALL_ROOT=$CARGO_INSTALL_ROOT"
+          } >> "$GITHUB_ENV"
+      - name: Test shared Cargo cache env
+        run: scripts/test-cargo-env.sh
       - uses: actions/setup-go@v5
         with:
           go-version: 'stable'

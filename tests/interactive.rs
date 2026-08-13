@@ -4,8 +4,43 @@
 
 use charming_testkit::PtySession;
 
+/// The package's Cargo target directory. `cargo metadata` is authoritative:
+/// it honours `CARGO_TARGET_DIR` from the shared machine-wide Cargo cache
+/// (scripts/cargo-env.sh) as well as any workspace config, falling back to
+/// the checkout-local `target` only when neither is set.
+fn target_dir() -> std::path::PathBuf {
+    let out = std::process::Command::new("cargo")
+        .args(["metadata", "--format-version=1", "--no-deps"])
+        .current_dir(env!("CARGO_MANIFEST_DIR"))
+        .output()
+        .expect("cargo metadata");
+    if !out.status.success() {
+        return std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("target");
+    }
+    let json = String::from_utf8_lossy(&out.stdout);
+    let key = "\"target_directory\":";
+    json.find(key)
+        .and_then(|i| {
+            let rest = &json[i + key.len()..].trim_start();
+            let q0 = rest.find('"')? + 1;
+            let tail = &rest[q0..];
+            let q1 = tail.find('"')?;
+            Some(std::path::PathBuf::from(&tail[..q1]))
+        })
+        .unwrap_or_else(|| std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("target"))
+}
+
 fn ex(name: &str) -> String {
-    let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("target/debug/examples");
+    // Always build this package's example first: with a shared machine-wide
+    // target dir, a same-named binary may belong to another project and must
+    // never be treated as this package's identity (scripts/cargo-env.sh).
+    let build = std::process::Command::new("cargo")
+        .args(["build", "--quiet", "--example", name])
+        .current_dir(env!("CARGO_MANIFEST_DIR"))
+        .status()
+        .expect("cargo build --example");
+    assert!(build.success(), "failed to build example {name}");
+    let dir = target_dir().join("debug/examples");
     let plain = dir.join(name);
     if plain.exists() {
         return plain.to_string_lossy().into_owned();

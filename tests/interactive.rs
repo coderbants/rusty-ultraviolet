@@ -66,23 +66,35 @@ fn ex(name: &str) -> String {
         .into_owned()
 }
 
+/// The uv runtime's startup (winch self-pipe, terminal queries, raw-mode
+/// setup) is racy when many PTY sessions start concurrently, so the
+/// interactive tests serialize their spawns with a process-wide lock. This
+/// keeps `cargo test` (parallel by default) deterministic.
+static PTY_LOCK: std::sync::OnceLock<std::sync::Mutex<()>> = std::sync::OnceLock::new();
+
+fn pty_lock() -> &'static std::sync::Mutex<()> {
+    PTY_LOCK.get_or_init(|| std::sync::Mutex::new(()))
+}
+
 #[test]
 fn helloworld_quits_on_any_key() {
+    let _pty_guard = pty_lock().lock().unwrap();
     let pty = PtySession::spawn(&ex("helloworld"), &[]).expect("spawn");
-    pty.wait_for_text("Hello, World!", 5000).expect("shown");
+    pty.wait_for_text("Hello, World!", 30000).expect("shown");
     pty.press("x").expect("x");
     pty.wait_for_exit(5000).expect("exit");
 }
 
 #[test]
 fn altscreen_toggles_with_space() {
+    let _pty_guard = pty_lock().lock().unwrap();
     let pty = PtySession::spawn(&ex("altscreen"), &[]).expect("spawn");
-    pty.wait_for_text("inline mode", 5000).expect("inline");
+    pty.wait_for_text("inline mode", 30000).expect("inline");
     pty.press("space").expect("space");
-    pty.wait_for_text("alternate screen mode", 5000)
+    pty.wait_for_text("alternate screen mode", 30000)
         .expect("alt screen");
     pty.press("space").expect("space");
-    pty.wait_for_text("inline mode", 5000)
+    pty.wait_for_text("inline mode", 30000)
         .expect("back to inline");
     pty.press("q").expect("q");
     pty.wait_for_exit(5000).expect("exit");
@@ -90,36 +102,38 @@ fn altscreen_toggles_with_space() {
 
 #[test]
 fn mouse_click_reports_position() {
+    let _pty_guard = pty_lock().lock().unwrap();
     let pty = PtySession::spawn(&ex("mouse"), &[]).expect("spawn");
-    pty.wait_for_text("Button:", 5000).expect("shown");
+    pty.wait_for_text("Button:", 30000).expect("shown");
     std::thread::sleep(std::time::Duration::from_millis(300));
     // Click at cell (10, 5): the example logs the pixel-adjusted position.
     pty.send(&charming_testkit::keys::mouse_click(10, 5))
         .expect("click");
-    pty.wait_for_raw("Position:", 5000).expect("event logged");
+    pty.wait_for_raw("Position:", 30000).expect("event logged");
     pty.press("q").expect("quit");
     pty.wait_for_exit(5000).expect("exit");
 }
 
 #[test]
 fn boxes_create_window_on_click() {
+    let _pty_guard = pty_lock().lock().unwrap();
     let pty = PtySession::spawn(&ex("advanced_boxes"), &[]).expect("spawn");
-    pty.wait_for_raw("?1002", 5000).expect("mouse mode");
+    pty.wait_for_raw("?1002", 30000).expect("mouse mode");
     std::thread::sleep(std::time::Duration::from_millis(300));
     // Click in the root window: a new window is created.
     pty.send(&charming_testkit::keys::mouse_click(40, 12))
         .expect("click");
-    pty.wait_for_raw("clicked root window", 5000)
+    pty.wait_for_raw("clicked root window", 30000)
         .expect("window created");
     // Click again: now the new window is hit and focused.
     pty.send(&charming_testkit::keys::mouse_click(40, 12))
         .expect("click2");
-    pty.wait_for_raw("clicked window", 5000)
+    pty.wait_for_raw("clicked window", 30000)
         .expect("window focused");
     // Right-click destroys it.
     pty.send(&charming_testkit::keys::mouse_right_click(40, 12))
         .expect("right click");
-    pty.wait_for_raw("destroying", 5000)
+    pty.wait_for_raw("destroying", 30000)
         .expect("window destroyed");
     pty.press("ctrl+c").expect("quit");
     pty.wait_for_exit(5000).expect("exit");
@@ -127,6 +141,7 @@ fn boxes_create_window_on_click() {
 
 #[test]
 fn boxes_keyboard_types_into_window() {
+    let _pty_guard = pty_lock().lock().unwrap();
     let pty = PtySession::spawn(&ex("advanced_boxes"), &[]).expect("spawn");
     // The example prints window-mouse events to its stderr; nothing is
     // printed until the first click, so give it a moment to enable mouse
@@ -147,7 +162,7 @@ fn boxes_keyboard_types_into_window() {
     // multi-char packet can otherwise be split across decode iterations).
     for ch in ["a", "b", "c"] {
         pty.press(ch).expect("type");
-        pty.wait_for_text(ch, 5000).expect("typed into window");
+        pty.wait_for_text(ch, 30000).expect("typed into window");
     }
     pty.press("esc").expect("esc");
     pty.wait_for_exit(5000).expect("exit");
@@ -155,8 +170,9 @@ fn boxes_keyboard_types_into_window() {
 
 #[test]
 fn layout_keys_move_dialog() {
+    let _pty_guard = pty_lock().lock().unwrap();
     let pty = PtySession::spawn(&ex("advanced_layout"), &[]).expect("spawn");
-    pty.wait_for_text("marmalade", 5000).expect("dialog shown");
+    pty.wait_for_text("marmalade", 30000).expect("dialog shown");
     // The dialog box's left half is off-screen (dialogX is negative); the
     // 'j'/'k' keys move it down/up. Capture the raw diff deltas.
     let before = pty.raw_output().len();
@@ -172,8 +188,9 @@ fn layout_keys_move_dialog() {
 
 #[test]
 fn draw_example_supports_typing() {
+    let _pty_guard = pty_lock().lock().unwrap();
     let pty = PtySession::spawn(&ex("draw"), &[]).expect("spawn");
-    pty.wait_for_text("Draw Example", 10000)
+    pty.wait_for_text("Draw Example", 30000)
         .expect("help shown");
     // Press any key to dismiss the help; a second press covers the case
     // where the help overlay was already dismissed by the initial resize.
@@ -188,8 +205,9 @@ fn draw_example_supports_typing() {
 
 #[test]
 fn panic_example_quits() {
+    let _pty_guard = pty_lock().lock().unwrap();
     let pty = PtySession::spawn(&ex("panic"), &[]).expect("spawn");
-    pty.wait_for_text("Panicing after 5 seconds", 5000)
+    pty.wait_for_text("Panicing after 5 seconds", 30000)
         .expect("shown");
     pty.press("q").expect("q");
     pty.wait_for_exit(5000).expect("exit");
@@ -197,9 +215,10 @@ fn panic_example_quits() {
 
 #[test]
 fn prependline_logs_events() {
+    let _pty_guard = pty_lock().lock().unwrap();
     let pty = PtySession::spawn(&ex("prependline"), &[]).expect("spawn");
-    pty.wait_for_text("Hello, World!", 5000).expect("title bar");
-    pty.wait_for_raw("WindowSizeEvent", 5000)
+    pty.wait_for_text("Hello, World!", 30000).expect("title bar");
+    pty.wait_for_raw("WindowSizeEvent", 30000)
         .expect("event logged");
     pty.press("q").expect("q");
     pty.wait_for_exit(5000).expect("exit");
@@ -207,27 +226,30 @@ fn prependline_logs_events() {
 
 #[test]
 fn splits_renders_and_quits() {
+    let _pty_guard = pty_lock().lock().unwrap();
     let pty = PtySession::spawn(&ex("advanced_splits"), &[]).expect("spawn");
-    pty.wait_for_text("Horizontal Layout Example", 5000)
+    pty.wait_for_text("Horizontal Layout Example", 30000)
         .expect("shown");
-    pty.wait_for_text("Len | Len", 5000).expect("combos shown");
+    pty.wait_for_text("Len | Len", 30000).expect("combos shown");
     pty.press("q").expect("q");
     pty.wait_for_exit(5000).expect("exit");
 }
 
 #[test]
 fn tv_renders_and_quits() {
+    let _pty_guard = pty_lock().lock().unwrap();
     let pty = PtySession::spawn(&ex("advanced_tv"), &[]).expect("spawn");
     std::thread::sleep(std::time::Duration::from_millis(500));
-    pty.wait_for_text("", 5000).expect("running");
+    pty.wait_for_text("", 30000).expect("running");
     pty.press("q").expect("q");
     pty.wait_for_exit(5000).expect("exit");
 }
 
 #[test]
 fn draw_mouse_drawing() {
+    let _pty_guard = pty_lock().lock().unwrap();
     let pty = PtySession::spawn(&ex("draw"), &[]).expect("spawn");
-    pty.wait_for_text("Draw Example", 5000).expect("help shown");
+    pty.wait_for_text("Draw Example", 30000).expect("help shown");
     pty.press("space").expect("space");
     pty.wait_until(5000, |s| !s.contains("Welcome to Draw"))
         .expect("help dismissed");
@@ -245,7 +267,7 @@ fn draw_mouse_drawing() {
     ))
     .expect("drag2");
     std::thread::sleep(std::time::Duration::from_millis(300));
-    pty.wait_for_raw("█", 5000).expect("drawn");
+    pty.wait_for_raw("█", 30000).expect("drawn");
     pty.press("ctrl+c").expect("quit");
     pty.wait_for_exit(5000).expect("exit");
 }

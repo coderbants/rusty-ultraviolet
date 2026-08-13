@@ -6,7 +6,7 @@
 
 # Charming Ultraviolet (`charming-ultraviolet`)
 
-**Charming Ultraviolet** is a complete, from-scratch Rust port of [Ultraviolet](https://github.com/charmbracelet/ultraviolet), Charmbracelet's set of primitives for manipulating terminal emulators — cell-based screen buffers, a diffing terminal renderer, and cross-platform input decoding. It tracks upstream on a rolling basis (this crate mirrors the upstream pseudo-version pin `20260703014108`) with a hard goal of **1:1 behavioral parity**: the same escape sequences, cell semantics, and rendering output, favoring fidelity to upstream over Rust-native rewrites whenever the two would diverge.
+**Charming Ultraviolet** is a complete, from-scratch Rust port of [Ultraviolet](https://github.com/charmbracelet/ultraviolet), Charmbracelet's set of primitives for manipulating terminal emulators — cell-based screen buffers, a diffing terminal renderer, and cross-platform input decoding. It tracks upstream on a rolling basis, with crate versions mirroring the upstream Go pseudo-version pins, and a hard goal of **1:1 behavioral parity**: the same escape sequences, cell semantics, and rendering output, favoring fidelity to upstream over Rust-native rewrites whenever the two would diverge.
 
 It's part of the Charming port family of the Bubble Tea ecosystem and builds on [charming-x-ansi](https://github.com/coderbants/charming-x-ansi) (ANSI primitives) and [charming-colorprofile](https://github.com/coderbants/charming-colorprofile) — it powers [charming-bubbletea](https://github.com/coderbants/charming-bubbletea), [charming-lipgloss](https://github.com/coderbants/charming-lipgloss) and [charming-bubbles](https://github.com/coderbants/charming-bubbles).
 

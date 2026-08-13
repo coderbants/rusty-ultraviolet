@@ -141,9 +141,16 @@ for entry in $PAIRS; do
     continue
   }
 
+  # Warm both binaries: cold-started examples on a loaded runner can miss
+  # their first render window, leaving the capture empty.
+  python3 "$ROOT/scripts/pty_driver.py" --cmd "$go_bin" \
+    --keys "$keys" --delay "$delay" --settle "$settle" 2>/dev/null >/dev/null || true
+  cargo build --quiet --example "$rs_ex" 2>/dev/null
+  python3 "$ROOT/scripts/pty_driver.py" --cmd "$ROOT/target/debug/examples/$rs_ex" \
+    --keys "$keys" --delay "$delay" --settle "$settle" 2>/dev/null >/dev/null || true
+
   python3 "$ROOT/scripts/pty_driver.py" --cmd "$go_bin" \
     --keys "$keys" --delay "$delay" --settle "$settle" 2>/dev/null >"$go_out" || true
-  cargo build --quiet --example "$rs_ex" 2>/dev/null
   python3 "$ROOT/scripts/pty_driver.py" --cmd "$ROOT/target/debug/examples/$rs_ex" \
     --keys "$keys" --delay "$delay" --settle "$settle" 2>/dev/null >"$rs_out" || true
 

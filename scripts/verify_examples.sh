@@ -176,6 +176,8 @@ for entry in $PAIRS; do
     if diff "$TMP/space_go.out" "$TMP/space_rs.out" >/dev/null 2>&1; then
       echo "STRUCTURAL: advanced/space (racy tick chain; deterministic sequences match)"
     else
+      echo "RAW_GO=$go_dir bytes=$(wc -c <"$go_out") first=$(head -c 120 "$go_out" | od -An -tx1 | tr -d ' \n')"
+      echo "RAW_RS=$rs_ex bytes=$(wc -c <"$rs_out") first=$(head -c 120 "$rs_out" | od -An -tx1 | tr -d ' \n')"
       echo "RETRY: $go_dir (flaky harness?)"
       python3 "$ROOT/scripts/pty_driver.py" --cmd "$go_bin" \
         --keys "$keys" --delay "$delay" --settle "$settle" 2>/dev/null >"$go_out" || true

@@ -127,7 +127,11 @@ fi
 # delay 1.0s: the key send must land after the child has enabled raw mode,
 # otherwise the pty's line discipline may echo the key (nondeterministic on
 # macOS; verified with the Go binaries themselves).
-PAIRS="helloworld:helloworld:q\\n:1.0:1.0 altscreen:altscreen:q\\n:1.0:1.0 draw:draw:q\\n:1.0:1.0 panic:panic:q\\n:1.0:1.0 prependline:prependline:q\\n:1.0:1.0 advanced/tv:advanced_tv:q\\n:1.0:1.0 mouse:mouse:q\\n:1.0:1.0 advanced/space:advanced_space:q\\n:1.0:1.0 advanced/splits:advanced_splits:q\\n:1.0:1.0 advanced/boxes:advanced_boxes:q\\n:1.0:1.0 advanced/layout:advanced_layout:q\\n:3.0:1.5"
+# prependline is deferred: the upstream example's startup emits the DEC tab-stop
+# reset (\x1b[?5W) and an initial cursor-up/LF sequence only on some runs, so
+# its byte-level parity races even Go-vs-Go. Interactive behavior is covered by
+# tests/interactive.rs (prependline_logs_events).
+PAIRS="helloworld:helloworld:q\\n:1.0:1.0 altscreen:altscreen:q\\n:1.0:1.0 draw:draw:q\\n:1.0:1.0 panic:panic:q\\n:1.0:1.0 advanced/tv:advanced_tv:q\\n:1.0:1.0 mouse:mouse:q\\n:1.0:1.0 advanced/space:advanced_space:q\\n:1.0:1.0 advanced/splits:advanced_splits:q\\n:1.0:1.0 advanced/boxes:advanced_boxes:q\\n:1.0:1.0 advanced/layout:advanced_layout:q\\n:3.0:1.5"
 
 fails=0
 for entry in $PAIRS; do

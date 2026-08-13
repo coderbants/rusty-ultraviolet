@@ -217,7 +217,8 @@ fn panic_example_quits() {
 fn prependline_logs_events() {
     let _pty_guard = pty_lock().lock().unwrap();
     let pty = PtySession::spawn(&ex("prependline"), &[]).expect("spawn");
-    pty.wait_for_text("Hello, World!", 30000).expect("title bar");
+    pty.wait_for_text("Hello, World!", 30000)
+        .expect("title bar");
     pty.wait_for_raw("WindowSizeEvent", 30000)
         .expect("event logged");
     pty.press("q").expect("q");
@@ -249,7 +250,8 @@ fn tv_renders_and_quits() {
 fn draw_mouse_drawing() {
     let _pty_guard = pty_lock().lock().unwrap();
     let pty = PtySession::spawn(&ex("draw"), &[]).expect("spawn");
-    pty.wait_for_text("Draw Example", 30000).expect("help shown");
+    pty.wait_for_text("Draw Example", 30000)
+        .expect("help shown");
     pty.press("space").expect("space");
     pty.wait_until(5000, |s| !s.contains("Welcome to Draw"))
         .expect("help dismissed");

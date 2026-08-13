@@ -127,11 +127,19 @@ jobs:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
         run: |
           if [ -n "${CARGO_REGISTRY_TOKEN}" ]; then
+            # Dev-dependencies are not part of the published crate, but
+            # `cargo publish` resolves them anyway; drop them from the
+            # packaging manifest so sibling dev-deps (which may be
+            # unpublished or cyclically depend on this crate) can't block
+            # the upload. The published crate is unaffected.
+            awk '/^\[dev-dependencies\]/ { in_dev=1 } /^\[/ && !/^\[dev-dependencies\]/ { in_dev=0 } !(in_dev && /^charming-/) { print }' Cargo.toml > Cargo.toml.publish
+            mv Cargo.toml.publish Cargo.toml
             # --no-verify: the verify build resolves dependencies from the
             # registry, but ultraviolet's dev-dependency on lipgloss and
             # lipgloss's dependency on ultraviolet form a cycle; the full
             # gates (build, clippy, tests) already ran above.
-            cargo publish --token "${CARGO_REGISTRY_TOKEN}" --no-verify
+            cargo publish --token "${CARGO_REGISTRY_TOKEN}" --no-verify --allow-dirty
+            git checkout -- Cargo.toml
           else
             echo "No CARGO_REGISTRY_TOKEN secret; skipping crates.io publish."
           fi

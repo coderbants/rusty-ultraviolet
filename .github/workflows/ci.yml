@@ -23,6 +23,8 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+      - name: Verify version matches upstream
+        run: scripts/verify_upstream_version.sh
       - name: Compare version with live branch
         run: |
           cur=$(grep -m1 '^version' Cargo.toml | sed 's/.*"\(.*\)".*/\1/')

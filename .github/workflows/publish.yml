@@ -16,6 +16,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
+      - name: Verify version and tag match upstream
+        run: scripts/verify_upstream_version.sh "$GITHUB_REF_NAME"
       - name: Configure shared Cargo cache
         run: |
           # The runner image pre-sets CARGO_HOME=$HOME/.cargo; drop the

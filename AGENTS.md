@@ -21,6 +21,11 @@
    `/Users/jonny/Projects/charming/DEPENDENCY_PLAN.md` §6.
 
 ## Releases
+- **Version policy: the crate version and every release tag MUST equal the tracked upstream
+  version exactly** — for untagged upstreams that means the full upstream pseudo-version
+  including its commit suffix (the `Upstream Target Tag / Version` header in `src/lib.rs`,
+  e.g. `v0.0.0-20260703014108-f5a850f9c2b7`) — never ahead, never behind.
+  `scripts/verify_upstream_version.sh` enforces this in CI and in the publish workflow.
 - GitHub Releases MUST match upstream: every upstream release tag tracked by this port must
   exist as a `v*` tag and a GitHub release on this repo (the publish workflow creates the
   release automatically from the tag). If upstream has no tagged releases (pseudo-version
@@ -29,6 +34,3 @@
   workflow runs tests, example parity, creates the GitHub Release, and attempts the
   crates.io publish (non-fatal without a registry token).
 - The crates.io publish step is tag-gated; dev pushes only run tests and parity.
-- Sibling `charming-*` repos referenced via `path` dependencies must be **public** on
-  GitHub: the workflow `GITHUB_TOKEN` cannot clone private siblings, so CI fetches them via
-  `actions/checkout` at `siblings/<name>` (moved into `../` afterwards).

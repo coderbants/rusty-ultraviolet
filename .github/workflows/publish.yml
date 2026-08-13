@@ -99,7 +99,7 @@ jobs:
         run: |
           src="${GITHUB_REPOSITORY##*/}-$GITHUB_REF_NAME.tar.gz"
           git archive --format=tar.gz -o "$src" HEAD
-          gh release upload "$GITHUB_REF_NAME" "$src"
+          gh release upload "$GITHUB_REF_NAME" "$src" --clobber
       # Releases are tag-gated: only pushes of a v* tag publish. crates.io
       # rejects re-publishing an existing version, so the version-bump gate
       # in ci.yml keeps every release on a fresh, unreleased version.

@@ -187,6 +187,8 @@ for entry in $PAIRS; do
       echo "CONTENT-EQUIVALENT: $go_dir (on retry)"
     else
       echo "DIFFERS:   $go_dir"
+      echo "----- first differing lines ($go_dir) -----" >&2
+      diff <(normalize <"$go_out") <(normalize <"$rs_out") | head -12 >&2
       fails=1
     fi
   fi

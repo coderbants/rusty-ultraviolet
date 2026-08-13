@@ -55,6 +55,10 @@ jobs:
           components: clippy, rustfmt
       - name: Configure shared Cargo cache
         run: |
+          # The runner image pre-sets CARGO_HOME=$HOME/.cargo; drop the
+          # ambient value so the shared-cache defaults apply (the resolver
+          # rejects it as an uncontained override otherwise).
+          unset CARGO_HOME
           . scripts/cargo-env.sh
           configure_shared_cargo_cache_environment
           {

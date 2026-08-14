@@ -200,3 +200,20 @@ jobs:
             echo "could not parse coverage from the tarpaulin report" >&2
             exit 1
           fi
+          case "$pct" in
+            9[0-9]*|100*) color="brightgreen" ;;
+            7[5-9]*) color="yellowgreen" ;;
+            6[0-9]*) color="orange" ;;
+            *) color="red" ;;
+          esac
+          curl -sS "https://img.shields.io/badge/coverage-${pct}%25-${color}.svg" -o coverage.svg
+          # Commit the badge in place only when it changed (git diff ignores
+          # untracked files, so use status), so the push cannot re-trigger CI
+          # indefinitely.
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if [ -n "$(git status --porcelain -- coverage.svg)" ]; then
+            git add coverage.svg
+            git commit -q -m "docs: update coverage badge ($pct%)"
+            git push -q origin dev
+          fi

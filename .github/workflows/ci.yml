@@ -146,6 +146,51 @@ jobs:
         uses: taiki-e/install-action@cargo-llvm-cov
       - name: Generate code coverage
         run: cargo llvm-cov --all-features --lib --lcov --output-path lcov.info
+      - name: Fetch sibling rusty-bubbletea (pinned)
+        uses: actions/checkout@v4
+        with:
+          repository: coderbants/rusty-bubbletea
+          path: siblings/rusty-bubbletea
+          ref: dev
+      - name: Fetch sibling rusty-bubbles (pinned)
+        uses: actions/checkout@v4
+        with:
+          repository: coderbants/rusty-bubbles
+          path: siblings/rusty-bubbles
+          ref: dev
+      - name: Fetch sibling rusty-colorprofile (pinned)
+        uses: actions/checkout@v4
+        with:
+          repository: coderbants/rusty-colorprofile
+          path: siblings/rusty-colorprofile
+          ref: dev
+      - name: Fetch sibling rusty-lipgloss (pinned)
+        uses: actions/checkout@v4
+        with:
+          repository: coderbants/rusty-lipgloss
+          path: siblings/rusty-lipgloss
+          ref: dev
+      - name: Fetch sibling rusty-testkit (pinned)
+        uses: actions/checkout@v4
+        with:
+          repository: coderbants/rusty-testkit
+          path: siblings/rusty-testkit
+          ref: dev
+      - name: Fetch sibling rusty-x-ansi (pinned)
+        uses: actions/checkout@v4
+        with:
+          repository: coderbants/rusty-x-ansi
+          path: siblings/rusty-x-ansi
+          ref: dev
+      - name: Place sibling crates
+        run: |
+          mkdir -p ../siblings && true
+          mv siblings/rusty-bubbletea ../rusty-bubbletea
+          mv siblings/rusty-bubbles ../rusty-bubbles
+          mv siblings/rusty-colorprofile ../rusty-colorprofile
+          mv siblings/rusty-lipgloss ../rusty-lipgloss
+          mv siblings/rusty-testkit ../rusty-testkit
+          mv siblings/rusty-x-ansi ../rusty-x-ansi
       - name: Upload coverage to Codecov
         if: env.CODECOV_TOKEN != ''
         env:

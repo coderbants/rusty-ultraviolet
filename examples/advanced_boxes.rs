@@ -48,11 +48,7 @@ impl App {
             height,
             Some(rusty_x_ansi::method::WidthMethod::GraphemeWidth),
         );
-        let root_win = new_window(
-            0,
-            0,
-            Some(rusty_x_ansi::method::WidthMethod::GraphemeWidth),
-        );
+        let root_win = new_window(0, 0, Some(rusty_x_ansi::method::WidthMethod::GraphemeWidth));
         let mut root_win = Rc::try_unwrap(root_win).expect("fresh window");
         root_win.resize(width, height);
         let root_rc = Rc::new(root_win);

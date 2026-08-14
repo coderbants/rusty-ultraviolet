@@ -340,10 +340,7 @@ mod tests {
             ..Style::default()
         });
         assert_eq!(b.top.style, b.bottom.style);
-        assert_eq!(
-            b.top.style.fg,
-            Some(rusty_x_ansi::style::Color::Basic(1))
-        );
+        assert_eq!(b.top.style.fg, Some(rusty_x_ansi::style::Color::Basic(1)));
     }
 
     #[test]

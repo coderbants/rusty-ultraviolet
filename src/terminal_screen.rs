@@ -425,8 +425,7 @@ impl TerminalScreen {
         if self.width_method_override {
             return;
         }
-        self.buf
-            .push_str(rusty_x_ansi::mode::SET_MODE_UNICODE_CORE);
+        self.buf.push_str(rusty_x_ansi::mode::SET_MODE_UNICODE_CORE);
         self.set_width_method_internal(WidthMethod::GraphemeWidth);
         self.rend.set_grapheme_width(true);
         let _ = self.flush();
@@ -1363,9 +1362,7 @@ mod tests {
                 content: "你".to_string(),
                 width: 2,
                 style: crate::style::Style {
-                    bg: Some(rusty_x_ansi::style::Color::Basic(
-                        rusty_x_ansi::color::RED,
-                    )),
+                    bg: Some(rusty_x_ansi::style::Color::Basic(rusty_x_ansi::color::RED)),
                     ..Default::default()
                 },
                 ..Cell::default()

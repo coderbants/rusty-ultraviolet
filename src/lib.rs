@@ -426,9 +426,7 @@ pub fn encode_mouse_encoding(w: &mut dyn Write, enc: MouseEncoding) -> io::Resul
                 + rusty_x_ansi::mode::RESET_MODE_MOUSE_EXT_URXVT
                 + rusty_x_ansi::mode::RESET_MODE_MOUSE_EXT_SGR_PIXEL
         }
-        MouseEncoding::MouseEncodingSGR => {
-            rusty_x_ansi::mode::SET_MODE_MOUSE_EXT_SGR.to_string()
-        }
+        MouseEncoding::MouseEncodingSGR => rusty_x_ansi::mode::SET_MODE_MOUSE_EXT_SGR.to_string(),
         MouseEncoding::MouseEncodingSGRPixel => {
             rusty_x_ansi::mode::SET_MODE_MOUSE_EXT_SGR_PIXEL.to_string()
         }

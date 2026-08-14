@@ -96,7 +96,7 @@ jobs:
       - name: Docgen
         run: cargo doc --no-deps
       - name: Test (all targets, all integration tests)
-        run: cargo test --all-targets
+        run: cargo test --all-targets -- --test-threads=1
       - name: Byte-for-byte example parity sweep
         run: ./scripts/verify_examples.sh
       - name: Verify example parity (upstream Go vs Rust)

@@ -194,24 +194,9 @@ jobs:
 
       - name: Write coverage badge in place
         run: |
-          pct="$(grep -oE 'Coverage Result: [0-9.]+%' /tmp/tarpaulin.log | tail -1 | grep -oE '[0-9.]+' | head -1)"
+          raw="$(grep -oE 'line-rate="[0-9.]+' target/tarpaulin/cobertura.xml | head -1 | grep -oE '[0-9.]+')"
+          pct="$(awk -v r="$raw" 'BEGIN { printf "%.1f", r * 100 }')"
           if [ -z "$pct" ]; then
-            echo "could not parse coverage percentage from tarpaulin output" >&2
+            echo "could not parse coverage from the tarpaulin report" >&2
             exit 1
-          fi
-          case "$pct" in
-            9[0-9]*|100*) color="brightgreen" ;;
-            7[5-9]*) color="yellowgreen" ;;
-            6[0-9]*) color="orange" ;;
-            *) color="red" ;;
-          esac
-          curl -sS "https://img.shields.io/badge/coverage-${pct}%25-${color}.svg" -o coverage.svg
-          # Commit the badge in place only when it changed, so the push
-          # cannot re-trigger CI indefinitely.
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          if ! git diff --quiet -- coverage.svg; then
-            git add coverage.svg
-            git commit -q -m "docs: update coverage badge ($pct%)"
-            git push -q origin dev
           fi

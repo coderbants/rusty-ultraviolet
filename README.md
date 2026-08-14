@@ -2,6 +2,8 @@
     <a href="rusty-ultraviolet.png"><img src="rusty-ultraviolet.png" width="400" alt="Rusty Ultraviolet"></a><br>
     <a href="https://crates.io/crates/rusty-ultraviolet"><img src="https://img.shields.io/crates/v/rusty-ultraviolet.svg" alt="crates.io"></a>
     <a href="https://github.com/coderbants/rusty-ultraviolet/actions"><img src="https://github.com/coderbants/rusty-ultraviolet/actions/workflows/ci.yml/badge.svg" alt="Build Status"></a>
+    <a href="https://app.codecov.io/gh/coderbants/rusty-ultraviolet"><img src="https://codecov.io/gh/coderbants/rusty-ultraviolet/branch/dev/graph/badge.svg" alt="codecov"></a>
+
 </p>
 
 # Rusty Ultraviolet (`rusty-ultraviolet`)

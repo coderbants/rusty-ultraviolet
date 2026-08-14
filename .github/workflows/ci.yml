@@ -118,16 +118,15 @@ jobs:
 
       - name: verify_mapping
         run: ./scripts/verify_mapping.sh
-
   coverage:
     name: Coverage
     runs-on: ubuntu-latest
     needs: gate
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
-        with:
-          components: llvm-tools-preview
       - name: Configure shared Cargo cache
         run: |
           # The runner image pre-sets CARGO_HOME=$HOME/.cargo; drop the
@@ -187,15 +186,32 @@ jobs:
           mv siblings/rusty-lipgloss ../rusty-lipgloss
           mv siblings/rusty-testkit ../rusty-testkit
           mv siblings/rusty-x-ansi ../rusty-x-ansi
-      - name: Install cargo-llvm-cov
-        uses: taiki-e/install-action@cargo-llvm-cov
+      - name: Install cargo-tarpaulin
+        uses: taiki-e/install-action@cargo-tarpaulin
       - name: Generate code coverage
-        run: cargo llvm-cov --all-features --lib --lcov --output-path lcov.info
+        run: |
+          cargo tarpaulin --all-features --lib --out xml --output-dir target/tarpaulin 2>&1 | tee /tmp/tarpaulin.log
 
-      - name: Upload coverage to Codecov
-        if: env.CODECOV_TOKEN != ''
-        env:
-          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
-        uses: codecov/codecov-action@v4
-        with:
-          files: lcov.info
+      - name: Write coverage badge in place
+        run: |
+          pct="$(grep -oE 'Coverage Result: [0-9.]+%' /tmp/tarpaulin.log | tail -1 | grep -oE '[0-9.]+' | head -1)"
+          if [ -z "$pct" ]; then
+            echo "could not parse coverage percentage from tarpaulin output" >&2
+            exit 1
+          fi
+          case "$pct" in
+            9[0-9]*|100*) color="brightgreen" ;;
+            7[5-9]*) color="yellowgreen" ;;
+            6[0-9]*) color="orange" ;;
+            *) color="red" ;;
+          esac
+          curl -sS "https://img.shields.io/badge/coverage-${pct}%25-${color}.svg" -o coverage.svg
+          # Commit the badge in place only when it changed, so the push
+          # cannot re-trigger CI indefinitely.
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if ! git diff --quiet -- coverage.svg; then
+            git add coverage.svg
+            git commit -q -m "docs: update coverage badge ($pct%)"
+            git push -q origin dev
+          fi

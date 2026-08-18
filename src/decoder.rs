@@ -4306,4 +4306,101 @@ mod tests {
         let ev = parse_kitty_keyboard_ext(&[1, 2 | HAS_MORE_FLAG, 3], base);
         assert!(matches!(&ev, DecodedEvent::KeyRelease(_)));
     }
+
+    /// CSI error/report paths not yet covered.
+    #[test]
+    fn test_csi_more_paths() {
+        // Alt+[ shortcut (len 2): ESC [ is parsed as alt+[ key.
+        let mut p = EventDecoder::default();
+        let (n, ev) = p.parse_csi(b"\x1b[");
+        assert_eq!(n, 2);
+        assert!(matches!(&ev, Some(DecodedEvent::KeyPress(k))
+            if k.code == b'[' as u32 && k.mod_ == MOD_ALT));
+
+        // URxvt shift-modified key: CSI <n> $ is rewritten to ~ and shifted.
+        let mut p = EventDecoder::default();
+        let (n, ev) = p.parse_csi(b"\x1b[5$");
+        assert_eq!(n, 4);
+        assert!(matches!(&ev, Some(DecodedEvent::KeyPress(k))
+            if k.code == KEY_PG_UP && k.mod_.contains(MOD_SHIFT)));
+
+        // Cursor position report ?row;colR.
+        let mut p = EventDecoder::default();
+        let (n, ev) = p.parse_csi(b"\x1b[?5;10R");
+        assert_eq!(n, 8);
+        assert!(matches!(
+            &ev,
+            Some(DecodedEvent::CursorPosition { x: 9, y: 4 })
+        ));
+
+        // Cursor position ?R with missing col -> UnknownCsi.
+        let mut p = EventDecoder::default();
+        let (_n, ev) = p.parse_csi(b"\x1b[?5R");
+        assert!(matches!(ev, Some(DecodedEvent::UnknownCsi(_))));
+
+        // DECRPM with missing mode -> UnknownCsi.
+        let mut p = EventDecoder::default();
+        let (_n, ev) = p.parse_csi(b"\x1b[?$y");
+        assert!(matches!(ev, Some(DecodedEvent::UnknownCsi(_))));
+
+        // DECRPM without ? prefix with missing value.
+        let mut p = EventDecoder::default();
+        let (_n, ev) = p.parse_csi(b"\x1b[5$y");
+        assert!(matches!(ev, Some(DecodedEvent::UnknownCsi(_))));
+
+        // modifyOtherKeys with missing value -> UnknownCsi.
+        let mut p = EventDecoder::default();
+        let (_n, ev) = p.parse_csi(b"\x1b[>4;m");
+        assert!(matches!(ev, Some(DecodedEvent::UnknownCsi(_))));
+
+        // X10 mouse with too few bytes -> UnknownCsi.
+        let mut p = EventDecoder::default();
+        let (_n, ev) = p.parse_csi(b"\x1b[M");
+        assert!(matches!(ev, Some(DecodedEvent::UnknownCsi(_))));
+
+        // xterm modifyOtherKeys 27: parse_xterm_modify_other_keys emits a key.
+        let mut p = EventDecoder::default();
+        let (_n, ev) = p.parse_csi(b"\x1b[27;1;2~");
+        assert!(matches!(&ev, Some(DecodedEvent::KeyPress(_))));
+
+        // xterm modifyOtherKeys 27 with wrong param count -> UnknownCsi.
+        let mut p = EventDecoder::default();
+        let (_n, ev) = p.parse_csi(b"\x1b[27;1~");
+        assert!(matches!(ev, Some(DecodedEvent::UnknownCsi(_))));
+
+        // ~ with no params -> UnknownCsi.
+        let mut p = EventDecoder::default();
+        let (_n, ev) = p.parse_csi(b"\x1b[~");
+        assert!(matches!(ev, Some(DecodedEvent::UnknownCsi(_))));
+
+        // Home/End with legacy find/select flags.
+        let mut p = EventDecoder {
+            legacy: LegacyKeyEncoding(FLAG_FIND),
+            ..EventDecoder::default()
+        };
+        let (_n, ev) = p.parse_csi(b"\x1b[1~");
+        assert!(matches!(&ev, Some(DecodedEvent::KeyPress(k))
+            if k.code == KEY_FIND));
+        let mut p = EventDecoder {
+            legacy: LegacyKeyEncoding(FLAG_SELECT),
+            ..EventDecoder::default()
+        };
+        let (_n, ev) = p.parse_csi(b"\x1b[4~");
+        assert!(matches!(&ev, Some(DecodedEvent::KeyPress(k))
+            if k.code == KEY_SELECT));
+
+        // Keypad home/end via 7~/8~.
+        let mut p = EventDecoder::default();
+        let (_n, ev) = p.parse_csi(b"\x1b[7~");
+        assert!(matches!(&ev, Some(DecodedEvent::KeyPress(k)) if k.code == KEY_HOME));
+        let mut p = EventDecoder::default();
+        let (_n, ev) = p.parse_csi(b"\x1b[8~");
+        assert!(matches!(&ev, Some(DecodedEvent::KeyPress(k)) if k.code == KEY_END));
+
+        // A ~ param with a modifier.
+        let mut p = EventDecoder::default();
+        let (_n, ev) = p.parse_csi(b"\x1b[5;3~");
+        assert!(matches!(&ev, Some(DecodedEvent::KeyPress(k))
+            if k.code == KEY_PG_UP && k.mod_.contains(MOD_ALT)));
+    }
 }

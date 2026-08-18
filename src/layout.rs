@@ -2217,4 +2217,71 @@ mod tests {
             "Ratio(1 / 2)"
         );
     }
+
+    /// Remaining Constraint Display variants.
+    #[test]
+    fn test_constraint_display_more() {
+        assert_eq!(Constraint::Max(5).to_string(), "Max(5)");
+        assert_eq!(Constraint::Len(5).to_string(), "Len(5)");
+        assert_eq!(Constraint::Percent(5).to_string(), "Percent(5)");
+        assert_eq!(Constraint::Fill(5).to_string(), "Fill(5)");
+        assert_eq!(Constraint::Min(5).to_string(), "Min(5)");
+        assert_eq!(
+            Constraint::Ratio { num: 3, den: 4 }.to_string(),
+            "Ratio(3 / 4)"
+        );
+    }
+
+    /// Pad with 1/2/4 sides and the panic case.
+    #[test]
+    fn test_pad_sides() {
+        assert_eq!(pad(&[]), Padding::default());
+        let p = pad(&[3]);
+        assert_eq!(p.top, 3);
+        assert_eq!(p.right, 3);
+        assert_eq!(p.bottom, 3);
+        assert_eq!(p.left, 3);
+        let p = pad(&[1, 2]);
+        assert_eq!(p.top, 1);
+        assert_eq!(p.right, 2);
+        assert_eq!(p.bottom, 1);
+        assert_eq!(p.left, 2);
+        let p = pad(&[1, 2, 3, 4]);
+        assert_eq!(p.top, 1);
+        assert_eq!(p.right, 2);
+        assert_eq!(p.bottom, 3);
+        assert_eq!(p.left, 4);
+    }
+
+    /// Layout builders and helpers.
+    #[test]
+    fn test_layout_builders() {
+        let v = vertical(&[Constraint::Len(1)]);
+        assert_eq!(v.direction, Direction::DirectionVertical);
+        let h = horizontal(&[Constraint::Len(1)]);
+        assert_eq!(h.direction, Direction::DirectionHorizontal);
+        let l = new(Direction::DirectionHorizontal, &[Constraint::Len(1)])
+            .with_direction(Direction::DirectionVertical)
+            .with_padding(pad(&[2]))
+            .with_flex(Flex::FlexEnd)
+            .with_spacing(1)
+            .with_constraints(&[Constraint::Len(2)]);
+        assert_eq!(l.direction, Direction::DirectionVertical);
+        assert_eq!(l.padding.top, 2);
+        assert_eq!(l.flex, Flex::FlexEnd);
+        assert_eq!(l.spacing, 1);
+        assert_eq!(l.constraints.len(), 2);
+        // Splitted accessors.
+        let area = crate::window::rect(0, 0, 100, 1);
+        let l2 = Layout {
+            direction: Direction::DirectionHorizontal,
+            constraints: vec![Constraint::Len(25)],
+            flex: Flex::FlexStart,
+            ..Layout::default()
+        };
+        let s = l2.split(area);
+        assert!(!s.is_empty());
+        assert!(s.get(0).is_some());
+        assert_eq!(s.into_vec().len(), 1);
+    }
 }

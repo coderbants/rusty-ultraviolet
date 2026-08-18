@@ -2700,7 +2700,7 @@ mod tests {
     use crate::key::{
         KEY_BACKSPACE, KEY_CAPS_LOCK, KEY_DELETE, KEY_DOWN, KEY_END, KEY_ENTER, KEY_ESCAPE, KEY_F1,
         KEY_F11, KEY_F12, KEY_F13, KEY_F15, KEY_F17, KEY_F2, KEY_F20, KEY_F21, KEY_F3, KEY_F35,
-        KEY_F5, KEY_HOME, KEY_INSERT, KEY_ISO_LEVEL3_SHIFT, KEY_ISO_LEVEL5_SHIFT, KEY_KP_0,
+        KEY_F4, KEY_F5, KEY_HOME, KEY_INSERT, KEY_ISO_LEVEL3_SHIFT, KEY_ISO_LEVEL5_SHIFT, KEY_KP_0,
         KEY_KP_1, KEY_KP_2, KEY_KP_3, KEY_KP_4, KEY_KP_5, KEY_KP_6, KEY_KP_7, KEY_KP_8, KEY_KP_9,
         KEY_KP_BEGIN, KEY_KP_DECIMAL, KEY_KP_DELETE, KEY_KP_DIVIDE, KEY_KP_DOWN, KEY_KP_END,
         KEY_KP_ENTER, KEY_KP_EQUAL, KEY_KP_HOME, KEY_KP_INSERT, KEY_KP_LEFT, KEY_KP_MINUS,
@@ -4093,5 +4093,166 @@ mod tests {
             DecodedEvent::KeyRelease(k) => assert_eq!(k.base_code, 0x1234),
             other => panic!("{other:?}"),
         }
+    }
+
+    /// `parse_ss3` full GL-character coverage.
+    #[test]
+    fn test_ss3_gl_characters() {
+        let cases: &[(u8, u32, KeyMod)] = &[
+            (b'a', KEY_UP, MOD_CTRL),
+            (b'b', KEY_DOWN, MOD_CTRL),
+            (b'c', KEY_RIGHT, MOD_CTRL),
+            (b'd', KEY_LEFT, MOD_CTRL),
+            (b'A', KEY_UP, KeyMod(0)),
+            (b'B', KEY_DOWN, KeyMod(0)),
+            (b'C', KEY_RIGHT, KeyMod(0)),
+            (b'D', KEY_LEFT, KeyMod(0)),
+            (b'E', KEY_BEGIN, KeyMod(0)),
+            (b'F', KEY_END, KeyMod(0)),
+            (b'H', KEY_HOME, KeyMod(0)),
+            (b'P', KEY_F1, KeyMod(0)),
+            (b'Q', KEY_F2, KeyMod(0)),
+            (b'R', KEY_F3, KeyMod(0)),
+            (b'S', KEY_F4, KeyMod(0)),
+            (b'M', KEY_KP_ENTER, KeyMod(0)),
+            (b'X', KEY_KP_EQUAL, KeyMod(0)),
+            (b'j', KEY_KP_MULTIPLY, KeyMod(0)),
+            (b'y', KEY_KP_MULTIPLY + (b'y' - b'j') as u32, KeyMod(0)),
+        ];
+        for &(gl, want_code, want_mod) in cases {
+            let mut p = EventDecoder::default();
+            let input = format!("\x1bO{}", gl as char);
+            let (n, ev) = p.parse_ss3(input.as_bytes());
+            assert_eq!(n, 3, "gl {}", gl as char);
+            match ev {
+                Some(DecodedEvent::KeyPress(k)) => {
+                    assert_eq!(k.code, want_code, "gl {}", gl as char);
+                    assert_eq!(k.mod_, want_mod, "gl {}", gl as char);
+                }
+                other => panic!("gl {}: {other:?}", gl as char),
+            }
+        }
+        // SS3 with a numeric modifier.
+        let mut p = EventDecoder::default();
+        let (n, ev) = p.parse_ss3(b"\x1bO2P");
+        assert_eq!(n, 4);
+        match ev {
+            Some(DecodedEvent::KeyPress(k)) => {
+                assert_eq!(k.code, KEY_F1);
+            }
+            other => panic!("{other:?}"),
+        }
+        // 8-bit SS3 intro.
+        let mut p = EventDecoder::default();
+        let (n, ev) = p.parse_ss3(b"\x8fP");
+        assert_eq!(n, 2);
+        match ev {
+            Some(DecodedEvent::KeyPress(k)) => assert_eq!(k.code, KEY_F1),
+            other => panic!("{other:?}"),
+        }
+        // alt+O shortcut (len 2).
+        let mut p = EventDecoder::default();
+        let (n, ev) = p.parse_ss3(b"\x1bO");
+        assert_eq!(n, 2);
+        match ev {
+            Some(DecodedEvent::KeyPress(k)) => {
+                assert_eq!(k.code, b'o' as u32);
+                assert_eq!(k.mod_, KeyMod(MOD_SHIFT.0 | MOD_ALT.0));
+            }
+            other => panic!("{other:?}"),
+        }
+        // Unknown GL char.
+        let mut p = EventDecoder::default();
+        let (n, ev) = p.parse_ss3(b"\x1bOZ");
+        assert_eq!(n, 3);
+        assert!(matches!(ev, Some(DecodedEvent::UnknownSs3(_))));
+        // Invalid GL char (outside 0x21..=0x7e) returns Unknown.
+        let mut p = EventDecoder::default();
+        let (n, ev) = p.parse_ss3(b"\x1bO\x1f");
+        assert_eq!(n, 2);
+        assert!(matches!(ev, Some(DecodedEvent::Unknown(_))));
+    }
+
+    /// `parse_osc` color, clipboard, and terminator variants.
+    #[test]
+    fn test_osc_variants() {
+        // Foreground color.
+        let mut p = EventDecoder::default();
+        let (n, ev) = p.parse_osc(b"\x1b]10;rgb:ffff/0000/ffff\x07");
+        assert_eq!(n, 24);
+        assert!(matches!(
+            ev,
+            Some(DecodedEvent::ForegroundColor(Some(
+                rusty_x_ansi::color::RGBColor {
+                    r: 0xff,
+                    g: 0x00,
+                    b: 0xff
+                }
+            )))
+        ));
+        // Background color.
+        let mut p = EventDecoder::default();
+        let (_n, ev) = p.parse_osc(b"\x1b]11;rgb:0000/ffff/0000\x07");
+        assert!(matches!(
+            ev,
+            Some(DecodedEvent::BackgroundColor(Some(
+                rusty_x_ansi::color::RGBColor {
+                    r: 0x00,
+                    g: 0xff,
+                    b: 0x00
+                }
+            )))
+        ));
+        // Cursor color.
+        let mut p = EventDecoder::default();
+        let (_n, ev) = p.parse_osc(b"\x1b]12;rgb:ff00/0000/0000\x07");
+        assert!(matches!(
+            ev,
+            Some(DecodedEvent::CursorColor(Some(
+                rusty_x_ansi::color::RGBColor {
+                    r: 0xff,
+                    g: 0x00,
+                    b: 0x00
+                }
+            )))
+        ));
+        // Clipboard with valid base64.
+        let mut p = EventDecoder::default();
+        let (_n, ev) = p.parse_osc(b"\x1b]52;c;aGVsbG8=\x07");
+        assert!(matches!(
+            &ev,
+            Some(DecodedEvent::Clipboard { content, selection })
+                if content == "hello" && *selection == b'c'
+        ));
+        // Clipboard with an empty selection segment.
+        let mut p = EventDecoder::default();
+        let (_n, ev) = p.parse_osc(b"\x1b]52;;abc\x07");
+        assert!(matches!(
+            &ev,
+            Some(DecodedEvent::Clipboard { content, .. }) if content.is_empty()
+        ));
+        // Clipboard with invalid base64.
+        let mut p = EventDecoder::default();
+        let (_n, ev) = p.parse_osc(b"\x1b]52;c;not-b64!!\x07");
+        assert!(matches!(&ev, Some(DecodedEvent::Clipboard { content, .. })
+            if content == "not-b64!!"));
+        // Unknown OSC.
+        let mut p = EventDecoder::default();
+        let (_n, ev) = p.parse_osc(b"\x1b]99;foo\x07");
+        assert!(matches!(ev, Some(DecodedEvent::UnknownOsc(_))));
+        // alt+] shortcut (len 2).
+        let mut p = EventDecoder::default();
+        let (n, ev) = p.parse_osc(b"\x1b]");
+        assert_eq!(n, 2);
+        assert!(matches!(&ev, Some(DecodedEvent::KeyPress(k))
+            if k.mod_ == MOD_ALT));
+        // Unterminated OSC.
+        let mut p = EventDecoder::default();
+        let (_n, ev) = p.parse_osc(b"\x1b]52;c;hello");
+        assert!(matches!(ev, Some(DecodedEvent::Unknown(_))));
+        // 8-bit OSC intro with ST.
+        let mut p = EventDecoder::default();
+        let (_n, ev) = p.parse_osc(b"\x9d10;rgb:ff00/0000/0000\x9c");
+        assert!(matches!(ev, Some(DecodedEvent::ForegroundColor(Some(_)))));
     }
 }

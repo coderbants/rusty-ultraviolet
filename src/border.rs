@@ -363,4 +363,118 @@ mod tests {
         // Interior cells untouched.
         assert_eq!(buf.cell_at(2, 1).unwrap().content, " ");
     }
+
+    /// All border constructors (ported from upstream `TestBorderConstructors`).
+    #[test]
+    fn test_border_constructors() {
+        let b = normal_border();
+        assert_eq!(b.top.content, "─");
+        assert_eq!(b.top_left.content, "┌");
+        assert_eq!(b.top_right.content, "┐");
+        assert_eq!(b.bottom_left.content, "└");
+
+        let b = rounded_border();
+        assert_eq!(b.top.content, "─");
+        assert_eq!(b.top_left.content, "╭");
+        assert_eq!(b.top_right.content, "╮");
+        assert_eq!(b.bottom_left.content, "╰");
+        assert_eq!(b.bottom_right.content, "╯");
+
+        let b = block_border();
+        assert_eq!(b.top.content, "█");
+        assert_eq!(b.top_left.content, "█");
+        assert_eq!(b.bottom.content, "█");
+
+        let b = outer_half_block_border();
+        assert_eq!(b.top.content, "▀");
+        assert_eq!(b.bottom.content, "▄");
+        assert_eq!(b.left.content, "▌");
+        assert_eq!(b.right.content, "▐");
+        assert_eq!(b.top_left.content, "▛");
+        assert_eq!(b.top_right.content, "▜");
+        assert_eq!(b.bottom_left.content, "▙");
+        assert_eq!(b.bottom_right.content, "▟");
+
+        let b = inner_half_block_border();
+        assert_eq!(b.top.content, "▄");
+        assert_eq!(b.bottom.content, "▀");
+        assert_eq!(b.left.content, "▐");
+        assert_eq!(b.right.content, "▌");
+        assert_eq!(b.top_left.content, "▗");
+        assert_eq!(b.top_right.content, "▖");
+        assert_eq!(b.bottom_left.content, "▝");
+        assert_eq!(b.bottom_right.content, "▘");
+
+        let b = thick_border();
+        assert_eq!(b.top.content, "━");
+        assert_eq!(b.top_left.content, "┏");
+        assert_eq!(b.top_right.content, "┓");
+
+        let b = double_border();
+        assert_eq!(b.top.content, "═");
+        assert_eq!(b.top_left.content, "╔");
+        assert_eq!(b.top_right.content, "╗");
+        assert_eq!(b.bottom_left.content, "╚");
+        assert_eq!(b.bottom_right.content, "╝");
+
+        let b = hidden_border();
+        assert_eq!(b.top.content, " ");
+        assert_eq!(b.top_left.content, " ");
+        assert_eq!(b.bottom_right.content, " ");
+
+        let b = markdown_border();
+        assert_eq!(b.left.content, "|");
+        assert_eq!(b.right.content, "|");
+        assert_eq!(b.top_left.content, "|");
+        assert_eq!(b.top.content, "");
+        assert_eq!(b.bottom.content, "");
+
+        let b = ascii_border();
+        assert_eq!(b.top.content, "-");
+        assert_eq!(b.bottom.content, "-");
+        assert_eq!(b.left.content, "|");
+        assert_eq!(b.right.content, "|");
+        assert_eq!(b.top_left.content, "+");
+        assert_eq!(b.bottom_right.content, "+");
+    }
+
+    /// Border::link applies the link to every side.
+    #[test]
+    fn test_border_link() {
+        let b = normal_border().link(crate::cell::Link {
+            url: "https://x.dev".to_string(),
+            params: String::new(),
+        });
+        assert_eq!(b.top.link.url, "https://x.dev");
+        assert_eq!(b.bottom.link.url, "https://x.dev");
+        assert_eq!(b.left.link.url, "https://x.dev");
+        assert_eq!(b.right.link.url, "https://x.dev");
+        assert_eq!(b.top_left.link.url, "https://x.dev");
+        assert_eq!(b.top_right.link.url, "https://x.dev");
+        assert_eq!(b.bottom_left.link.url, "https://x.dev");
+        assert_eq!(b.bottom_right.link.url, "https://x.dev");
+    }
+
+    /// Border draw on a small area and a non-overlapping area.
+    #[test]
+    fn test_border_draw_small() {
+        let mut buf = crate::new_buffer(2, 2);
+        normal_border().draw(
+            &mut buf,
+            Rectangle {
+                min: (0, 0),
+                max: (2, 2),
+            },
+        );
+        // Non-overlapping area draws nothing.
+        let mut buf2 = crate::new_buffer(5, 3);
+        normal_border().draw(
+            &mut buf2,
+            Rectangle {
+                min: (10, 10),
+                max: (15, 13),
+            },
+        );
+        assert_eq!(buf2.cell_at(0, 0).unwrap().content, " ");
+    }
 }

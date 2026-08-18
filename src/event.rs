@@ -493,6 +493,7 @@ fn round(x: f64) -> f64 {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::key::KeyMod;
 
     #[test]
     fn test_color_hex() {
@@ -539,5 +540,84 @@ mod tests {
             flags: 1 | 2 | 4 | 8,
         };
         assert!(e.supports_uniform_key_layout());
+    }
+
+    /// rgb_to_hsl branch coverage (green and other hues, achromatic).
+    #[test]
+    fn test_rgb_to_hsl() {
+        let (h, s, l) = rgb_to_hsl(255, 0, 0);
+        assert_eq!((h, s), (0.0, 1.0));
+        assert!((l - 0.5).abs() < 0.01);
+        let (h, _, _) = rgb_to_hsl(0, 255, 0);
+        assert_eq!(h, 120.0);
+        let (h, _, _) = rgb_to_hsl(0, 0, 255);
+        assert_eq!(h, 240.0);
+        // Achromatic (gray) -> saturation 0, hue 0.
+        let (h, s, l) = rgb_to_hsl(128, 128, 128);
+        assert_eq!((h, s), (0.0, 0.0));
+        assert!((l - 0.501).abs() < 0.01);
+        // get_max_min combos.
+        assert_eq!(get_max_min(0.5, 0.3, 0.8), (0.8, 0.3));
+        assert_eq!(get_max_min(1.0, 1.0, 1.0), (1.0, 1.0));
+        assert_eq!(get_max_min(0.2, 0.5, 0.3), (0.5, 0.2));
+    }
+
+    /// Key press/release event methods.
+    #[test]
+    fn test_key_event_methods() {
+        let k = Key {
+            code: b'a' as u32,
+            text: "a".to_string(),
+            ..Key::default()
+        };
+        let kp = KeyPressEvent(k.clone());
+        assert_eq!(kp.string(), "a");
+        assert_eq!(kp.keystroke(), "a");
+        assert!(kp.match_string(&["a"]));
+        assert!(!kp.match_string(&["b"]));
+        assert_eq!(kp.key().code, b'a' as u32);
+        let kr = KeyReleaseEvent(k.clone());
+        assert_eq!(kr.string(), "a");
+        assert_eq!(kr.keystroke(), "a");
+        assert!(kr.match_string(&["a"]));
+        assert_eq!(kr.key().code, b'a' as u32);
+    }
+
+    /// Color event methods.
+    #[test]
+    fn test_color_event_methods() {
+        let c = Some(rusty_x_ansi::color::RGBColor { r: 255, g: 0, b: 0 });
+        let fg = ForegroundColorEvent(c);
+        assert_eq!(fg.string(), "#ff0000");
+        assert!(!fg.is_dark());
+        let bg = BackgroundColorEvent(c);
+        assert_eq!(bg.string(), "#ff0000");
+        let cu = CursorColorEvent(c);
+        assert_eq!(cu.string(), "#ff0000");
+        let dark = ForegroundColorEvent(Some(rusty_x_ansi::color::RGBColor { r: 0, g: 0, b: 0 }));
+        assert!(dark.is_dark());
+        assert_eq!(ForegroundColorEvent(None).string(), "");
+        assert!(ForegroundColorEvent(None).is_dark());
+    }
+
+    /// Mouse event accessors.
+    #[test]
+    fn test_mouse_event_methods() {
+        use crate::mouse::Mouse;
+        let m = Mouse {
+            x: 1,
+            y: 2,
+            button: crate::mouse::MOUSE_LEFT,
+            mod_: KeyMod(0),
+        };
+        let mc = MouseClickEvent(m);
+        assert_eq!(mc.mouse().x, 1);
+        assert_eq!(mc.mouse().y, 2);
+        let mr = MouseReleaseEvent(m);
+        assert_eq!(mr.mouse().button, crate::mouse::MOUSE_LEFT);
+        let mw = MouseWheelEvent(m);
+        assert_eq!(mw.mouse().mod_, KeyMod(0));
+        let mm = MouseMotionEvent(m);
+        assert_eq!(mm.mouse().x, 1);
     }
 }

@@ -2792,4 +2792,189 @@ mod tests {
         );
         assert_eq!(xterm_caps("").0, 0);
     }
+
+    /// Ported from upstream `TestRendererRelativeCursor`.
+    #[test]
+    fn test_renderer_relative_cursor() {
+        let mut r = new_terminal_renderer(&env());
+        r.set_fullscreen(true);
+        r.set_relative_cursor(true);
+        let mut nb = crate::new_render_buffer(10, 3);
+        let space = empty_cell();
+        for y in 0..3 {
+            for x in 0..10 {
+                nb.set_cell(x, y, Some(&space));
+            }
+        }
+        nb.set_cell(5, 1, Some(&Cell::new("X")));
+        let mut out = Vec::new();
+        r.render(&mut nb, &mut out);
+        r.flush(&mut out).unwrap();
+        assert!(out.contains(&b'X'));
+
+        // Disabling relative cursor still renders (unchanged buffer: no diff).
+        r.set_relative_cursor(false);
+        let mut out = Vec::new();
+        r.render(&mut nb, &mut out);
+        r.flush(&mut out).unwrap();
+    }
+
+    /// Ported from upstream `TestRendererScrollOptimization`.
+    #[test]
+    fn test_renderer_scroll_optimization() {
+        let mut r = new_terminal_renderer(&env());
+        r.set_fullscreen(true);
+        let mut nb = crate::new_render_buffer(10, 5);
+        for y in 0..5 {
+            for x in 0..10 {
+                nb.set_cell(
+                    x,
+                    y,
+                    Some(&Cell::new(&((b'A' + y as u8) as char).to_string())),
+                );
+            }
+        }
+        let mut out = Vec::new();
+        r.render(&mut nb, &mut out);
+        r.flush(&mut out).unwrap();
+        out.clear();
+
+        // Scroll content up by one and add a new row at the bottom.
+        let mut nb2 = crate::new_render_buffer(10, 5);
+        for y in 0..4 {
+            for x in 0..10 {
+                nb2.set_cell(
+                    x,
+                    y,
+                    Some(&Cell::new(&((b'A' + y as u8 + 1) as char).to_string())),
+                );
+            }
+        }
+        for x in 0..10 {
+            nb2.set_cell(x, 4, Some(&Cell::new("F")));
+        }
+        r.render(&mut nb2, &mut out);
+        r.flush(&mut out).unwrap();
+        assert!(out.contains(&b'F'));
+    }
+
+    /// Ported from upstream `TestRendererPosition`.
+    #[test]
+    fn test_renderer_position() {
+        let mut r = new_terminal_renderer(&env());
+        assert_eq!(r.position(), (0, 0));
+        r.set_position(5, 10);
+        assert_eq!(r.position(), (5, 10));
+    }
+
+    /// Ported from upstream `TestRendererMoveTo` and `TestRendererWriteString`.
+    #[test]
+    fn test_renderer_move_and_write() {
+        let mut r = new_terminal_renderer(&env());
+        let mut out = Vec::new();
+        r.move_to(5, 3, &mut out);
+        r.flush(&mut out).unwrap();
+        assert!(out.iter().any(|&b| b == 0x1b));
+
+        // write via the concrete struct's write_string_public.
+        let mut cr = TerminalRenderer::new_without_writer(&env());
+        let n = cr.write_string_public("Hello, World!").unwrap();
+        assert_eq!(n, 13);
+        let mut out = Vec::new();
+        cr.flush_into(&mut out);
+        assert!(String::from_utf8_lossy(&out).contains("Hello, World!"));
+    }
+
+    /// Ported from upstream `TestRendererRedraw` and `TestRendererErase`.
+    #[test]
+    fn test_renderer_redraw_and_erase() {
+        let mut r = new_terminal_renderer(&env());
+        let mut nb = crate::new_render_buffer(3, 1);
+        nb.set_cell(0, 0, Some(&Cell::new("X")));
+        let mut out = Vec::new();
+        r.render(&mut nb, &mut out);
+        r.flush(&mut out).unwrap();
+        assert!(out.contains(&b'X'));
+
+        // Erase forces a full clear on the next render.
+        r.erase();
+        let mut out = Vec::new();
+        r.render(&mut nb, &mut out);
+        r.flush(&mut out).unwrap();
+        assert!(out.contains(&b'X'));
+    }
+
+    /// Ported from upstream `TestRendererResize`.
+    #[test]
+    fn test_renderer_resize() {
+        let mut r = new_terminal_renderer(&env());
+        r.resize(80, 24);
+        let mut nb = crate::new_render_buffer(80, 24);
+        let mut out = Vec::new();
+        r.render(&mut nb, &mut out);
+        r.flush(&mut out).unwrap();
+    }
+
+    /// Ported from upstream `TestRendererTabStops`.
+    #[test]
+    fn test_renderer_tab_stops() {
+        let mut r = new_terminal_renderer(&env());
+        r.set_tab_stops(5);
+        r.set_backspace(true);
+        r.set_map_newline(true);
+        let mut nb = crate::new_render_buffer(20, 2);
+        nb.set_cell(0, 0, Some(&Cell::new("H")));
+        nb.set_cell(1, 0, Some(&Cell::new("i")));
+        let mut out = Vec::new();
+        r.render(&mut nb, &mut out);
+        r.flush(&mut out).unwrap();
+        assert!(out.contains(&b'H'));
+        // Disable tab stops.
+        r.set_tab_stops(-1);
+        let mut out = Vec::new();
+        r.render(&mut nb, &mut out);
+        r.flush(&mut out).unwrap();
+    }
+
+    /// Ported from upstream `TestRendererWideCharacters` and
+    /// `TestRendererZeroWidthCharacters`.
+    #[test]
+    fn test_renderer_wide_and_zero_width() {
+        let mut r = new_terminal_renderer(&env());
+        r.set_fullscreen(true);
+        r.set_width_method(WidthMethod::WcWidth);
+        let mut nb = crate::new_render_buffer(10, 2);
+        let space = empty_cell();
+        for y in 0..2 {
+            for x in 0..10 {
+                nb.set_cell(x, y, Some(&space));
+            }
+        }
+        nb.set_cell(0, 0, Some(&Cell::new("界")));
+        nb.set_cell(1, 0, Some(&Cell::default()));
+        nb.set_cell(2, 0, Some(&Cell::new("界")));
+        nb.set_cell(3, 0, Some(&Cell::default()));
+        let mut out = Vec::new();
+        r.render(&mut nb, &mut out);
+        r.flush(&mut out).unwrap();
+        // The wide cells only require cursor moves (no visible content diff).
+        assert!(!out.is_empty());
+    }
+
+    /// Ported from upstream `TestRendererSwitchBuffer`.
+    #[test]
+    fn test_renderer_switch_buffer() {
+        let mut r = new_terminal_renderer(&env());
+        r.set_fullscreen(true);
+        let mut nb = crate::new_render_buffer(5, 3);
+        nb.set_cell(0, 0, Some(&Cell::new("X")));
+        let mut out = Vec::new();
+        r.render(&mut nb, &mut out);
+        r.flush(&mut out).unwrap();
+        // Switching to inline mode.
+        r.set_fullscreen(false);
+        let mut out = Vec::new();
+        r.render(&mut nb, &mut out);
+        r.flush(&mut out).unwrap();
+    }
 }

@@ -645,4 +645,47 @@ mod tests {
         // displaywidth), landing at x=2 without wrapping.
         assert_eq!(ctx.position(), (2, 0));
     }
+
+    /// All the attribute setter methods.
+    #[test]
+    fn test_attr_setters() {
+        let buf = new_buffer(1, 1);
+        let mut ctx = new_context(Box::new(buf));
+        ctx.set_bold(true);
+        assert_ne!(ctx.style.attrs & ATTR_BOLD, 0);
+        ctx.set_bold(false);
+        assert_eq!(ctx.style.attrs & ATTR_BOLD, 0);
+        ctx.set_faint(true);
+        assert_ne!(ctx.style.attrs & ATTR_FAINT, 0);
+        ctx.set_faint(false);
+        assert_eq!(ctx.style.attrs & ATTR_FAINT, 0);
+        ctx.set_blink(true);
+        assert_ne!(ctx.style.attrs & ATTR_BLINK, 0);
+        ctx.set_blink(false);
+        assert_eq!(ctx.style.attrs & ATTR_BLINK, 0);
+        ctx.set_reverse(true);
+        assert_ne!(ctx.style.attrs & ATTR_REVERSE, 0);
+        ctx.set_reverse(false);
+        assert_eq!(ctx.style.attrs & ATTR_REVERSE, 0);
+        ctx.set_conceal(true);
+        assert_ne!(ctx.style.attrs & ATTR_CONCEAL, 0);
+        ctx.set_conceal(false);
+        assert_eq!(ctx.style.attrs & ATTR_CONCEAL, 0);
+        ctx.set_strikethrough(true);
+        assert_ne!(ctx.style.attrs & ATTR_STRIKETHROUGH, 0);
+        ctx.set_strikethrough(false);
+        assert_eq!(ctx.style.attrs & ATTR_STRIKETHROUGH, 0);
+        // Underline style and color.
+        ctx.set_underline_style(Underline::Double);
+        assert_eq!(ctx.style.underline, Underline::Double);
+        ctx.set_underline(true);
+        assert_eq!(ctx.style.underline, Underline::Single);
+        ctx.set_underline_color(Some(rusty_x_ansi::style::Color::Basic(1)));
+        assert_eq!(
+            ctx.style.underline_color,
+            Some(rusty_x_ansi::style::Color::Basic(1))
+        );
+        ctx.set_underline_color(None);
+        assert!(ctx.style.underline_color.is_none());
+    }
 }

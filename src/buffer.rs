@@ -1522,4 +1522,31 @@ mod tests {
         b.delete_cell_area(2, 1, 1, None, rect(1, 1, 4, 2));
         assert_eq!(b.cell_at(2, 1).unwrap().content, "C");
     }
+
+    /// Buffer draw onto another screen, including wide cells and non-overlap.
+    #[test]
+    fn test_buffer_draw() {
+        // Draw onto a plain Buffer screen.
+        let mut src = new_buffer(3, 1);
+        src.set_cell(0, 0, Some(&Cell::new("A")));
+        src.set_cell(1, 0, Some(&Cell::new("B")));
+        let mut dst = new_buffer(5, 2);
+        src.draw(&mut dst, rect(1, 0, 3, 1));
+        assert_eq!(dst.cell_at(1, 0).unwrap().content, "A");
+        assert_eq!(dst.cell_at(2, 0).unwrap().content, "B");
+        // Non-overlapping area draws nothing.
+        let mut dst2 = new_buffer(5, 2);
+        src.draw(&mut dst2, rect(10, 10, 3, 1));
+        assert_eq!(dst2.cell_at(0, 0).unwrap().content, " ");
+        // Wide cell draws across.
+        let mut src2 = new_buffer(3, 1);
+        src2.set_cell(0, 0, Some(&Cell::new("界")));
+        let mut dst3 = new_buffer(5, 1);
+        src2.draw(&mut dst3, rect(0, 0, 3, 1));
+        assert_eq!(dst3.cell_at(0, 0).unwrap().content, "界");
+        // Empty buffer draws nothing.
+        let empty = new_buffer(0, 0);
+        let mut dst4 = new_buffer(3, 1);
+        empty.draw(&mut dst4, rect(0, 0, 3, 1));
+    }
 }

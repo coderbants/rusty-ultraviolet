@@ -688,4 +688,72 @@ mod tests {
         ctx.set_underline_color(None);
         assert!(ctx.style.underline_color.is_none());
     }
+
+    /// Builder (`with_*`) and position/width methods.
+    #[test]
+    fn test_builders_and_position() {
+        let buf = new_buffer(1, 1);
+        let ctx = new_context(Box::new(buf));
+        let style = Style {
+            fg: Some(rusty_x_ansi::style::Color::Basic(1)),
+            ..Style::default()
+        };
+        let ctx = ctx
+            .with_style(style.clone())
+            .with_attrs(ATTR_BOLD)
+            .with_link(crate::cell::Link {
+                url: "https://x.dev".to_string(),
+                params: String::new(),
+            })
+            .with_background(Some(rusty_x_ansi::style::Color::Basic(2)))
+            .with_foreground(Some(rusty_x_ansi::style::Color::Basic(3)))
+            .with_italic(true)
+            .with_strikethrough(true)
+            .with_faint(true)
+            .with_blink(true)
+            .with_reverse(true)
+            .with_conceal(true)
+            .with_underline_style(Underline::Double)
+            .with_underline_color(Some(rusty_x_ansi::style::Color::Basic(4)))
+            .with_position(3, 4);
+        assert_eq!(ctx.style.fg, Some(rusty_x_ansi::style::Color::Basic(3)));
+        assert_ne!(ctx.style.attrs & ATTR_BOLD, 0);
+        assert_eq!(ctx.link.url, "https://x.dev");
+        assert_eq!(ctx.style.bg, Some(rusty_x_ansi::style::Color::Basic(2)));
+        assert_ne!(ctx.style.attrs & ATTR_ITALIC, 0);
+        assert_ne!(ctx.style.attrs & ATTR_STRIKETHROUGH, 0);
+        assert_ne!(ctx.style.attrs & ATTR_FAINT, 0);
+        assert_ne!(ctx.style.attrs & ATTR_BLINK, 0);
+        assert_ne!(ctx.style.attrs & ATTR_REVERSE, 0);
+        assert_ne!(ctx.style.attrs & ATTR_CONCEAL, 0);
+        assert_eq!(ctx.style.underline, Underline::Double);
+        assert_eq!(
+            ctx.style.underline_color,
+            Some(rusty_x_ansi::style::Color::Basic(4))
+        );
+        assert_eq!(ctx.pos.x, 3);
+        assert_eq!(ctx.pos.y, 4);
+        assert_eq!(ctx.width_method(), WidthMethod::WcWidth);
+        // with_url and with_underline(false).
+        let ctx = ctx.with_url("", &[]).with_underline(false);
+        assert!(ctx.link.is_zero());
+        assert_eq!(ctx.style.underline, Underline::None);
+    }
+
+    /// set_position / move_to and print helpers.
+    #[test]
+    fn test_position_and_print() {
+        let buf = new_buffer(1, 1);
+        let mut ctx = new_context(Box::new(buf));
+        ctx.set_position(5, 6);
+        assert_eq!(ctx.pos.x, 5);
+        assert_eq!(ctx.pos.y, 6);
+        ctx.move_to(1, 2);
+        assert_eq!(ctx.pos.x, 1);
+        assert_eq!(ctx.pos.y, 2);
+        ctx.set_width_method(WidthMethod::WcWidth);
+        assert_eq!(ctx.width_method(), WidthMethod::WcWidth);
+        let r = ctx.print(format_args!("hello"));
+        assert!(r.is_ok());
+    }
 }

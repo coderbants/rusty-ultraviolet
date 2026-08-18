@@ -4255,4 +4255,55 @@ mod tests {
         let (_n, ev) = p.parse_osc(b"\x9d10;rgb:ff00/0000/0000\x9c");
         assert!(matches!(ev, Some(DecodedEvent::ForegroundColor(Some(_)))));
     }
+
+    /// `parse_kitty_keyboard` sub-parameter coverage.
+    #[test]
+    fn test_parse_kitty_keyboard_direct() {
+        // Basic: CSI u with a plain key code.
+        let ev = parse_kitty_keyboard(&[b'a' as i32]);
+        assert!(matches!(
+            &ev,
+            DecodedEvent::KeyPress(k) if k.code == b'a' as u32 && k.text == "a"
+        ));
+        // A functional key (F1) produces no text.
+        let ev = parse_kitty_keyboard(&[57364]);
+        assert!(matches!(&ev, DecodedEvent::KeyPress(k) if k.code == KEY_F1));
+        // Modifier: 5 = ctrl.
+        let ev = parse_kitty_keyboard(&[b'a' as i32, 5]);
+        assert!(matches!(&ev, DecodedEvent::KeyPress(k)
+            if k.code == b'a' as u32 && k.mod_ == MOD_CTRL && k.text.is_empty()));
+        // Release event (type 3).
+        let ev = parse_kitty_keyboard(&[b'a' as i32, 1 | HAS_MORE_FLAG, 3]);
+        assert!(matches!(&ev, DecodedEvent::KeyRelease(_)));
+        // Repeat event (type 2).
+        let ev = parse_kitty_keyboard(&[b'a' as i32, 1 | HAS_MORE_FLAG, 2]);
+        assert!(matches!(&ev, DecodedEvent::KeyPress(k) if k.is_repeat));
+        // Keypad key text.
+        let ev = parse_kitty_keyboard(&[KEY_KP_0 as i32, 1]);
+        assert!(matches!(&ev, DecodedEvent::KeyPress(k)
+            if k.code == KEY_KP_0 && k.text == "0"));
+        let ev = parse_kitty_keyboard(&[KEY_KP_EQUAL as i32, 1]);
+        assert!(matches!(&ev, DecodedEvent::KeyPress(k) if k.text == "="));
+        // Third param text.
+        let ev = parse_kitty_keyboard(&[b'a' as i32, 0, 0x58]);
+        assert!(matches!(&ev, DecodedEvent::KeyPress(k) if k.text == "X"));
+    }
+
+    /// `parse_kitty_keyboard_ext` repeat/release.
+    #[test]
+    fn test_parse_kitty_keyboard_ext() {
+        let base = KeyPressEvent(Key {
+            code: KEY_UP,
+            ..Key::default()
+        });
+        // No sub-param -> plain key press.
+        let ev = parse_kitty_keyboard_ext(&[1, 2, 3], base.clone());
+        assert!(matches!(&ev, DecodedEvent::KeyPress(_)));
+        // Sub-param event type 2 -> repeat.
+        let ev = parse_kitty_keyboard_ext(&[1, 2 | HAS_MORE_FLAG, 2], base.clone());
+        assert!(matches!(&ev, DecodedEvent::KeyPress(k) if k.is_repeat));
+        // Event type 3 -> release.
+        let ev = parse_kitty_keyboard_ext(&[1, 2 | HAS_MORE_FLAG, 3], base);
+        assert!(matches!(&ev, DecodedEvent::KeyRelease(_)));
+    }
 }

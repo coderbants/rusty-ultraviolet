@@ -4403,4 +4403,48 @@ mod tests {
         assert!(matches!(&ev, Some(DecodedEvent::KeyPress(k))
             if k.code == KEY_PG_UP && k.mod_.contains(MOD_ALT)));
     }
+
+    /// Remaining CSI paths: unmodified F3, color-scheme fallthrough, DECRPM.
+    #[test]
+    fn test_csi_final_paths() {
+        // Unmodified F3 (CSI R with no params).
+        let mut p = EventDecoder::default();
+        let (_n, ev) = p.parse_csi(b"\x1b[R");
+        match &ev {
+            Some(DecodedEvent::KeyPress(k)) => assert_eq!(k.code, KEY_F3),
+            other => panic!("{other:?}"),
+        }
+        // F3 with three params -> UnknownCsi.
+        let mut p = EventDecoder::default();
+        let (_n, ev) = p.parse_csi(b"\x1b[1;2;3R");
+        assert!(matches!(ev, Some(DecodedEvent::UnknownCsi(_))));
+        // Cursor position report R (row>1 so not F3).
+        let mut p = EventDecoder::default();
+        let (_n, ev) = p.parse_csi(b"\x1b[5;10R");
+        assert!(matches!(
+            &ev,
+            Some(DecodedEvent::CursorPosition { x: 9, y: 4 })
+        ));
+        // Color scheme report with unknown value falls through to UnknownCsi.
+        let mut p = EventDecoder::default();
+        let (_n, ev) = p.parse_csi(b"\x1b[?997;9n");
+        assert!(matches!(ev, Some(DecodedEvent::UnknownCsi(_))));
+        // DECRPM with missing mode param -> UnknownCsi.
+        let mut p = EventDecoder::default();
+        let (_n, ev) = p.parse_csi(b"\x1b[?y");
+        assert!(matches!(ev, Some(DecodedEvent::UnknownCsi(_))));
+        // F3 with an extra sub-param -> UnknownCsi.
+        let mut p = EventDecoder::default();
+        let (_n, ev) = p.parse_csi(b"\x1b[1;2;3R");
+        assert!(matches!(ev, Some(DecodedEvent::UnknownCsi(_))));
+    }
+
+    /// Window-op report with an out-of-range 48 param count.
+    #[test]
+    fn test_csi_window_op_48_invalid() {
+        // 48 with the wrong param count is an unknown window op.
+        let mut p = EventDecoder::default();
+        let (_n, ev) = p.parse_csi(b"\x1b[48;1;2t");
+        assert!(matches!(&ev, Some(DecodedEvent::WindowOp { op: 48, .. })));
+    }
 }

@@ -546,6 +546,7 @@ pub fn read_link(p: &[u8], link: &mut Link) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use rusty_x_ansi::parser::HAS_MORE_FLAG;
 
     #[test]
     fn test_styled_string_lines_zero_bounds_quirk() {
@@ -665,5 +666,112 @@ mod tests {
         read_link(b"8;id=1;https://example.com", &mut link);
         assert_eq!(link.url, "https://example.com");
         assert_eq!(link.params, "id=1");
+    }
+
+    /// Full SGR attribute coverage through `read_style`.
+    #[test]
+    fn test_read_style_attrs() {
+        // Empty params reset the style.
+        let mut style = Style {
+            fg: Some(Color::Basic(1)),
+            ..Style::default()
+        };
+        read_style(Params(&[]), &mut style);
+        assert!(style.fg.is_none());
+
+        // All attribute setters.
+        let params = vec![1, 2, 3, 5, 6, 7, 8, 9];
+        let mut style = Style::default();
+        read_style(Params(&params), &mut style);
+        assert_ne!(style.attrs & Attr::BOLD.bits(), 0);
+        assert_ne!(style.attrs & Attr::FAINT.bits(), 0);
+        assert_ne!(style.attrs & Attr::ITALIC.bits(), 0);
+        assert_ne!(style.attrs & Attr::BLINK.bits(), 0);
+        assert_ne!(style.attrs & Attr::RAPID_BLINK.bits(), 0);
+        assert_ne!(style.attrs & Attr::REVERSE.bits(), 0);
+        assert_ne!(style.attrs & Attr::CONCEAL.bits(), 0);
+        assert_ne!(style.attrs & Attr::STRIKETHROUGH.bits(), 0);
+
+        // Turning the attributes off.
+        let mut style = Style {
+            attrs: u8::MAX,
+            underline: Underline::Double,
+            ..Style::default()
+        };
+        let params = vec![22, 23, 24, 25, 27, 28, 29];
+        read_style(Params(&params), &mut style);
+        assert_eq!(style.attrs & Attr::BOLD.bits(), 0);
+        assert_eq!(style.attrs & Attr::FAINT.bits(), 0);
+        assert_eq!(style.attrs & Attr::ITALIC.bits(), 0);
+        assert_eq!(style.attrs & Attr::BLINK.bits(), 0);
+        assert_eq!(style.attrs & Attr::RAPID_BLINK.bits(), 0);
+        assert_eq!(style.attrs & Attr::REVERSE.bits(), 0);
+        assert_eq!(style.attrs & Attr::CONCEAL.bits(), 0);
+        assert_eq!(style.attrs & Attr::STRIKETHROUGH.bits(), 0);
+        assert_eq!(style.underline, Underline::None);
+    }
+
+    /// Foreground/background/underline color codes.
+    #[test]
+    fn test_read_style_colors() {
+        // Basic fg/bg.
+        let mut style = Style::default();
+        let params = vec![30, 31, 40, 41];
+        read_style(Params(&params), &mut style);
+        assert_eq!(style.fg, Some(Color::Basic(1)));
+        assert_eq!(style.bg, Some(Color::Basic(1)));
+        // Bright fg/bg.
+        let mut style = Style::default();
+        let params = vec![90, 91, 100, 101];
+        read_style(Params(&params), &mut style);
+        assert_eq!(style.fg, Some(Color::Basic(9)));
+        assert_eq!(style.bg, Some(Color::Basic(9)));
+        // Defaults clear colors.
+        let mut style = Style {
+            fg: Some(Color::Basic(1)),
+            bg: Some(Color::Basic(2)),
+            underline_color: Some(Color::Basic(3)),
+            ..Style::default()
+        };
+        let params = vec![39, 49, 59];
+        read_style(Params(&params), &mut style);
+        assert!(style.fg.is_none());
+        assert!(style.bg.is_none());
+        assert!(style.underline_color.is_none());
+        // 256-color fg/bg/underline.
+        let mut style = Style::default();
+        let params = vec![38, 5, 196, 48, 5, 42, 58, 5, 1];
+        read_style(Params(&params), &mut style);
+        assert_eq!(style.fg, Some(Color::Indexed(196)));
+        assert_eq!(style.bg, Some(Color::Indexed(42)));
+        assert_eq!(style.underline_color, Some(Color::Indexed(1)));
+    }
+
+    /// Underline styles via sub-params.
+    #[test]
+    fn test_read_style_underline_subparams() {
+        let cases: &[(i32, Underline)] = &[
+            (0, Underline::None),
+            (1, Underline::Single),
+            (2, Underline::Double),
+            (3, Underline::Curly),
+            (4, Underline::Dotted),
+            (5, Underline::Dashed),
+        ];
+        for &(sub, want) in cases {
+            // Param 4 with a sub-parameter requires has_more on the 4 and the
+            // next param to be valid (0..=5).
+            let mut style = Style::default();
+            read_style(Params(&[4 | HAS_MORE_FLAG, sub]), &mut style);
+            assert_eq!(style.underline, want, "sub {sub}");
+        }
+        // Out-of-range sub-param falls back to single underline.
+        let mut style = Style::default();
+        read_style(Params(&[4, 6]), &mut style);
+        assert_eq!(style.underline, Underline::Single);
+        // Plain 4 (no sub-param).
+        let mut style = Style::default();
+        read_style(Params(&[4]), &mut style);
+        assert_eq!(style.underline, Underline::Single);
     }
 }

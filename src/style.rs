@@ -311,4 +311,159 @@ mod tests {
         let to = Style::default();
         assert_eq!(style_diff(&from, &to), "\x1b[m");
     }
+
+    #[test]
+    fn test_style_diff_attrs() {
+        // Bold on.
+        let from = Style::default();
+        let to = Style {
+            attrs: Attr::BOLD.0,
+            ..Style::default()
+        };
+        assert_eq!(style_diff(&from, &to), "\x1b[1m");
+        // Bold off (target keeps a fg so it is not zero).
+        let from = Style {
+            attrs: Attr::BOLD.0,
+            ..Style::default()
+        };
+        let to = Style {
+            fg: Some(Color::Basic(1)),
+            ..Style::default()
+        };
+        assert_eq!(style_diff(&from, &to), "\x1b[31;22m");
+        // Faint.
+        assert_eq!(
+            style_diff(
+                &Style::default(),
+                &Style {
+                    attrs: Attr::FAINT.0,
+                    ..Style::default()
+                }
+            ),
+            "\x1b[2m"
+        );
+        // Italic.
+        assert_eq!(
+            style_diff(
+                &Style::default(),
+                &Style {
+                    attrs: Attr::ITALIC.0,
+                    ..Style::default()
+                }
+            ),
+            "\x1b[3m"
+        );
+        // Blink / rapid blink.
+        assert_eq!(
+            style_diff(
+                &Style::default(),
+                &Style {
+                    attrs: Attr::BLINK.0,
+                    ..Style::default()
+                }
+            ),
+            "\x1b[5m"
+        );
+        assert_eq!(
+            style_diff(
+                &Style::default(),
+                &Style {
+                    attrs: Attr::RAPID_BLINK.0,
+                    ..Style::default()
+                }
+            ),
+            "\x1b[6m"
+        );
+        // Reverse / conceal / strikethrough.
+        assert_eq!(
+            style_diff(
+                &Style::default(),
+                &Style {
+                    attrs: Attr::REVERSE.0,
+                    ..Style::default()
+                }
+            ),
+            "\x1b[7m"
+        );
+        assert_eq!(
+            style_diff(
+                &Style::default(),
+                &Style {
+                    attrs: Attr::CONCEAL.0,
+                    ..Style::default()
+                }
+            ),
+            "\x1b[8m"
+        );
+        assert_eq!(
+            style_diff(
+                &Style::default(),
+                &Style {
+                    attrs: Attr::STRIKETHROUGH.0,
+                    ..Style::default()
+                }
+            ),
+            "\x1b[9m"
+        );
+        // Identical styles produce no output.
+        let s = Style {
+            attrs: Attr::BOLD.0,
+            fg: Some(Color::Basic(1)),
+            ..Style::default()
+        };
+        assert_eq!(style_diff(&s, &s), "");
+        // A fully-zero target resets.
+        assert_eq!(style_diff(&s, &Style::default()), "\x1b[m");
+    }
+
+    #[test]
+    fn test_style_diff_colors() {
+        // Foreground transition to default (target keeps an attr, non-zero).
+        let from = Style {
+            fg: Some(Color::Basic(1)),
+            ..Style::default()
+        };
+        let to = Style {
+            attrs: Attr::BOLD.0,
+            ..Style::default()
+        };
+        assert_eq!(style_diff(&from, &to), "\x1b[39;1m");
+        // Background transition to default (non-zero target).
+        let from = Style {
+            bg: Some(Color::Basic(2)),
+            ..Style::default()
+        };
+        let to = Style {
+            attrs: Attr::BOLD.0,
+            ..Style::default()
+        };
+        assert_eq!(style_diff(&from, &to), "\x1b[49;1m");
+        // Underline color transition to default (non-zero target).
+        let from = Style {
+            underline_color: Some(Color::Basic(3)),
+            ..Style::default()
+        };
+        let to = Style {
+            attrs: Attr::BOLD.0,
+            ..Style::default()
+        };
+        assert_eq!(style_diff(&from, &to), "\x1b[59;1m");
+        // Color set.
+        let from = Style::default();
+        let to = Style {
+            fg: Some(Color::Basic(4)),
+            ..Style::default()
+        };
+        assert_eq!(style_diff(&from, &to), "\x1b[34m");
+        // Truecolor set.
+        let to = Style {
+            fg: Some(Color::RGB(rusty_x_ansi::color::RGBColor {
+                r: 1,
+                g: 2,
+                b: 3,
+            })),
+            ..Style::default()
+        };
+        assert_eq!(style_diff(&from, &to), "\x1b[38;2;1;2;3m");
+    }
 }

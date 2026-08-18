@@ -2874,7 +2874,7 @@ mod tests {
         let mut out = Vec::new();
         r.move_to(5, 3, &mut out);
         r.flush(&mut out).unwrap();
-        assert!(out.iter().any(|&b| b == 0x1b));
+        assert!(out.contains(&0x1b));
 
         // write via the concrete struct's write_string_public.
         let mut cr = TerminalRenderer::new_without_writer(&env());

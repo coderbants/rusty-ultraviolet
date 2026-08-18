@@ -225,3 +225,85 @@ impl<T: Screen + ?Sized> Screen for &mut T {
         (**self).as_any_mut()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::buffer::{new_render_buffer, new_screen_buffer};
+    use crate::cell::Cell;
+
+    #[test]
+    fn test_rectangle_methods() {
+        let r = rect(2, 3, 5, 4);
+        assert_eq!(r.dx(), 5);
+        assert_eq!(r.dy(), 4);
+        assert!(r.contains(2, 3));
+        assert!(r.contains(6, 6));
+        assert!(!r.contains(1, 3));
+        assert!(!r.contains(2, 7));
+        let o = rect(6, 3, 2, 1);
+        assert!(r.overlaps(&o));
+        assert!(!r.overlaps(&rect(20, 20, 1, 1)));
+        let u = r.union(&rect(0, 0, 1, 1));
+        assert_eq!(u.min, (0, 0));
+        assert_eq!(u.max, (7, 7));
+    }
+
+    #[test]
+    fn test_screen_clear_fill_clone() {
+        // Buffer downcast paths.
+        let mut b = new_buffer(3, 2);
+        b.set_cell(0, 0, Some(&Cell::new("X")));
+        clear(&mut b);
+        assert_eq!(b.cell_at(0, 0).unwrap().content, " ");
+
+        fill(&mut b, Some(&Cell::new("Z")));
+        assert_eq!(b.cell_at(2, 1).unwrap().content, "Z");
+
+        fill_area(&mut b, Some(&Cell::new("Q")), rect(1, 0, 1, 1));
+        assert_eq!(b.cell_at(1, 0).unwrap().content, "Q");
+        assert_eq!(b.cell_at(2, 1).unwrap().content, "Z");
+
+        clear_area(&mut b, rect(1, 0, 1, 1));
+        assert_eq!(b.cell_at(1, 0).unwrap().content, " ");
+        assert_eq!(b.cell_at(2, 1).unwrap().content, "Z");
+
+        // CloneArea via the free function.
+        b.set_cell(1, 1, Some(&Cell::new("Y")));
+        let clone = clone_area(&b, rect(1, 1, 1, 1));
+        assert_eq!(clone.cell_at(0, 0).unwrap().content, "Y");
+    }
+
+    #[test]
+    fn test_screen_render_buffer_paths() {
+        // RenderBuffer downcast paths.
+        let mut rb = new_render_buffer(3, 2);
+        rb.set_cell(0, 0, Some(&Cell::new("X")));
+        clear(&mut rb);
+        assert_eq!(rb.cell_at(0, 0).unwrap().content, " ");
+
+        fill(&mut rb, Some(&Cell::new("Z")));
+        assert_eq!(rb.cell_at(1, 1).unwrap().content, "Z");
+
+        fill_area(&mut rb, Some(&Cell::new("Q")), rect(0, 0, 1, 1));
+        assert_eq!(rb.cell_at(0, 0).unwrap().content, "Q");
+
+        clear_area(&mut rb, rect(0, 0, 1, 1));
+        assert_eq!(rb.cell_at(0, 0).unwrap().content, " ");
+    }
+
+    #[test]
+    fn test_screen_screen_buffer_paths() {
+        // ScreenBuffer downcast paths (through its render_buffer).
+        let mut sb = new_screen_buffer(3, 2);
+        sb.set_cell(0, 0, Some(&Cell::new("X")));
+        clear(&mut sb);
+        assert_eq!(sb.cell_at(0, 0).unwrap().content, " ");
+
+        fill(&mut sb, Some(&Cell::new("Z")));
+        assert_eq!(sb.cell_at(2, 1).unwrap().content, "Z");
+
+        clear_area(&mut sb, rect(0, 0, 1, 1));
+        assert_eq!(sb.cell_at(0, 0).unwrap().content, " ");
+    }
+}

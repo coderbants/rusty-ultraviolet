@@ -5,3 +5,4 @@ Cargo.lock
 # Debug logs
 /uv.log
 /layout.log
+/tmp

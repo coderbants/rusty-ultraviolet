@@ -9,7 +9,7 @@
 
 use crate::event::{KeyPressEvent, Size};
 use crate::key::{
-    Key, KeyMod, KEY_BACKSPACE, KEY_BEGIN, KEY_CAPS_LOCK, KEY_DELETE, KEY_DOWN, KEY_END, KEY_ENTER,
+    Key, KeyMod, KEY_BACKSPACE, KEY_CAPS_LOCK, KEY_DELETE, KEY_DOWN, KEY_END, KEY_ENTER,
     KEY_ESCAPE, KEY_EXTENDED, KEY_F1, KEY_F11, KEY_F13, KEY_F15, KEY_F17, KEY_F21, KEY_F3, KEY_F6,
     KEY_FIND, KEY_HOME, KEY_INSERT, KEY_ISO_LEVEL3_SHIFT, KEY_ISO_LEVEL5_SHIFT, KEY_KP_0, KEY_KP_1,
     KEY_KP_2, KEY_KP_3, KEY_KP_4, KEY_KP_5, KEY_KP_6, KEY_KP_7, KEY_KP_8, KEY_KP_9, KEY_KP_BEGIN,
@@ -2698,8 +2698,19 @@ const KITTY_NUM_LOCK: i32 = 1 << 7;
 mod tests {
     use super::*;
     use crate::key::{
-        KEY_DELETE, KEY_END, KEY_F1, KEY_F11, KEY_F15, KEY_F17, KEY_F2, KEY_F3, KEY_F5, KEY_HOME,
-        KEY_INSERT, KEY_PG_DOWN, KEY_PG_UP,
+        KEY_BACKSPACE, KEY_CAPS_LOCK, KEY_DELETE, KEY_DOWN, KEY_END, KEY_ENTER, KEY_ESCAPE, KEY_F1,
+        KEY_F11, KEY_F12, KEY_F13, KEY_F15, KEY_F17, KEY_F2, KEY_F20, KEY_F21, KEY_F3, KEY_F35,
+        KEY_F5, KEY_HOME, KEY_INSERT, KEY_ISO_LEVEL3_SHIFT, KEY_ISO_LEVEL5_SHIFT, KEY_KP_0,
+        KEY_KP_1, KEY_KP_2, KEY_KP_3, KEY_KP_4, KEY_KP_5, KEY_KP_6, KEY_KP_7, KEY_KP_8, KEY_KP_9,
+        KEY_KP_BEGIN, KEY_KP_DECIMAL, KEY_KP_DELETE, KEY_KP_DIVIDE, KEY_KP_DOWN, KEY_KP_END,
+        KEY_KP_ENTER, KEY_KP_EQUAL, KEY_KP_HOME, KEY_KP_INSERT, KEY_KP_LEFT, KEY_KP_MINUS,
+        KEY_KP_MULTIPLY, KEY_KP_PG_DOWN, KEY_KP_PG_UP, KEY_KP_PLUS, KEY_KP_RIGHT, KEY_KP_SEP,
+        KEY_KP_UP, KEY_LEFT, KEY_LEFT_ALT, KEY_LEFT_CTRL, KEY_LEFT_HYPER, KEY_LEFT_META,
+        KEY_LEFT_SHIFT, KEY_LEFT_SUPER, KEY_MEDIA_NEXT, KEY_MEDIA_PAUSE, KEY_MEDIA_PLAY,
+        KEY_MEDIA_PLAY_PAUSE, KEY_MEDIA_PREV, KEY_MEDIA_RECORD, KEY_MEDIA_REVERSE, KEY_MEDIA_STOP,
+        KEY_MENU, KEY_MUTE, KEY_NUM_LOCK, KEY_PAUSE, KEY_PG_DOWN, KEY_PG_UP, KEY_PRINT_SCREEN,
+        KEY_RIGHT, KEY_RIGHT_ALT, KEY_RIGHT_CTRL, KEY_RIGHT_HYPER, KEY_RIGHT_META, KEY_RIGHT_SHIFT,
+        KEY_RIGHT_SUPER, KEY_SCROLL_LOCK, KEY_SPACE, KEY_TAB, KEY_UP,
     };
     use crate::mouse::MOUSE_NONE;
 
@@ -3599,5 +3610,142 @@ mod tests {
         // Empty CSI u is unknown.
         let events = decode_all(b"\x1b[u");
         assert!(matches!(events[0], DecodedEvent::UnknownCsi(_)));
+    }
+
+    /// Direct `kitty_key_map` coverage for every mapped code.
+    #[test]
+    fn test_kitty_key_map() {
+        // Faulty C0 mappings.
+        assert_eq!(
+            kitty_key_map(0x00),
+            Some(Key {
+                code: KEY_SPACE,
+                mod_: MOD_CTRL,
+                ..Key::default()
+            })
+        );
+        for c in 0x01..=0x1A {
+            assert_eq!(
+                kitty_key_map(c),
+                Some(Key {
+                    code: (c + 0x60) as u32,
+                    mod_: MOD_CTRL,
+                    ..Key::default()
+                })
+            );
+        }
+        for c in 0x1C..=0x1F {
+            assert_eq!(
+                kitty_key_map(c),
+                Some(Key {
+                    code: (c + 0x40) as u32,
+                    mod_: MOD_CTRL,
+                    ..Key::default()
+                })
+            );
+        }
+        // 0x08 is within the ctrl-letter range (0x01..=0x1A) and maps first.
+        assert_eq!(
+            kitty_key_map(0x08),
+            Some(Key {
+                code: b'h' as u32,
+                mod_: MOD_CTRL,
+                ..Key::default()
+            })
+        );
+        assert_eq!(kitty_key_map(0x7F).unwrap().code, KEY_BACKSPACE);
+        // Functional key codes (57344+).
+        let pairs: &[(i32, u32)] = &[
+            (57344, KEY_ESCAPE),
+            (57345, KEY_ENTER),
+            (57346, KEY_TAB),
+            (57347, KEY_BACKSPACE),
+            (57348, KEY_INSERT),
+            (57349, KEY_DELETE),
+            (57350, KEY_LEFT),
+            (57351, KEY_RIGHT),
+            (57352, KEY_UP),
+            (57353, KEY_DOWN),
+            (57354, KEY_PG_UP),
+            (57355, KEY_PG_DOWN),
+            (57356, KEY_HOME),
+            (57357, KEY_END),
+            (57358, KEY_CAPS_LOCK),
+            (57359, KEY_SCROLL_LOCK),
+            (57360, KEY_NUM_LOCK),
+            (57361, KEY_PRINT_SCREEN),
+            (57362, KEY_PAUSE),
+            (57363, KEY_MENU),
+            (57364, KEY_F1),
+            (57375, KEY_F12),
+            (57376, KEY_F13),
+            (57383, KEY_F20),
+            (57384, KEY_F21),
+            (57398, KEY_F35),
+            (57399, KEY_KP_0),
+            (57400, KEY_KP_1),
+            (57401, KEY_KP_2),
+            (57402, KEY_KP_3),
+            (57403, KEY_KP_4),
+            (57404, KEY_KP_5),
+            (57405, KEY_KP_6),
+            (57406, KEY_KP_7),
+            (57407, KEY_KP_8),
+            (57408, KEY_KP_9),
+            (57409, KEY_KP_DECIMAL),
+            (57410, KEY_KP_DIVIDE),
+            (57411, KEY_KP_MULTIPLY),
+            (57412, KEY_KP_MINUS),
+            (57413, KEY_KP_PLUS),
+            (57414, KEY_KP_ENTER),
+            (57415, KEY_KP_EQUAL),
+            (57416, KEY_KP_SEP),
+            (57417, KEY_KP_LEFT),
+            (57418, KEY_KP_RIGHT),
+            (57419, KEY_KP_UP),
+            (57420, KEY_KP_DOWN),
+            (57421, KEY_KP_PG_UP),
+            (57422, KEY_KP_PG_DOWN),
+            (57423, KEY_KP_HOME),
+            (57424, KEY_KP_END),
+            (57425, KEY_KP_INSERT),
+            (57426, KEY_KP_DELETE),
+            (57427, KEY_KP_BEGIN),
+            (57428, KEY_MEDIA_PLAY),
+            (57429, KEY_MEDIA_PAUSE),
+            (57430, KEY_MEDIA_PLAY_PAUSE),
+            (57431, KEY_MEDIA_REVERSE),
+            (57432, KEY_MEDIA_STOP),
+            (57433, KEY_MEDIA_FAST_FORWARD),
+            (57434, KEY_MEDIA_REWIND),
+            (57435, KEY_MEDIA_NEXT),
+            (57436, KEY_MEDIA_PREV),
+            (57437, KEY_MEDIA_RECORD),
+            (57438, KEY_LOWER_VOL),
+            (57439, KEY_RAISE_VOL),
+            (57440, KEY_MUTE),
+            (57441, KEY_LEFT_SHIFT),
+            (57442, KEY_LEFT_CTRL),
+            (57443, KEY_LEFT_ALT),
+            (57444, KEY_LEFT_SUPER),
+            (57445, KEY_LEFT_HYPER),
+            (57446, KEY_LEFT_META),
+            (57447, KEY_RIGHT_SHIFT),
+            (57448, KEY_RIGHT_CTRL),
+            (57449, KEY_RIGHT_ALT),
+            (57450, KEY_RIGHT_SUPER),
+            (57451, KEY_RIGHT_HYPER),
+            (57452, KEY_RIGHT_META),
+            (57453, KEY_ISO_LEVEL3_SHIFT),
+            (57454, KEY_ISO_LEVEL5_SHIFT),
+        ];
+        for &(code, want) in pairs {
+            let k = kitty_key_map(code);
+            assert!(k.is_some(), "code {code}");
+            assert_eq!(k.unwrap().code, want, "code {code}");
+        }
+        // Unmapped codes.
+        assert_eq!(kitty_key_map(99999), None);
+        assert_eq!(kitty_key_map(0x1B), kitty_key_map(0x1B));
     }
 }

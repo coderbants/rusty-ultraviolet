@@ -10,6 +10,7 @@
 use crate::cell::{empty_cell, Cell};
 use crate::screen::Rectangle;
 use crate::style::Style;
+
 use rusty_x_ansi::hyperlink::{reset_hyperlink, set_hyperlink};
 use rusty_x_ansi::method::WidthMethod;
 use std::any::Any;
@@ -1101,6 +1102,9 @@ fn min(a: usize, b: usize) -> usize {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::cell::Link;
+    use crate::screen::rect;
+    use rusty_x_ansi::style::Color;
 
     #[test]
     fn test_buffer_basic() {
@@ -1164,5 +1168,358 @@ mod tests {
         let n = n.unwrap();
         assert_eq!(n.width(), 2);
         assert_eq!(n.cell_at(1, 0).unwrap().content, "x");
+    }
+
+    /// Ported from upstream `TestLineRenderLine`: styled and hyperlinked cells.
+    #[test]
+    fn test_line_render_line() {
+        let mut l = Line(vec![empty_cell(); 5]);
+        l[0] = Cell {
+            content: "H".to_string(),
+            width: 1,
+            style: Style {
+                fg: Some(Color::Basic(1)),
+                ..Style::default()
+            },
+            ..Cell::default()
+        };
+        l[1] = Cell {
+            content: "i".to_string(),
+            width: 1,
+            ..Cell::default()
+        };
+        let mut out = String::new();
+        render_line(&mut out, &l);
+        assert!(out.contains("H"));
+        assert!(out.contains("i"));
+        assert!(out.contains("31")); // SGR red for fg Basic(1).
+
+        let mut l = Line(vec![empty_cell(); 5]);
+        for (i, ch) in "Link".chars().enumerate() {
+            l[i] = Cell {
+                content: ch.to_string(),
+                width: 1,
+                link: Some(Link {
+                    url: "http://example.com".to_string(),
+                    params: String::new(),
+                }),
+                ..Cell::default()
+            };
+        }
+        let mut out = String::new();
+        render_line(&mut out, &l);
+        assert!(out.contains("http://example.com"));
+    }
+
+    /// render_line with zero cells (pending spaces) and resets.
+    #[test]
+    fn test_line_render_line_edges() {
+        // Zero cells accumulate pending spaces and are emitted before content.
+        let mut l = Line(vec![empty_cell(); 3]);
+        l[2] = Cell {
+            content: "x".to_string(),
+            width: 1,
+            ..Cell::default()
+        };
+        let mut out = String::new();
+        render_line(&mut out, &l);
+        assert!(out.ends_with("  x"));
+
+        // A styled cell followed by an empty cell resets the pen.
+        let mut l = Line(vec![empty_cell(); 3]);
+        l[0] = Cell {
+            content: "a".to_string(),
+            width: 1,
+            style: Style {
+                fg: Some(Color::Basic(2)),
+                ..Style::default()
+            },
+            ..Cell::default()
+        };
+        l[1] = empty_cell();
+        l[2] = Cell {
+            content: "b".to_string(),
+            width: 1,
+            ..Cell::default()
+        };
+        let mut out = String::new();
+        render_line(&mut out, &l);
+        assert!(out.contains("\x1b[m")); // reset
+
+        // A trailing styled cell emits a final reset.
+        let mut l = Line(vec![empty_cell(); 1]);
+        l[0] = Cell {
+            content: "a".to_string(),
+            width: 1,
+            style: Style {
+                fg: Some(Color::Basic(3)),
+                ..Style::default()
+            },
+            ..Cell::default()
+        };
+        let mut out = String::new();
+        render_line(&mut out, &l);
+        assert!(out.ends_with("\x1b[m"));
+    }
+
+    /// Buffer string rendering with a hyperlink and a style change mid-line.
+    #[test]
+    fn test_buffer_string_links() {
+        let mut b = new_buffer(6, 1);
+        let link = Link {
+            url: "https://x.dev".to_string(),
+            params: String::new(),
+        };
+        b.set_cell(
+            0,
+            0,
+            Some(&Cell {
+                content: "a".to_string(),
+                width: 1,
+                link: Some(link.clone()),
+                ..Cell::default()
+            }),
+        );
+        b.set_cell(
+            1,
+            0,
+            Some(&Cell {
+                content: "b".to_string(),
+                width: 1,
+                link: Some(link.clone()),
+                ..Cell::default()
+            }),
+        );
+        let out = b.render();
+        assert!(out.contains("https://x.dev"));
+
+        // A link change resets the old link.
+        b.set_cell(
+            2,
+            0,
+            Some(&Cell {
+                content: "c".to_string(),
+                width: 1,
+                link: Some(Link {
+                    url: "https://y.dev".to_string(),
+                    params: String::new(),
+                }),
+                ..Cell::default()
+            }),
+        );
+        let out = b.render();
+        assert!(out.contains("https://y.dev"));
+    }
+
+    /// Ported from upstream `TestBufferMethods` (Width/CellAt/SetCell/Resize/
+    /// FillArea/Touch/Clear/Clone/CloneArea/Draw/Render).
+    #[test]
+    fn test_buffer_methods() {
+        // Empty buffer reports zero size.
+        let mut b = new_buffer(0, 0);
+        assert_eq!(b.width(), 0);
+        assert_eq!(b.height(), 0);
+        // Resize.
+        b.resize(10, 4);
+        assert_eq!(b.width(), 10);
+        assert_eq!(b.height(), 4);
+
+        b.set_cell(
+            2,
+            1,
+            Some(&Cell {
+                content: "X".to_string(),
+                width: 1,
+                ..Cell::default()
+            }),
+        );
+        let c = b.cell_at(2, 1).unwrap();
+        assert_eq!(c.content, "X");
+        // Out-of-bounds accesses return None.
+        assert!(b.cell_at(10, 0).is_none());
+        assert!(b.cell_at(0, 4).is_none());
+
+        // SetCell overwrites.
+        b.set_cell(
+            2,
+            1,
+            Some(&Cell {
+                content: "A".to_string(),
+                width: 1,
+                ..Cell::default()
+            }),
+        );
+        assert_eq!(b.cell_at(2, 1).unwrap().content, "A");
+
+        // Resize larger then smaller.
+        b.resize(15, 10);
+        assert_eq!((b.width(), b.height()), (15, 10));
+        b.resize(15, 10);
+        assert_eq!((b.width(), b.height()), (15, 10));
+
+        // FillArea only touches the rectangle.
+        let area = rect(1, 1, 3, 2);
+        b.fill_area(
+            Some(&Cell {
+                content: "X".to_string(),
+                width: 1,
+                ..Cell::default()
+            }),
+            area,
+        );
+        assert_eq!(b.cell_at(1, 1).unwrap().content, "X");
+        assert_eq!(b.cell_at(2, 2).unwrap().content, "X");
+        assert_ne!(b.cell_at(0, 0).unwrap().content, "X");
+
+        // Touch marks the line as dirty.
+        let mut rb = new_render_buffer(15, 10);
+        rb.touch(1, 3);
+        assert_eq!(rb.touched_lines(), 1);
+
+        // Clear resets all cells to spaces.
+        b.clear();
+        assert_eq!(b.cell_at(1, 1).unwrap().content, " ");
+
+        // Clone is independent.
+        b.set_cell(
+            2,
+            1,
+            Some(&Cell {
+                content: "X".to_string(),
+                width: 1,
+                ..Cell::default()
+            }),
+        );
+        let mut clone = b.clone();
+        assert_eq!(clone.cell_at(2, 1).unwrap().content, "X");
+        clone.set_cell(
+            2,
+            1,
+            Some(&Cell {
+                content: "Z".to_string(),
+                width: 1,
+                ..Cell::default()
+            }),
+        );
+        assert_eq!(b.cell_at(2, 1).unwrap().content, "X");
+
+        // CloneArea copies a sub-rectangle.
+        let mut b2 = new_buffer(4, 4);
+        b2.set_cell(
+            1,
+            1,
+            Some(&Cell {
+                content: "X".to_string(),
+                width: 1,
+                ..Cell::default()
+            }),
+        );
+        b2.set_cell(
+            2,
+            2,
+            Some(&Cell {
+                content: "Y".to_string(),
+                width: 1,
+                ..Cell::default()
+            }),
+        );
+        let area = b2.clone_area(rect(1, 1, 2, 2)).unwrap();
+        assert_eq!((area.width(), area.height()), (2, 2));
+        assert_eq!(area.cell_at(0, 0).unwrap().content, "X");
+        assert_eq!(area.cell_at(1, 1).unwrap().content, "Y");
+
+        // Render emits the visible content.
+        let mut b3 = new_buffer(3, 1);
+        b3.set_cell(
+            0,
+            0,
+            Some(&Cell {
+                content: "H".to_string(),
+                width: 1,
+                ..Cell::default()
+            }),
+        );
+        b3.set_cell(
+            1,
+            0,
+            Some(&Cell {
+                content: "i".to_string(),
+                width: 1,
+                ..Cell::default()
+            }),
+        );
+        assert!(b3.render().contains("Hi"));
+    }
+
+    /// Ported from upstream `TestBufferLineOperations` (on ScreenBuffer).
+    #[test]
+    fn test_buffer_line_operations() {
+        // InsertLine moves rows down.
+        let mut b = new_render_buffer(5, 3);
+        b.set_cell(0, 0, Some(&Cell::new("A")));
+        b.set_cell(0, 1, Some(&Cell::new("B")));
+        b.set_cell(0, 2, Some(&Cell::new("C")));
+        b.insert_line(1, 1, None);
+        assert_eq!(b.cell_at(0, 2).unwrap().content, "B");
+        assert_eq!(b.cell_at(0, 1).unwrap().content, " ");
+
+        // InsertLineArea within a rectangle.
+        let mut b = new_render_buffer(5, 5);
+        b.set_cell(0, 1, Some(&Cell::new("A")));
+        b.set_cell(0, 2, Some(&Cell::new("B")));
+        b.insert_line_area(2, 1, None, rect(0, 1, 5, 4));
+        assert_eq!(b.cell_at(0, 3).unwrap().content, "B");
+
+        // DeleteLine moves rows up.
+        let mut b = new_render_buffer(5, 3);
+        b.set_cell(0, 0, Some(&Cell::new("A")));
+        b.set_cell(0, 1, Some(&Cell::new("B")));
+        b.set_cell(0, 2, Some(&Cell::new("C")));
+        b.delete_line(1, 1, None);
+        assert_eq!(b.cell_at(0, 1).unwrap().content, "C");
+        assert_eq!(b.cell_at(0, 2).unwrap().content, " ");
+
+        // DeleteLineArea within a rectangle.
+        let mut b = new_render_buffer(5, 5);
+        b.set_cell(0, 1, Some(&Cell::new("A")));
+        b.set_cell(0, 2, Some(&Cell::new("B")));
+        b.set_cell(0, 3, Some(&Cell::new("C")));
+        b.delete_line_area(2, 1, None, rect(0, 1, 5, 4));
+        assert_eq!(b.cell_at(0, 2).unwrap().content, "C");
+    }
+
+    /// Ported from upstream `TestBufferCellOperations` (on ScreenBuffer).
+    #[test]
+    fn test_buffer_cell_operations() {
+        // InsertCell shifts cells right.
+        let mut b = new_render_buffer(5, 2);
+        b.set_cell(0, 0, Some(&Cell::new("A")));
+        b.set_cell(1, 0, Some(&Cell::new("B")));
+        b.set_cell(2, 0, Some(&Cell::new("C")));
+        b.insert_cell(1, 0, 1, None);
+        assert_eq!(b.cell_at(2, 0).unwrap().content, "B");
+
+        // InsertCellArea within a rectangle.
+        let mut b = new_render_buffer(5, 3);
+        b.set_cell(1, 1, Some(&Cell::new("A")));
+        b.set_cell(2, 1, Some(&Cell::new("B")));
+        b.insert_cell_area(1, 1, 1, None, rect(1, 1, 4, 2));
+        assert_eq!(b.cell_at(2, 1).unwrap().content, "A");
+
+        // DeleteCell shifts cells left.
+        let mut b = new_render_buffer(5, 2);
+        b.set_cell(0, 0, Some(&Cell::new("A")));
+        b.set_cell(1, 0, Some(&Cell::new("B")));
+        b.set_cell(2, 0, Some(&Cell::new("C")));
+        b.delete_cell(1, 0, 1, None);
+        assert_eq!(b.cell_at(1, 0).unwrap().content, "C");
+
+        // DeleteCellArea within a rectangle.
+        let mut b = new_render_buffer(5, 3);
+        b.set_cell(1, 1, Some(&Cell::new("A")));
+        b.set_cell(2, 1, Some(&Cell::new("B")));
+        b.set_cell(3, 1, Some(&Cell::new("C")));
+        b.delete_cell_area(2, 1, 1, None, rect(1, 1, 4, 2));
+        assert_eq!(b.cell_at(2, 1).unwrap().content, "C");
     }
 }

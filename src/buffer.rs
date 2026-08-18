@@ -1549,4 +1549,63 @@ mod tests {
         let mut dst4 = new_buffer(3, 1);
         empty.draw(&mut dst4, rect(0, 0, 3, 1));
     }
+
+    /// Line/Lines string and width accessors.
+    #[test]
+    fn test_line_lines_string_width() {
+        let l = Line(vec![Cell::new("a"), Cell::new("b"), empty_cell()]);
+        assert_eq!(l.string(), "ab");
+        assert_eq!(l.len(), 3);
+        // A leading empty cell produces a pending space before content.
+        let l2 = Line(vec![empty_cell(), Cell::new("x")]);
+        assert_eq!(l2.string(), " x");
+
+        let lines = Lines(vec![
+            Line(vec![Cell::new("a"), Cell::new("b")]),
+            Line(vec![Cell::new("c")]),
+        ]);
+        assert_eq!(lines.height(), 2);
+        assert_eq!(lines.width(), 2);
+        assert_eq!(lines.string(), "ab\nc");
+    }
+
+    /// Line::set wide-cell continuation and overflow handling.
+    #[test]
+    fn test_line_set_wide_edges() {
+        // Overwriting a wide cell's leading cell clears its placeholders.
+        let mut l = Line(vec![empty_cell(); 4]);
+        l.set(
+            0,
+            Cell {
+                content: "界".to_string(),
+                width: 2,
+                ..Cell::default()
+            },
+        );
+        assert_eq!(l[1].width, 0);
+        // Writing into the continuation cell clears the wide cell's tail.
+        l.set(
+            1,
+            Cell {
+                content: "x".to_string(),
+                width: 1,
+                ..Cell::default()
+            },
+        );
+        assert_eq!(l[0].width, 1);
+        // Writing a wide cell that overflows the line writes blanks.
+        let mut l2 = Line(vec![empty_cell(); 2]);
+        l2.set(
+            1,
+            Cell {
+                content: "界".to_string(),
+                width: 2,
+                ..Cell::default()
+            },
+        );
+        assert_eq!(l2[1].content, " ");
+        // Setting out of bounds is a no-op.
+        l2.set(5, Cell::new("z"));
+        assert_eq!(l2[1].content, " ");
+    }
 }

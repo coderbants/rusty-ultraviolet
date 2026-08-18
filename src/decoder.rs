@@ -3831,4 +3831,267 @@ mod tests {
         let (_n, ev) = p.parse_dcs(b"\x90xyz\x9c");
         assert!(matches!(ev, Some(DecodedEvent::UnknownDcs(_))));
     }
+
+    /// Ported from upstream `TestWin32Functions` — `ensure_key_case`.
+    #[test]
+    fn test_ensure_key_case() {
+        // Uppercase with shift.
+        let k = ensure_key_case(
+            Key {
+                code: b'a' as u32,
+                text: "A".to_string(),
+                mod_: MOD_SHIFT,
+                ..Key::default()
+            },
+            SHIFT_PRESSED,
+        );
+        assert_eq!(k.code, b'a' as u32);
+        assert_eq!(k.shifted_code, b'A' as u32);
+        assert_eq!(k.text, "A");
+        // Lowercase without shift.
+        let k = ensure_key_case(
+            Key {
+                code: b'a' as u32,
+                text: "a".to_string(),
+                ..Key::default()
+            },
+            0,
+        );
+        assert_eq!(k.code, b'a' as u32);
+        assert_eq!(k.text, "a");
+        // Uppercase without shift.
+        let k = ensure_key_case(
+            Key {
+                code: b'A' as u32,
+                text: "A".to_string(),
+                ..Key::default()
+            },
+            0,
+        );
+        assert_eq!(k.code, b'A' as u32);
+        assert_eq!(k.shifted_code, b'a' as u32);
+        assert_eq!(k.text, "a");
+        // Non-letter.
+        let k = ensure_key_case(
+            Key {
+                code: b'1' as u32,
+                text: "1".to_string(),
+                ..Key::default()
+            },
+            0,
+        );
+        assert_eq!(k.code, b'1' as u32);
+        assert_eq!(k.text, "1");
+        // Empty text is returned unchanged.
+        let k = ensure_key_case(
+            Key {
+                code: b'a' as u32,
+                text: String::new(),
+                ..Key::default()
+            },
+            SHIFT_PRESSED,
+        );
+        assert_eq!(k.text, "");
+    }
+
+    /// Ported from upstream `TestWin32Functions` — `translate_control_key_state`.
+    #[test]
+    fn test_translate_control_key_state() {
+        assert_eq!(translate_control_key_state(RIGHT_ALT_PRESSED), MOD_ALT);
+        assert_eq!(translate_control_key_state(LEFT_ALT_PRESSED), MOD_ALT);
+        assert_eq!(translate_control_key_state(RIGHT_CTRL_PRESSED), MOD_CTRL);
+        assert_eq!(translate_control_key_state(LEFT_CTRL_PRESSED), MOD_CTRL);
+        assert_eq!(translate_control_key_state(SHIFT_PRESSED), MOD_SHIFT);
+        assert_eq!(translate_control_key_state(NUMLOCK_ON), MOD_NUM_LOCK);
+        assert_eq!(translate_control_key_state(SCROLLLOCK_ON), MOD_SCROLL_LOCK);
+        assert_eq!(translate_control_key_state(CAPSLOCK_ON), MOD_CAPS_LOCK);
+        assert_eq!(translate_control_key_state(ENHANCED_KEY), KeyMod(0));
+        assert_eq!(
+            translate_control_key_state(RIGHT_ALT_PRESSED | RIGHT_CTRL_PRESSED | SHIFT_PRESSED),
+            KeyMod(MOD_ALT.0 | MOD_CTRL.0 | MOD_SHIFT.0)
+        );
+    }
+
+    /// `parse_win32_key` virtual-key mappings.
+    #[test]
+    fn test_parse_win32_key_mappings() {
+        let mut p = EventDecoder::default();
+        let cases: &[(u16, u32)] = &[
+            (VK_BACK, KEY_BACKSPACE),
+            (VK_TAB, KEY_TAB),
+            (VK_RETURN, KEY_ENTER),
+            (VK_PAUSE, KEY_PAUSE),
+            (VK_CAPITAL, KEY_CAPS_LOCK),
+            (VK_ESCAPE, KEY_ESCAPE),
+            (VK_SPACE, KEY_SPACE),
+            (VK_PRIOR, KEY_PG_UP),
+            (VK_NEXT, KEY_PG_DOWN),
+            (VK_END, KEY_END),
+            (VK_HOME, KEY_HOME),
+            (VK_LEFT, KEY_LEFT),
+            (VK_UP, KEY_UP),
+            (VK_RIGHT, KEY_RIGHT),
+            (VK_DOWN, KEY_DOWN),
+            (VK_SELECT, KEY_SELECT),
+            (VK_SNAPSHOT, KEY_PRINT_SCREEN),
+            (VK_INSERT, KEY_INSERT),
+            (VK_DELETE, KEY_DELETE),
+            (VK_LWIN, KEY_LEFT_SUPER),
+            (VK_RWIN, KEY_RIGHT_SUPER),
+            (VK_APPS, KEY_MENU),
+            (VK_NUMLOCK, KEY_NUM_LOCK),
+            (VK_SCROLL, KEY_SCROLL_LOCK),
+            (VK_LSHIFT, KEY_LEFT_SHIFT),
+            (VK_RSHIFT, KEY_RIGHT_SHIFT),
+            (VK_LCONTROL, KEY_LEFT_CTRL),
+            (VK_RCONTROL, KEY_RIGHT_CTRL),
+            (VK_LMENU, KEY_LEFT_ALT),
+            (VK_RMENU, KEY_RIGHT_ALT),
+            (VK_VOLUME_MUTE, KEY_MUTE),
+            (VK_VOLUME_DOWN, KEY_LOWER_VOL),
+            (VK_VOLUME_UP, KEY_RAISE_VOL),
+            (VK_MEDIA_NEXT_TRACK, KEY_MEDIA_NEXT),
+            (VK_MEDIA_PREV_TRACK, KEY_MEDIA_PREV),
+            (VK_MEDIA_STOP, KEY_MEDIA_STOP),
+            (VK_MEDIA_PLAY_PAUSE, KEY_MEDIA_PLAY_PAUSE),
+        ];
+        for &(vk, want) in cases {
+            match p.parse_win32_key(vk, 0, true, 0) {
+                DecodedEvent::KeyPress(k) => assert_eq!(k.base_code, want, "vk {vk:#x}"),
+                other => panic!("vk {vk:#x}: {other:?}"),
+            }
+        }
+        // OEM punctuation.
+        for &(vk, want) in &[
+            (VK_OEM_1, b';' as u32),
+            (VK_OEM_PLUS, b'+' as u32),
+            (VK_OEM_COMMA, b',' as u32),
+            (VK_OEM_MINUS, b'-' as u32),
+            (VK_OEM_PERIOD, b'.' as u32),
+            (VK_OEM_2, b'/' as u32),
+            (VK_OEM_3, b'`' as u32),
+            (VK_OEM_4, b'[' as u32),
+            (VK_OEM_5, b'\\' as u32),
+            (VK_OEM_6, b']' as u32),
+            (VK_OEM_7, b'\'' as u32),
+        ] {
+            match p.parse_win32_key(vk, 0, true, 0) {
+                DecodedEvent::KeyPress(k) => assert_eq!(k.base_code, want, "vk {vk:#x}"),
+                other => panic!("vk {vk:#x}: {other:?}"),
+            }
+        }
+        // Digits and letters.
+        match p.parse_win32_key(0x30, b'0' as u32, true, 0) {
+            DecodedEvent::KeyPress(k) => assert_eq!(k.code, b'0' as u32),
+            other => panic!("{other:?}"),
+        }
+        match p.parse_win32_key(0x41, b'a' as u32, true, 0) {
+            DecodedEvent::KeyPress(k) => assert_eq!(k.code, b'a' as u32),
+            other => panic!("{other:?}"),
+        }
+        // F-keys.
+        match p.parse_win32_key(0x70, 0, true, 0) {
+            DecodedEvent::KeyPress(k) => assert_eq!(k.base_code, KEY_F1),
+            other => panic!("{other:?}"),
+        }
+        // Keypad digits carry text.
+        match p.parse_win32_key(0x60, 0, true, 0) {
+            DecodedEvent::KeyPress(k) => {
+                assert_eq!(k.base_code, KEY_KP_0);
+                assert_eq!(k.text, "0");
+            }
+            other => panic!("{other:?}"),
+        }
+        // Numpad operators.
+        match p.parse_win32_key(VK_MULTIPLY, 0, true, 0) {
+            DecodedEvent::KeyPress(k) => {
+                assert_eq!(k.base_code, KEY_KP_MULTIPLY);
+                assert_eq!(k.text, "*");
+            }
+            other => panic!("{other:?}"),
+        }
+        match p.parse_win32_key(VK_ADD, 0, true, 0) {
+            DecodedEvent::KeyPress(k) => assert_eq!(k.base_code, KEY_KP_PLUS),
+            other => panic!("{other:?}"),
+        }
+        match p.parse_win32_key(VK_SEPARATOR, 0, true, 0) {
+            DecodedEvent::KeyPress(k) => assert_eq!(k.base_code, KEY_KP_COMMA),
+            other => panic!("{other:?}"),
+        }
+        match p.parse_win32_key(VK_SUBTRACT, 0, true, 0) {
+            DecodedEvent::KeyPress(k) => assert_eq!(k.base_code, KEY_KP_MINUS),
+            other => panic!("{other:?}"),
+        }
+        match p.parse_win32_key(VK_DECIMAL, 0, true, 0) {
+            DecodedEvent::KeyPress(k) => assert_eq!(k.base_code, KEY_KP_DECIMAL),
+            other => panic!("{other:?}"),
+        }
+        match p.parse_win32_key(VK_DIVIDE, 0, true, 0) {
+            DecodedEvent::KeyPress(k) => assert_eq!(k.base_code, KEY_KP_DIVIDE),
+            other => panic!("{other:?}"),
+        }
+    }
+
+    /// `parse_win32_key` modifier-key and shift/ctrl/alt left/right logic.
+    #[test]
+    fn test_parse_win32_key_modifiers() {
+        let mut p = EventDecoder::default();
+        // Left shift held.
+        match p.parse_win32_key(VK_SHIFT, 0, true, SHIFT_PRESSED) {
+            DecodedEvent::KeyPress(k) => assert_eq!(k.base_code, KEY_LEFT_SHIFT),
+            other => panic!("{other:?}"),
+        }
+        // Enhanced right shift.
+        match p.parse_win32_key(VK_SHIFT, 0, true, SHIFT_PRESSED | ENHANCED_KEY) {
+            DecodedEvent::KeyPress(k) => assert_eq!(k.base_code, KEY_RIGHT_SHIFT),
+            other => panic!("{other:?}"),
+        }
+        // Ctrl.
+        match p.parse_win32_key(VK_CONTROL, 0, true, LEFT_CTRL_PRESSED) {
+            DecodedEvent::KeyPress(k) => assert_eq!(k.base_code, KEY_LEFT_CTRL),
+            other => panic!("{other:?}"),
+        }
+        match p.parse_win32_key(VK_CONTROL, 0, true, RIGHT_CTRL_PRESSED) {
+            DecodedEvent::KeyPress(k) => assert_eq!(k.base_code, KEY_RIGHT_CTRL),
+            other => panic!("{other:?}"),
+        }
+        // Alt.
+        match p.parse_win32_key(VK_MENU, 0, true, LEFT_ALT_PRESSED) {
+            DecodedEvent::KeyPress(k) => assert_eq!(k.base_code, KEY_LEFT_ALT),
+            other => panic!("{other:?}"),
+        }
+        match p.parse_win32_key(VK_MENU, 0, true, RIGHT_ALT_PRESSED) {
+            DecodedEvent::KeyPress(k) => assert_eq!(k.base_code, KEY_RIGHT_ALT),
+            other => panic!("{other:?}"),
+        }
+        // Unknown vk produces a default key (base_code 0).
+        match p.parse_win32_key(0x99, 0, true, 0) {
+            DecodedEvent::KeyPress(k) => assert_eq!(k.base_code, 0),
+            other => panic!("{other:?}"),
+        }
+    }
+
+    /// `parse_win32_input_key_event` with repeats.
+    #[test]
+    fn test_parse_win32_input_key_event() {
+        let mut p = EventDecoder::default();
+        // Repeat count > 1 yields a Multi event.
+        match p.parse_win32_input_key_event(0x41, 0, b'a' as u32, true, 0, 3) {
+            DecodedEvent::Multi(v) => assert_eq!(v.len(), 3),
+            other => panic!("{other:?}"),
+        }
+        // vkc 0 with a key-down produces a KeyPress with base_code=r.
+        match p.parse_win32_input_key_event(0, 0, 0x1234, true, 0, 1) {
+            DecodedEvent::KeyPress(k) => {
+                assert_eq!(k.code, 0);
+                assert_eq!(k.base_code, 0x1234);
+            }
+            other => panic!("{other:?}"),
+        }
+        // vkc 0 key-up produces a KeyRelease.
+        match p.parse_win32_input_key_event(0, 0, 0x1234, false, 0, 1) {
+            DecodedEvent::KeyRelease(k) => assert_eq!(k.base_code, 0x1234),
+            other => panic!("{other:?}"),
+        }
+    }
 }

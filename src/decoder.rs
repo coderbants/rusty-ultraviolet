@@ -2697,7 +2697,10 @@ const KITTY_NUM_LOCK: i32 = 1 << 7;
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::key::KEY_F2;
+    use crate::key::{
+        KEY_DELETE, KEY_END, KEY_F1, KEY_F11, KEY_F15, KEY_F17, KEY_F2, KEY_F3, KEY_F5, KEY_HOME,
+        KEY_INSERT, KEY_PG_DOWN, KEY_PG_UP,
+    };
     use crate::mouse::MOUSE_NONE;
 
     fn decode_all(input: &[u8]) -> Vec<DecodedEvent> {
@@ -3080,5 +3083,521 @@ mod tests {
     fn test_base64_decode() {
         assert_eq!(base64_decode(b"aGVsbG8="), Some(b"hello".to_vec()));
         assert_eq!(base64_decode(b"aGk="), Some(b"hi".to_vec()));
+    }
+
+    /// Ported from upstream `TestParseControl`.
+    #[test]
+    fn test_parse_control_table() {
+        let cases: Vec<(u8, LegacyKeyEncoding, DecodedEvent)> = vec![
+            // NUL with/without CtrlAt.
+            (
+                0x00,
+                LegacyKeyEncoding(FLAG_CTRL_AT),
+                DecodedEvent::KeyPress(Key {
+                    code: b'@' as u32,
+                    mod_: MOD_CTRL,
+                    ..Key::default()
+                }),
+            ),
+            (
+                0x00,
+                LegacyKeyEncoding(0),
+                DecodedEvent::KeyPress(Key {
+                    code: KEY_SPACE,
+                    mod_: MOD_CTRL,
+                    ..Key::default()
+                }),
+            ),
+            // BS.
+            (
+                0x08,
+                LegacyKeyEncoding(0),
+                DecodedEvent::KeyPress(Key {
+                    code: b'h' as u32,
+                    mod_: MOD_CTRL,
+                    ..Key::default()
+                }),
+            ),
+            // HT with/without CtrlI.
+            (
+                0x09,
+                LegacyKeyEncoding(FLAG_CTRL_I),
+                DecodedEvent::KeyPress(Key {
+                    code: b'i' as u32,
+                    mod_: MOD_CTRL,
+                    ..Key::default()
+                }),
+            ),
+            (
+                0x09,
+                LegacyKeyEncoding(0),
+                DecodedEvent::KeyPress(Key {
+                    code: KEY_TAB,
+                    ..Key::default()
+                }),
+            ),
+            // CR with/without CtrlM.
+            (
+                0x0D,
+                LegacyKeyEncoding(FLAG_CTRL_M),
+                DecodedEvent::KeyPress(Key {
+                    code: b'm' as u32,
+                    mod_: MOD_CTRL,
+                    ..Key::default()
+                }),
+            ),
+            (
+                0x0D,
+                LegacyKeyEncoding(0),
+                DecodedEvent::KeyPress(Key {
+                    code: KEY_ENTER,
+                    ..Key::default()
+                }),
+            ),
+            // ESC with/without CtrlOpenBracket.
+            (
+                0x1B,
+                LegacyKeyEncoding(FLAG_CTRL_OPEN_BRACKET),
+                DecodedEvent::KeyPress(Key {
+                    code: b'[' as u32,
+                    mod_: MOD_CTRL,
+                    ..Key::default()
+                }),
+            ),
+            (
+                0x1B,
+                LegacyKeyEncoding(0),
+                DecodedEvent::KeyPress(Key {
+                    code: KEY_ESCAPE,
+                    ..Key::default()
+                }),
+            ),
+            // DEL with/without Backspace.
+            (
+                0x7F,
+                LegacyKeyEncoding(FLAG_BACKSPACE),
+                DecodedEvent::KeyPress(Key {
+                    code: KEY_DELETE,
+                    ..Key::default()
+                }),
+            ),
+            (
+                0x7F,
+                LegacyKeyEncoding(0),
+                DecodedEvent::KeyPress(Key {
+                    code: KEY_BACKSPACE,
+                    ..Key::default()
+                }),
+            ),
+            // Space.
+            (
+                0x20,
+                LegacyKeyEncoding(0),
+                DecodedEvent::KeyPress(Key {
+                    code: KEY_SPACE,
+                    text: " ".to_string(),
+                    ..Key::default()
+                }),
+            ),
+            // Control letters.
+            (
+                0x01,
+                LegacyKeyEncoding(0),
+                DecodedEvent::KeyPress(Key {
+                    code: b'a' as u32,
+                    mod_: MOD_CTRL,
+                    ..Key::default()
+                }),
+            ),
+            (
+                0x1A,
+                LegacyKeyEncoding(0),
+                DecodedEvent::KeyPress(Key {
+                    code: b'z' as u32,
+                    mod_: MOD_CTRL,
+                    ..Key::default()
+                }),
+            ),
+            // FS, US.
+            (
+                0x1C,
+                LegacyKeyEncoding(0),
+                DecodedEvent::KeyPress(Key {
+                    code: b'\\' as u32,
+                    mod_: MOD_CTRL,
+                    ..Key::default()
+                }),
+            ),
+            (
+                0x1F,
+                LegacyKeyEncoding(0),
+                DecodedEvent::KeyPress(Key {
+                    code: b'_' as u32,
+                    mod_: MOD_CTRL,
+                    ..Key::default()
+                }),
+            ),
+            // Unknown control.
+            (
+                0x80,
+                LegacyKeyEncoding(0),
+                DecodedEvent::Unknown("\u{80}".to_string()),
+            ),
+        ];
+        for (input, legacy, want) in cases {
+            let p = EventDecoder {
+                legacy,
+                ..EventDecoder::default()
+            };
+            let got = p.parse_control(input);
+            assert_eq!(got, want, "parse_control(0x{input:02x}) with {legacy:?}");
+        }
+    }
+
+    /// LegacyKeyEncoding flag helpers (ported from upstream `TestLegacyKeyEncodingMethods`).
+    #[test]
+    fn test_legacy_key_encoding_methods() {
+        let base = LegacyKeyEncoding(0);
+        assert_eq!(base.ctrl_at(true), LegacyKeyEncoding(FLAG_CTRL_AT));
+        assert_eq!(base.ctrl_at(false), LegacyKeyEncoding(0));
+        assert_eq!(base.ctrl_i(true), LegacyKeyEncoding(FLAG_CTRL_I));
+        assert_eq!(base.ctrl_m(true), LegacyKeyEncoding(FLAG_CTRL_M));
+        assert_eq!(
+            base.ctrl_open_bracket(true),
+            LegacyKeyEncoding(FLAG_CTRL_OPEN_BRACKET)
+        );
+        assert_eq!(base.backspace(true), LegacyKeyEncoding(FLAG_BACKSPACE));
+        assert_eq!(base.find(true), LegacyKeyEncoding(FLAG_FIND));
+        assert_eq!(base.select(true), LegacyKeyEncoding(FLAG_SELECT));
+        assert_eq!(base.f_keys(true), LegacyKeyEncoding(FLAG_F_KEYS));
+        // Turning off an already-set flag.
+        assert_eq!(base.backspace(true).backspace(false), LegacyKeyEncoding(0));
+    }
+
+    /// Ported from upstream `TestDeviceAttributesParsing`.
+    #[test]
+    fn test_device_attributes() {
+        let ev = parse_primary_dev_attrs(&[62, 1, 2, 6, 9]);
+        assert_eq!(
+            ev,
+            DecodedEvent::PrimaryDeviceAttributes(vec![62, 1, 2, 6, 9])
+        );
+        let ev = parse_secondary_dev_attrs(&[1, 2, 3]);
+        assert_eq!(ev, DecodedEvent::SecondaryDeviceAttributes(vec![1, 2, 3]));
+        let ev = parse_tertiary_dev_attrs(b"4368726d");
+        assert_eq!(
+            ev,
+            DecodedEvent::TertiaryDeviceAttributes("Chrm".to_string())
+        );
+    }
+
+    /// Ported from upstream `TestParseTermcap`.
+    #[test]
+    fn test_parse_termcap() {
+        assert_eq!(parse_termcap(b"524742"), "RGB");
+        assert_eq!(parse_termcap(b"436F=323536"), "Co=256");
+        assert_eq!(parse_termcap(b""), "");
+        assert_eq!(parse_termcap(b"GGGG"), "");
+        assert_eq!(parse_termcap(b"52474"), "");
+    }
+
+    /// Ported from upstream `TestParseUtf8`.
+    #[test]
+    fn test_parse_utf8_table() {
+        let mut p = EventDecoder::default();
+        // Empty input.
+        assert_eq!(p.parse_utf8(b""), (0, None));
+        // Control character (SOH) -> ctrl+a.
+        let (n, ev) = p.parse_utf8(b"\x01");
+        assert_eq!(n, 1);
+        assert_eq!(
+            ev,
+            Some(DecodedEvent::KeyPress(Key {
+                code: b'a' as u32,
+                mod_: MOD_CTRL,
+                ..Key::default()
+            }))
+        );
+        // ASCII printable.
+        let (n, ev) = p.parse_utf8(b"a");
+        assert_eq!(n, 1);
+        assert_eq!(
+            ev,
+            Some(DecodedEvent::KeyPress(Key {
+                code: b'a' as u32,
+                text: "a".to_string(),
+                ..Key::default()
+            }))
+        );
+        // Uppercase.
+        let (n, ev) = p.parse_utf8(b"A");
+        assert_eq!(n, 1);
+        assert_eq!(
+            ev,
+            Some(DecodedEvent::KeyPress(Key {
+                code: b'a' as u32,
+                shifted_code: b'A' as u32,
+                text: "A".to_string(),
+                mod_: MOD_SHIFT,
+                ..Key::default()
+            }))
+        );
+        // DEL.
+        let (n, ev) = p.parse_utf8(b"\x7f");
+        assert_eq!(n, 1);
+        assert_eq!(
+            ev,
+            Some(DecodedEvent::KeyPress(Key {
+                code: KEY_BACKSPACE,
+                ..Key::default()
+            }))
+        );
+        // Multi-byte UTF-8.
+        let (n, ev) = p.parse_utf8("€".as_bytes());
+        assert_eq!(n, 3);
+        assert_eq!(
+            ev,
+            Some(DecodedEvent::KeyPress(Key {
+                code: '€' as u32,
+                text: "€".to_string(),
+                ..Key::default()
+            }))
+        );
+        // Invalid UTF-8: the port substitutes U+FFFD (a 3-byte cluster).
+        let (n, ev) = p.parse_utf8(b"\xff");
+        assert_eq!(n, 3);
+        assert_eq!(
+            ev,
+            Some(DecodedEvent::KeyPress(Key {
+                code: 0xFFFD,
+                text: "\u{FFFD}".to_string(),
+                ..Key::default()
+            }))
+        );
+    }
+
+    /// The `parse_apc_data` helpers for xparse-color and hex/base64 decode.
+    #[test]
+    fn test_parse_apc_helpers() {
+        // Hex decoding.
+        assert_eq!(hex_decode(b"616263"), Some(b"abc".to_vec()));
+        assert_eq!(hex_decode(b"a"), None);
+        assert_eq!(hex_decode(b"zz"), None);
+        assert_eq!(hex_nibble(b'f'), Some(15));
+        assert_eq!(hex_nibble(b'F'), Some(15));
+        assert_eq!(hex_nibble(b'g'), None);
+        assert_eq!(hex_nibble(b'0'), Some(0));
+    }
+
+    /// CSI report branches: device attributes, kitty flags, modifyOtherKeys,
+    /// color scheme, focus/blur, and mode reports without a prefix.
+    #[test]
+    fn test_decode_csi_reports() {
+        // Primary Device Attributes.
+        let events = decode_all(b"\x1b[?62;1;2;6;9c");
+        assert_eq!(
+            events[0],
+            DecodedEvent::PrimaryDeviceAttributes(vec![62, 1, 2, 6, 9])
+        );
+        // Secondary Device Attributes.
+        let events = decode_all(b"\x1b[>1;2;3c");
+        assert_eq!(
+            events[0],
+            DecodedEvent::SecondaryDeviceAttributes(vec![1, 2, 3])
+        );
+        // Kitty keyboard flags.
+        let events = decode_all(b"\x1b[?1u");
+        assert_eq!(events[0], DecodedEvent::KeyboardEnhancements(1));
+        // XTerm modifyOtherKeys report.
+        let events = decode_all(b"\x1b[>4;2m");
+        assert_eq!(events[0], DecodedEvent::ModifyOtherKeys(2));
+        // Dark/light color scheme.
+        let events = decode_all(b"\x1b[?997;1n");
+        assert_eq!(events[0], DecodedEvent::DarkColorScheme);
+        let events = decode_all(b"\x1b[?997;2n");
+        assert_eq!(events[0], DecodedEvent::LightColorScheme);
+        // Focus and blur.
+        let events = decode_all(b"\x1b[I");
+        assert_eq!(events[0], DecodedEvent::Focus);
+        let events = decode_all(b"\x1b[O");
+        assert_eq!(events[0], DecodedEvent::Blur);
+        // DECRPM without '?' prefix.
+        let events = decode_all(b"\x1b[25;2$y");
+        assert_eq!(events[0], DecodedEvent::ModeReport { mode: 25, value: 2 });
+    }
+
+    /// CSI key sequences: home/end/insert/delete/PgUp/PgDn/F-keys with
+    /// modifiers, and URxvt/kitty extensions.
+    #[test]
+    fn test_decode_csi_keys_extended() {
+        // Home/End via ~ params.
+        let events = decode_all(b"\x1b[1~");
+        assert_eq!(
+            events[0],
+            DecodedEvent::KeyPress(Key {
+                code: KEY_HOME,
+                ..Key::default()
+            })
+        );
+        let events = decode_all(b"\x1b[4~");
+        assert_eq!(
+            events[0],
+            DecodedEvent::KeyPress(Key {
+                code: KEY_END,
+                ..Key::default()
+            })
+        );
+        // Insert/Delete.
+        let events = decode_all(b"\x1b[2~");
+        assert_eq!(
+            events[0],
+            DecodedEvent::KeyPress(Key {
+                code: KEY_INSERT,
+                ..Key::default()
+            })
+        );
+        let events = decode_all(b"\x1b[3~");
+        assert_eq!(
+            events[0],
+            DecodedEvent::KeyPress(Key {
+                code: KEY_DELETE,
+                ..Key::default()
+            })
+        );
+        // PageUp/PageDown.
+        let events = decode_all(b"\x1b[5~");
+        assert_eq!(
+            events[0],
+            DecodedEvent::KeyPress(Key {
+                code: KEY_PG_UP,
+                ..Key::default()
+            })
+        );
+        let events = decode_all(b"\x1b[6~");
+        assert_eq!(
+            events[0],
+            DecodedEvent::KeyPress(Key {
+                code: KEY_PG_DOWN,
+                ..Key::default()
+            })
+        );
+        // F-keys via ~ params.
+        let events = decode_all(b"\x1b[11~");
+        assert_eq!(
+            events[0],
+            DecodedEvent::KeyPress(Key {
+                code: KEY_F1,
+                ..Key::default()
+            })
+        );
+        let events = decode_all(b"\x1b[15~");
+        assert_eq!(
+            events[0],
+            DecodedEvent::KeyPress(Key {
+                code: KEY_F5,
+                ..Key::default()
+            })
+        );
+        let events = decode_all(b"\x1b[23~");
+        assert_eq!(
+            events[0],
+            DecodedEvent::KeyPress(Key {
+                code: KEY_F11,
+                ..Key::default()
+            })
+        );
+        let events = decode_all(b"\x1b[28~");
+        assert_eq!(
+            events[0],
+            DecodedEvent::KeyPress(Key {
+                code: KEY_F15,
+                ..Key::default()
+            })
+        );
+        let events = decode_all(b"\x1b[31~");
+        assert_eq!(
+            events[0],
+            DecodedEvent::KeyPress(Key {
+                code: KEY_F17,
+                ..Key::default()
+            })
+        );
+        // URxvt ^/@ shifted variants set CTRL and CTRL+SHIFT.
+        let events = decode_all(b"\x1b[5^");
+        assert!(
+            matches!(&events[0], DecodedEvent::KeyPress(k) if k.code == KEY_PG_UP && k.mod_ == KeyMod(MOD_CTRL.0))
+        );
+        let events = decode_all(b"\x1b[5@");
+        assert!(
+            matches!(&events[0], DecodedEvent::KeyPress(k) if k.code == KEY_PG_UP && k.mod_ == KeyMod(MOD_CTRL.0 | MOD_SHIFT.0))
+        );
+        // Modified F3 (CSI 1 ; <mod> R) also emits a cursor position report.
+        let events = decode_all(b"\x1b[1;2R");
+        assert!(matches!(&events[0], DecodedEvent::Multi(ref m)
+            if matches!(&m[0], DecodedEvent::KeyPress(k) if k.code == KEY_F3 && k.mod_ == KeyMod(1))));
+    }
+
+    /// Window operation reports: pixel, cell, and multi-size reports.
+    #[test]
+    fn test_decode_window_op_reports() {
+        // Pixel size.
+        let events = decode_all(b"\x1b[4;24;80t");
+        assert_eq!(
+            events[0],
+            DecodedEvent::PixelSize(Size {
+                width: 80,
+                height: 24,
+            })
+        );
+        // Cell size.
+        let events = decode_all(b"\x1b[6;24;80t");
+        assert_eq!(
+            events[0],
+            DecodedEvent::CellSize(Size {
+                width: 80,
+                height: 24,
+            })
+        );
+        // Window + pixel report (48 params).
+        let events = decode_all(b"\x1b[48;24;80;1440;900t");
+        assert_eq!(
+            events[0],
+            DecodedEvent::Multi(vec![
+                DecodedEvent::WindowSize(Size {
+                    width: 80,
+                    height: 24,
+                }),
+                DecodedEvent::PixelSize(Size {
+                    width: 900,
+                    height: 1440,
+                }),
+            ])
+        );
+        // Other window ops (e.g. report position) produce WindowOp.
+        let events = decode_all(b"\x1b[3;0;0t");
+        assert_eq!(
+            events[0],
+            DecodedEvent::WindowOp {
+                op: 3,
+                args: vec![0, 0]
+            }
+        );
+    }
+
+    /// Error/invalid CSI reports.
+    #[test]
+    fn test_decode_csi_invalid() {
+        // Invalid DECRPM (no mode).
+        let events = decode_all(b"\x1b[?$y");
+        assert!(matches!(events[0], DecodedEvent::UnknownCsi(_)));
+        // Invalid cursor position (missing col).
+        let events = decode_all(b"\x1b[?5R");
+        assert!(matches!(events[0], DecodedEvent::UnknownCsi(_)));
+        // modifyOtherKeys with wrong mode.
+        let events = decode_all(b"\x1b[>3;2m");
+        assert!(matches!(events[0], DecodedEvent::UnknownCsi(_)));
+        // Empty CSI u is unknown.
+        let events = decode_all(b"\x1b[u");
+        assert!(matches!(events[0], DecodedEvent::UnknownCsi(_)));
     }
 }

@@ -3748,4 +3748,87 @@ mod tests {
         assert_eq!(kitty_key_map(99999), None);
         assert_eq!(kitty_key_map(0x1B), kitty_key_map(0x1B));
     }
+
+    /// ST-terminated sequence variants: PM, SOS, and edge cases.
+    #[test]
+    fn test_st_terminated_variants() {
+        // PM: 0x9E is ignored (no handler), so it's UnknownPm.
+        let mut p = EventDecoder::default();
+        let (n, ev) = p.parse_st_terminated(0x9E, b'^', None, b"\x9eabc\x9c");
+        assert_eq!(n, 5);
+        assert!(matches!(ev, Some(DecodedEvent::UnknownPm(_))));
+
+        // SOS: 0x98 is UnknownSos.
+        let mut p = EventDecoder::default();
+        let (n, ev) = p.parse_st_terminated(0x98, b'X', None, b"\x98abc\x9c");
+        assert_eq!(n, 5);
+        assert!(matches!(ev, Some(DecodedEvent::UnknownSos(_))));
+
+        // 7-bit PM with ESC\ ST.
+        let mut p = EventDecoder::default();
+        let (n, ev) = p.parse_st_terminated(0x9E, b'^', None, b"\x1b^abc\x1b\\");
+        assert_eq!(n, 7);
+        assert!(matches!(ev, Some(DecodedEvent::UnknownPm(_))));
+
+        // SOS default_key: ESC X followed by a letter maps to shift+alt.
+        let mut p = EventDecoder::default();
+        let (n, ev) = p.parse_st_terminated(0x98, b'X', None, b"\x1bX");
+        assert_eq!(n, 2);
+        assert!(matches!(&ev, Some(DecodedEvent::KeyPress(k))
+            if k.code == b'x' as u32 && k.mod_ == KeyMod(MOD_SHIFT.0 | MOD_ALT.0)));
+
+        // PM default_key: ESC ^ (len 2) maps to alt+^.
+        let mut p = EventDecoder::default();
+        let (n, ev) = p.parse_st_terminated(0x9E, b'^', None, b"\x1b^");
+        assert_eq!(n, 2);
+        assert!(matches!(&ev, Some(DecodedEvent::KeyPress(k))
+            if k.mod_ == MOD_ALT));
+
+        // APC default_key via 0x9F (len 2).
+        let mut p = EventDecoder::default();
+        let (n, ev) = p.parse_st_terminated(0x9F, b'_', None, b"\x1b_");
+        assert_eq!(n, 2);
+        assert!(matches!(&ev, Some(DecodedEvent::KeyPress(k))
+            if k.mod_ == MOD_ALT));
+
+        // Unknown intro8 byte returns (0, None) in default_key.
+        let mut p = EventDecoder::default();
+        let (n, ev) = p.parse_st_terminated(0x90, b'P', None, b"\x1bP");
+        assert_eq!(n, 0);
+        assert!(ev.is_none());
+
+        // Unterminated sequence returns Unknown.
+        let mut p = EventDecoder::default();
+        let (n, ev) = p.parse_st_terminated(0x9F, b'_', None, b"\x1b_payload");
+        assert_eq!(n, 9);
+        assert!(matches!(ev, Some(DecodedEvent::Unknown(_))));
+    }
+
+    /// The decode function routes SOS/PM/APC through parse_st_terminated.
+    #[test]
+    fn test_decode_st_routing() {
+        // 8-bit PM.
+        let events = decode_all(b"\x9eabc\x9c");
+        assert!(matches!(events[0], DecodedEvent::UnknownPm(_)));
+        // 8-bit SOS.
+        let events = decode_all(b"\x98abc\x9c");
+        assert!(matches!(events[0], DecodedEvent::UnknownSos(_)));
+        // APC with a recognized payload.
+        let events = decode_all(b"\x9fP\x1bG\x00\x00\x9c");
+        assert!(matches!(events[0], DecodedEvent::Ignored(_)));
+    }
+
+    /// parse_dcs with 7-bit and 8-bit introductions, including cancellation.
+    #[test]
+    fn test_dcs_variants() {
+        // Unrecognized DCS is UnknownDcs.
+        let mut p = EventDecoder::default();
+        let (_n, ev) = p.parse_dcs(b"\x1bPxyz\x1b\\");
+        assert!(matches!(ev, Some(DecodedEvent::UnknownDcs(_))));
+
+        // 8-bit DCS intro.
+        let mut p = EventDecoder::default();
+        let (_n, ev) = p.parse_dcs(b"\x90xyz\x9c");
+        assert!(matches!(ev, Some(DecodedEvent::UnknownDcs(_))));
+    }
 }

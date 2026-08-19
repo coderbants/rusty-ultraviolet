@@ -3163,4 +3163,43 @@ mod tests {
         r.flush(&mut out).unwrap();
         assert!(!out.is_empty());
     }
+
+    /// Tab-stop cursor movement with relative cursor.
+    #[test]
+    fn test_renderer_tab_stop_relative() {
+        let mut r = new_terminal_renderer(&env());
+        r.set_relative_cursor(true);
+        r.set_tab_stops(5);
+        let mut nb = crate::new_render_buffer(20, 1);
+        let space = empty_cell();
+        for x in 0..20 {
+            nb.set_cell(x, 0, Some(&space));
+        }
+        for x in (0..20).step_by(5) {
+            nb.set_cell(x, 0, Some(&Cell::new("X")));
+        }
+        let mut out = Vec::new();
+        r.render(&mut nb, &mut out);
+        r.flush(&mut out).unwrap();
+        assert!(!out.is_empty());
+    }
+
+    /// Backspace cursor movement with relative cursor and backspace enabled.
+    #[test]
+    fn test_renderer_backspace_relative() {
+        let mut r = new_terminal_renderer(&env());
+        r.set_relative_cursor(true);
+        r.set_backspace(true);
+        let mut nb = crate::new_render_buffer(10, 1);
+        let space = empty_cell();
+        for x in 0..10 {
+            nb.set_cell(x, 0, Some(&space));
+        }
+        nb.set_cell(0, 0, Some(&Cell::new("H")));
+        nb.set_cell(1, 0, Some(&Cell::new("i")));
+        let mut out = Vec::new();
+        r.render(&mut nb, &mut out);
+        r.flush(&mut out).unwrap();
+        assert!(!out.is_empty());
+    }
 }

@@ -4672,4 +4672,22 @@ mod tests {
             other => panic!("{other:?}"),
         }
     }
+
+    /// Kitty keyboard case conversion with shift modifier.
+    #[test]
+    fn test_kitty_shift_case() {
+        // Mod 2 = shift: a lowercase key with shift produces uppercase text.
+        let ev = parse_kitty_keyboard(&[b'a' as i32, 2]);
+        assert!(
+            matches!(&ev, DecodedEvent::KeyPress(k) if k.code == b'a' as u32 && k.text == "A"),
+            "expected uppercase text, got {ev:?}"
+        );
+        // No modifier: lowercase text.
+        let ev = parse_kitty_keyboard(&[b'a' as i32, 1]);
+        assert!(matches!(&ev, DecodedEvent::KeyPress(k) if k.text == "a"));
+        // With a shifted_code present and a shift modifier, the shifted text
+        // is used.
+        let ev = parse_kitty_keyboard(&[b'a' as i32 | HAS_MORE_FLAG, b'Q' as i32, 2]);
+        assert!(matches!(&ev, DecodedEvent::KeyPress(k) if k.text == "Q"));
+    }
 }

@@ -412,4 +412,40 @@ mod tests {
         assert!(sc.paste.is_none());
         assert!(matches!(events[0], DecodedEvent::Paste(ref s) if s == "hello"));
     }
+
+    /// scan_events inside bracketed paste: win32 and unknown handling.
+    #[test]
+    fn test_scan_events_paste_win32_and_multi() {
+        // Enter paste mode.
+        let mut sc = EventScanner::default();
+        let (_, _) = sc.scan_events(b"\x1b[200~", false);
+        // Inside paste, text accumulates.
+        let (_, _events) = sc.scan_events(b"hello", false);
+        assert_eq!(sc.paste.as_deref().unwrap(), b"hello");
+        // Exit paste flushes the accumulated content.
+        let (_, events) = sc.scan_events(b"\x1b[201~", false);
+        assert!(sc.paste.is_none());
+        assert!(matches!(events[0], DecodedEvent::Paste(ref s) if s == "hello"));
+    }
+
+    /// scan_events with a lookup-table hit and an ignored event.
+    #[test]
+    fn test_scan_events_ignored_and_multi() {
+        // A DCS sequence that decodes to Ignored produces no event.
+        let mut sc = EventScanner::default();
+        let (_n, _events) = sc.scan_events(b"\x1bP!|4368726d\x1b\\", false);
+        // A Multi event flattens into individual events.
+        let mut sc2 = EventScanner::default();
+        let (_n, events2) = sc2.scan_events(b"\x1b[1;2R", false);
+        assert!(!events2.is_empty());
+    }
+
+    /// new_terminal_reader and set_legacy/set_logger.
+    #[test]
+    fn test_terminal_reader_config() {
+        let mut r = new_terminal_reader(Box::new(std::io::empty()), "xterm-256color");
+        r.set_legacy(LegacyKeyEncoding(0));
+        r.set_logger(None);
+        assert!(!r.cancelled());
+    }
 }

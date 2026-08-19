@@ -3299,4 +3299,25 @@ mod tests {
         r.flush(&mut out).unwrap();
         assert!(!out.is_empty());
     }
+
+    /// A repeated char run at the screen edge (kitty) triggers REP wrap.
+    #[test]
+    fn test_renderer_rep_wrap_edge() {
+        let mut env = env();
+        env.0.push("TERM=kitty".to_string());
+        let mut r = new_terminal_renderer(&env);
+        r.set_fullscreen(true);
+        let mut nb = crate::new_render_buffer(10, 1);
+        let space = empty_cell();
+        for x in 0..10 {
+            nb.set_cell(x, 0, Some(&space));
+        }
+        for x in 0..10 {
+            nb.set_cell(x, 0, Some(&Cell::new("*")));
+        }
+        let mut out = Vec::new();
+        r.render(&mut nb, &mut out);
+        r.flush(&mut out).unwrap();
+        assert!(!out.is_empty());
+    }
 }

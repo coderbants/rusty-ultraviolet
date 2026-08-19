@@ -822,4 +822,25 @@ mod tests {
         // The string is truncated to fit and the tail is appended.
         assert_eq!(b.cell_at(3, 0).unwrap().content, "…");
     }
+
+    /// A styled string with an OSC 8 hyperlink populates cell links.
+    #[test]
+    fn test_draw_hyperlink() {
+        let mut b = crate::new_buffer(20, 2);
+        let ss = new_styled_string("\x1b]8;id=1;https://x.dev\x07Link\x1b]8;;\x07");
+        ss.draw(
+            &mut b,
+            Rectangle {
+                min: (0, 0),
+                max: (20, 2),
+            },
+        );
+        assert_eq!(b.cell_at(0, 0).unwrap().content, "L");
+        let link = b.cell_at(0, 0).unwrap().link.clone();
+        assert!(link.is_some());
+        if let Some(l) = link {
+            assert_eq!(l.url, "https://x.dev");
+            assert_eq!(l.params, "id=1");
+        }
+    }
 }

@@ -3436,4 +3436,48 @@ mod tests {
         r.flush(&mut out).unwrap();
         assert!(!out.is_empty());
     }
+
+    /// A block shift down triggers the scroll-down optimizer.
+    #[test]
+    fn test_renderer_hard_scroll_down() {
+        let mut r = new_terminal_renderer(&env());
+        r.set_fullscreen(true);
+        let mut nb = crate::new_render_buffer(5, 5);
+        for y in 0..5 {
+            for x in 0..5 {
+                nb.set_cell(
+                    x,
+                    y,
+                    Some(&Cell::new(&((b'A' + y as u8) as char).to_string())),
+                );
+            }
+        }
+        let mut out = Vec::new();
+        r.render(&mut nb, &mut out);
+        r.flush(&mut out).unwrap();
+        out.clear();
+        // Shift the block down by 2: ABCDE -> XXABC (AB moved down).
+        let mut nb2 = crate::new_render_buffer(5, 5);
+        for y in 0..2 {
+            for x in 0..5 {
+                nb2.set_cell(
+                    x,
+                    y,
+                    Some(&Cell::new(&((b'Y' + y as u8) as char).to_string())),
+                );
+            }
+        }
+        for y in 2..5 {
+            for x in 0..5 {
+                nb2.set_cell(
+                    x,
+                    y,
+                    Some(&Cell::new(&((b'A' + y as u8 - 2) as char).to_string())),
+                );
+            }
+        }
+        r.render(&mut nb2, &mut out);
+        r.flush(&mut out).unwrap();
+        assert!(!out.is_empty());
+    }
 }

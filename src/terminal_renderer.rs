@@ -2977,4 +2977,81 @@ mod tests {
         r.render(&mut nb, &mut out);
         r.flush(&mut out).unwrap();
     }
+
+    /// Ported from upstream `TestRendererStyledText`: styled cells emit SGR.
+    #[test]
+    fn test_renderer_styled_text() {
+        let mut r = new_terminal_renderer(&env());
+        r.set_fullscreen(true);
+        let mut nb = crate::new_render_buffer(10, 1);
+        let space = empty_cell();
+        for x in 0..10 {
+            nb.set_cell(x, 0, Some(&space));
+        }
+        let styles = [
+            Style {
+                attrs: Attr::BOLD.bits(),
+                ..Style::default()
+            },
+            Style {
+                fg: Some(Color::Basic(1)),
+                ..Style::default()
+            },
+            Style {
+                bg: Some(Color::Basic(2)),
+                ..Style::default()
+            },
+            Style {
+                attrs: Attr::BOLD.bits(),
+                fg: Some(Color::Basic(4)),
+                ..Style::default()
+            },
+        ];
+        for (i, style) in styles.iter().enumerate() {
+            nb.set_cell(
+                i,
+                0,
+                Some(&Cell {
+                    content: "X".to_string(),
+                    width: 1,
+                    style: style.clone(),
+                    ..Cell::default()
+                }),
+            );
+        }
+        let mut out = Vec::new();
+        r.render(&mut nb, &mut out);
+        r.flush(&mut out).unwrap();
+        assert!(out.contains(&0x1b));
+    }
+
+    /// Ported from upstream `TestRendererHyperlinks`.
+    #[test]
+    fn test_renderer_hyperlinks() {
+        let mut r = new_terminal_renderer(&env());
+        r.set_fullscreen(true);
+        let mut nb = crate::new_render_buffer(10, 1);
+        let space = empty_cell();
+        for x in 0..10 {
+            nb.set_cell(x, 0, Some(&space));
+        }
+        let link = crate::cell::Link {
+            url: "https://example.com".to_string(),
+            params: String::new(),
+        };
+        nb.set_cell(
+            0,
+            0,
+            Some(&Cell {
+                content: "l".to_string(),
+                width: 1,
+                link: Some(link),
+                ..Cell::default()
+            }),
+        );
+        let mut out = Vec::new();
+        r.render(&mut nb, &mut out);
+        r.flush(&mut out).unwrap();
+        assert!(String::from_utf8_lossy(&out).contains("l"));
+    }
 }

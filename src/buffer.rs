@@ -1690,4 +1690,33 @@ mod tests {
         b.set_cell(0, 1, Some(&Cell::new("b")));
         assert_eq!(b.string(), "a\nb");
     }
+
+    /// Buffer clone_area edge cases and draw with wide/zero cells.
+    #[test]
+    fn test_buffer_clone_area_and_draw_edges() {
+        // clone_area with area beyond the buffer returns an empty buffer.
+        let b = new_buffer(5, 5);
+        let c = b.clone_area(rect(3, 3, 5, 5));
+        assert!(c.is_some());
+        // clone_area with an inverted area returns None.
+        let inv = Rectangle {
+            min: (5, 5),
+            max: (3, 3),
+        };
+        let c = b.clone_area(inv);
+        assert!(c.is_none());
+        // clone_area copies content.
+        let mut bw = new_buffer(5, 1);
+        bw.set_cell(0, 0, Some(&Cell::new("X")));
+        let c = bw.clone_area(rect(0, 0, 2, 1)).unwrap();
+        assert_eq!(c.cell_at(0, 0).unwrap().content, "X");
+        // draw copies non-zero cells.
+        let mut src = new_buffer(4, 1);
+        src.set_cell(0, 0, Some(&Cell::new("X")));
+        src.set_cell(2, 0, Some(&Cell::new("Y")));
+        let mut dst = new_buffer(6, 1);
+        src.draw(&mut dst, rect(0, 0, 4, 1));
+        assert_eq!(dst.cell_at(0, 0).unwrap().content, "X");
+        assert_eq!(dst.cell_at(2, 0).unwrap().content, "Y");
+    }
 }

@@ -549,4 +549,90 @@ mod tests {
             },
         );
     }
+
+    #[test]
+    fn test_progress_bar_state_string() {
+        assert_eq!(ProgressBarState::ProgressBarNone.string(), "None");
+        assert_eq!(ProgressBarState::ProgressBarDefault.string(), "Default");
+        assert_eq!(ProgressBarState::ProgressBarError.string(), "Error");
+        assert_eq!(
+            ProgressBarState::ProgressBarIndeterminate.string(),
+            "Indeterminate"
+        );
+        assert_eq!(ProgressBarState::ProgressBarWarning.string(), "Warning");
+    }
+
+    #[test]
+    fn test_encode_color_variants() {
+        let mut out = Vec::new();
+        encode_background_color(&mut out, None).unwrap();
+        assert_eq!(out, b"\x1b]111\x07");
+        out.clear();
+        encode_background_color(
+            &mut out,
+            Some(&rusty_x_ansi::color::RGBColor { r: 1, g: 2, b: 3 }),
+        )
+        .unwrap();
+        assert_eq!(out, b"\x1b]11;#010203\x07");
+        out.clear();
+        encode_cursor_color(&mut out, None).unwrap();
+        assert_eq!(out, b"\x1b]112\x07");
+        out.clear();
+        encode_cursor_color(
+            &mut out,
+            Some(&rusty_x_ansi::color::RGBColor { r: 255, g: 0, b: 0 }),
+        )
+        .unwrap();
+        assert_eq!(out, b"\x1b]12;#ff0000\x07");
+    }
+
+    #[test]
+    fn test_encode_mouse_modes_and_encodings() {
+        let mut out = Vec::new();
+        encode_mouse_mode(&mut out, MouseMode::MouseModePress).unwrap();
+        assert_eq!(out, b"\x1b[?9h");
+        out.clear();
+        encode_mouse_mode(&mut out, MouseMode::MouseModeClick).unwrap();
+        assert_eq!(out, b"\x1b[?1000h");
+        out.clear();
+        encode_mouse_mode(&mut out, MouseMode::MouseModeDrag).unwrap();
+        assert_eq!(out, b"\x1b[?1002h");
+        out.clear();
+        encode_mouse_mode(&mut out, MouseMode::MouseModeMotion).unwrap();
+        assert_eq!(out, b"\x1b[?1003h");
+        out.clear();
+        encode_mouse_encoding(&mut out, MouseEncoding::MouseEncodingLegacy).unwrap();
+        assert_eq!(out, b"\x1b[?1006l\x1b[?1015l\x1b[?1016l");
+        out.clear();
+        encode_mouse_encoding(&mut out, MouseEncoding::MouseEncodingSGRPixel).unwrap();
+        assert_eq!(out, b"\x1b[?1016h");
+    }
+
+    #[test]
+    fn test_encode_progress_bar_states() {
+        let mut out = Vec::new();
+        let pb = new_progress_bar(ProgressBarState::ProgressBarError, 50);
+        encode_progress_bar(&mut out, Some(&pb)).unwrap();
+        assert_eq!(out, b"\x1b]9;4;2;50\x07");
+        out.clear();
+        let pb = new_progress_bar(ProgressBarState::ProgressBarWarning, 25);
+        encode_progress_bar(&mut out, Some(&pb)).unwrap();
+        assert_eq!(out, b"\x1b]9;4;4;25\x07");
+        out.clear();
+        let pb = new_progress_bar(ProgressBarState::ProgressBarIndeterminate, 50);
+        encode_progress_bar(&mut out, Some(&pb)).unwrap();
+        assert_eq!(out, b"\x1b]9;4;3\x07");
+        out.clear();
+        let pb = new_progress_bar(ProgressBarState::ProgressBarDefault, 33);
+        encode_progress_bar(&mut out, Some(&pb)).unwrap();
+        assert_eq!(out, b"\x1b]9;4;1;33\x07");
+    }
+
+    #[test]
+    fn test_err_helpers() {
+        let e = err_not_terminal();
+        assert_eq!(e.kind(), std::io::ErrorKind::NotConnected);
+        let e = err_platform_not_supported();
+        assert_eq!(e.kind(), std::io::ErrorKind::Unsupported);
+    }
 }

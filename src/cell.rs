@@ -131,4 +131,27 @@ mod tests {
         assert_eq!(e.width, 1);
         assert!(!e.is_zero());
     }
+
+    #[test]
+    fn test_cell_new_empty_and_clone() {
+        // Empty string returns the default cell.
+        let c = Cell::new("");
+        assert_eq!(c, Cell::default());
+        // clone_cell clones.
+        let c = Cell::new("a");
+        let c2 = c.clone_cell();
+        assert_eq!(c, c2);
+    }
+
+    #[test]
+    fn test_link_to_string() {
+        let l = Link {
+            url: "https://x.dev".to_string(),
+            params: String::new(),
+        };
+        assert_eq!(l.to_string(), "https://x.dev");
+        assert!(!l.is_zero());
+        let empty = Link::default();
+        assert!(empty.is_zero());
+    }
 }

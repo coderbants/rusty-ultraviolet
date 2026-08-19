@@ -527,4 +527,92 @@ mod tests {
         assert!(out.contains("42"));
         assert!(out.contains("53"));
     }
+
+    /// style_diff attribute-off and underline-style branches.
+    #[test]
+    fn test_style_diff_attr_off_and_underline() {
+        // Turn each attribute off while keeping a fg (non-zero target).
+        let from = Style {
+            attrs: Attr::ITALIC.0,
+            ..Style::default()
+        };
+        let to = Style {
+            fg: Some(Color::Basic(1)),
+            ..Style::default()
+        };
+        assert_eq!(style_diff(&from, &to), "\x1b[31;23m");
+
+        let from = Style {
+            underline: Underline::Single,
+            ..Style::default()
+        };
+        let to = Style {
+            fg: Some(Color::Basic(1)),
+            ..Style::default()
+        };
+        assert_eq!(style_diff(&from, &to), "\x1b[31;24m");
+
+        let from = Style {
+            attrs: Attr::BLINK.0,
+            ..Style::default()
+        };
+        let to = Style {
+            fg: Some(Color::Basic(1)),
+            ..Style::default()
+        };
+        assert_eq!(style_diff(&from, &to), "\x1b[31;25m");
+
+        let from = Style {
+            attrs: Attr::REVERSE.0,
+            ..Style::default()
+        };
+        let to = Style {
+            fg: Some(Color::Basic(1)),
+            ..Style::default()
+        };
+        assert_eq!(style_diff(&from, &to), "\x1b[31;27m");
+
+        let from = Style {
+            attrs: Attr::CONCEAL.0,
+            ..Style::default()
+        };
+        let to = Style {
+            fg: Some(Color::Basic(1)),
+            ..Style::default()
+        };
+        assert_eq!(style_diff(&from, &to), "\x1b[31;8m");
+
+        let from = Style {
+            attrs: Attr::STRIKETHROUGH.0,
+            ..Style::default()
+        };
+        let to = Style {
+            fg: Some(Color::Basic(1)),
+            ..Style::default()
+        };
+        assert_eq!(style_diff(&from, &to), "\x1b[31;29m");
+
+        // Turning on a single underline.
+        let from = Style::default();
+        let to = Style {
+            underline: Underline::Single,
+            ..Style::default()
+        };
+        assert_eq!(style_diff(&from, &to), "\x1b[4m");
+
+        // Turning on non-single underline styles.
+        for (u, code) in &[
+            (Underline::Double, "21"),
+            (Underline::Curly, "4:3"),
+            (Underline::Dotted, "4:4"),
+            (Underline::Dashed, "4:5"),
+        ] {
+            let from = Style::default();
+            let to = Style {
+                underline: *u,
+                ..Style::default()
+            };
+            assert_eq!(style_diff(&from, &to), format!("\x1b[{code}m"), "{u:?}");
+        }
+    }
 }

@@ -59,21 +59,20 @@ tests, examples, docs, and support files). The full repo history is checked out 
 
 | Upstream Go Test File | Rust Equivalent / Status | Notes / Description |
 | :--- | :--- | :--- |
-| `cell_test.go` | `tests/cell_test.rs` | Cell model tests |
-| `border_test.go` | `tests/border_test.rs` | Border model tests |
-| `buffer_test.go` | `tests/buffer_test.rs` | Buffer/screen tests |
-| `screen/screen_test.go` | `tests/screen_test.rs` | Screen tests |
-| `styled_test.go` | `tests/styled_test.rs` | StyledString tests |
-| `event_test.go` | `tests/event_test.rs` | Event tests |
-| `key_test.go` | `tests/key_test.rs` | Key tests |
-| `decoder_test.go` | `tests/decoder_test.rs` | Decoder tests |
-| `tabstop_test.go` | `tests/tabstop_test.rs` | Tab stop tests |
-| `layout_test.go` | `tests/layout_test.rs` | Layout tests |
-| `terminal_test.go` | `tests/terminal_test.rs` | Terminal tests |
-| `terminal_renderer_test.go`, `terminal_renderer_output_test.go` | `src/terminal_renderer.rs` (tests) | Renderer tests: Go-verified byte vectors (initial/modify/revert/wide/erase/leading/repeat/resize scenarios) |
-| `terminal_renderer_output_test.go` | `tests/terminal_renderer_test.rs` | Renderer output golden tests |
-| `cancelreader_test.go` | `tests/cancelreader_test.rs` | Cancellable reader tests |
-| `cursor_test.go` | `tests/cursor_test.rs` | Cursor tests |
+| `cell_test.go` | `src/cell.rs` (module tests) | Cell model tests: `Cell::new` (empty/grapheme), `clone_cell`, `Link::to_string`/`is_zero` |
+| `border_test.go` | `src/border.rs` (module tests) | Border tests: all constructors, `style`/`link` application, draw normal/small/non-overlap |
+| `buffer_test.go` | `src/buffer.rs` (module tests) | Buffer/screen tests: methods, line/cell ops, render_line, draw, boundary conditions |
+| `screen/screen_test.go` | `src/screen.rs` (module tests) | Screen tests: rectangle, clear/fill/clone paths, fallback for non-downcast screens |
+| `styled_test.go` | `src/styled.rs` (module tests) | StyledString tests: draw with style/colors/multiline, read_style, read_link, hyperlinks, draw_at offscreen, CR, wrap tail |
+| `event_test.go` | `src/event.rs` (module tests) | Event tests: key/mouse/color methods, size bounds, contains, is_dark, rgb_to_hsl, get_max_min |
+| `key_test.go` | `src/key.rs` (module tests) | Key tests: `key_type_string` full table, keystroke fallbacks, modifiers |
+| `decoder_test.go` | `src/decoder.rs` (module tests) | Decoder tests: parse_control, legacy flags, device attrs, termcap, utf8, win32, kitty, SS3, OSC, CSI reports/keys/errors, ST-terminated, parse_apc_data |
+| `tabstop_test.go` | `src/tabstop.rs` (module tests) | Tab stop tests: defaults, resize, clear, find boundaries |
+| `layout_test.go` | `src/layout.rs` (module tests) | Layout tests: constraints, flex positions/spacing, padding, builders, splitted |
+| `terminal_test.go` | `src/terminal.rs` (module tests) | Terminal tests (TTY-dependent) |
+| `terminal_renderer_test.go`, `terminal_renderer_output_test.go` | `src/terminal_renderer.rs` (module tests) + `tests/terminal_renderer_output_test.rs` | Renderer tests: Go-verified byte vectors (initial/modify/revert/wide/erase/leading/repeat/resize/scroll), relative cursor, tab stops, REP, styled text, hyperlinks, wide-cell reanchor |
+| `cancelreader_test.go` | `src/cancelreader.rs` (module tests) | Cancellable reader tests (TTY-dependent) |
+| `cursor_test.go` | `src/cursor.rs` (module tests) | Cursor tests |
 
 ## Example Applications (`examples/*`)
 

@@ -843,4 +843,26 @@ mod tests {
             assert_eq!(l.params, "id=1");
         }
     }
+
+    /// StyledString accessors: string, bounds, Drawable.
+    #[test]
+    fn test_styled_string_accessors() {
+        let ss = new_styled_string("Hello");
+        assert_eq!(ss.string(), "Hello");
+        let b = ss.bounds();
+        assert!(b.max.0 >= 5);
+        assert!(b.max.1 >= 1);
+        // Drawable trait draw.
+        let mut ss = new_styled_string("Hi");
+        let mut buf = crate::new_buffer(10, 2);
+        let d: &mut dyn crate::Drawable = &mut ss;
+        d.draw(
+            &mut buf,
+            Rectangle {
+                min: (0, 0),
+                max: (10, 2),
+            },
+        );
+        assert_eq!(buf.cell_at(0, 0).unwrap().content, "H");
+    }
 }

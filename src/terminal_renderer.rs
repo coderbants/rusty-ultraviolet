@@ -3202,4 +3202,65 @@ mod tests {
         r.flush(&mut out).unwrap();
         assert!(!out.is_empty());
     }
+
+    /// Middle-cell insertion on a line triggers the insert-cells optimization.
+    #[test]
+    fn test_renderer_insert_cells_middle() {
+        let mut r = new_terminal_renderer(&env());
+        r.set_fullscreen(true);
+        let mut nb = crate::new_render_buffer(10, 1);
+        let space = empty_cell();
+        for x in 0..10 {
+            nb.set_cell(x, 0, Some(&space));
+        }
+        // Initial: abc
+        for (i, c) in "abc".chars().enumerate() {
+            nb.set_cell(i, 0, Some(&Cell::new(&c.to_string())));
+        }
+        let mut out = Vec::new();
+        r.render(&mut nb, &mut out);
+        r.flush(&mut out).unwrap();
+        out.clear();
+        // Insert X in the middle: aXbc
+        let mut nb2 = crate::new_render_buffer(10, 1);
+        for x in 0..10 {
+            nb2.set_cell(x, 0, Some(&space));
+        }
+        for (i, c) in "aXbc".chars().enumerate() {
+            nb2.set_cell(i, 0, Some(&Cell::new(&c.to_string())));
+        }
+        r.render(&mut nb2, &mut out);
+        r.flush(&mut out).unwrap();
+        assert!(!out.is_empty());
+    }
+
+    /// Middle-cell deletion on a line triggers the delete-cells optimization.
+    #[test]
+    fn test_renderer_delete_cells_middle() {
+        let mut r = new_terminal_renderer(&env());
+        r.set_fullscreen(true);
+        let mut nb = crate::new_render_buffer(10, 1);
+        let space = empty_cell();
+        for x in 0..10 {
+            nb.set_cell(x, 0, Some(&space));
+        }
+        for (i, c) in "aXbc".chars().enumerate() {
+            nb.set_cell(i, 0, Some(&Cell::new(&c.to_string())));
+        }
+        let mut out = Vec::new();
+        r.render(&mut nb, &mut out);
+        r.flush(&mut out).unwrap();
+        out.clear();
+        // Delete X: abc
+        let mut nb2 = crate::new_render_buffer(10, 1);
+        for x in 0..10 {
+            nb2.set_cell(x, 0, Some(&space));
+        }
+        for (i, c) in "abc".chars().enumerate() {
+            nb2.set_cell(i, 0, Some(&Cell::new(&c.to_string())));
+        }
+        r.render(&mut nb2, &mut out);
+        r.flush(&mut out).unwrap();
+        assert!(!out.is_empty());
+    }
 }

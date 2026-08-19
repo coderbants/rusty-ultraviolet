@@ -187,4 +187,19 @@ mod tests {
         assert!(!ts.is_stop(0));
         assert!(!ts.is_stop(8));
     }
+
+    /// Tab stop find boundary conditions.
+    #[test]
+    fn test_tab_stops_find_edges() {
+        let ts = default_tab_stops(80);
+        // delta 0 returns the column unchanged.
+        assert_eq!(ts.find(5, 0), 5);
+        // next at the last column stays put.
+        assert_eq!(ts.next(79), 79);
+        // prev at column 0 stays put.
+        assert_eq!(ts.prev(0), 0);
+        // is_stop out of bounds is false.
+        assert!(!ts.is_stop(80));
+        assert!(!ts.is_stop(-1));
+    }
 }

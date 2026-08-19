@@ -620,4 +620,52 @@ mod tests {
         let mm = MouseMotionEvent(m);
         assert_eq!(mm.mouse().x, 1);
     }
+
+    /// Size-event bounds wrappers.
+    #[test]
+    fn test_size_event_bounds() {
+        let s = Size {
+            width: 8,
+            height: 3,
+        };
+        assert_eq!(WindowSizeEvent(s).bounds(), s.bounds());
+        assert_eq!(PixelSizeEvent(s).bounds(), s.bounds());
+        assert_eq!(CellSizeEvent(s).bounds(), s.bounds());
+    }
+
+    /// KeyboardEnhancementsEvent::contains.
+    #[test]
+    fn test_keyboard_enhancements_contains() {
+        let ke = KeyboardEnhancementsEvent { flags: 31 };
+        assert!(ke.contains(1));
+        assert!(ke.contains(31));
+        assert!(!ke.contains(64));
+        assert!(KeyboardEnhancementsEvent { flags: 0 }.contains(0));
+    }
+
+    /// Background/cursor color is_dark.
+    #[test]
+    fn test_color_event_is_dark() {
+        let dark = Some(rusty_x_ansi::color::RGBColor { r: 0, g: 0, b: 0 });
+        assert!(BackgroundColorEvent(dark).is_dark());
+        assert!(CursorColorEvent(dark).is_dark());
+        let light = Some(rusty_x_ansi::color::RGBColor {
+            r: 255,
+            g: 255,
+            b: 255,
+        });
+        assert!(!BackgroundColorEvent(light).is_dark());
+        assert!(!CursorColorEvent(light).is_dark());
+    }
+
+    /// get_max_min all-branches.
+    #[test]
+    fn test_get_max_min_branches() {
+        // c is between a and b.
+        assert_eq!(get_max_min(0.5, 0.3, 0.4), (0.5, 0.3));
+        // c > ma.
+        assert_eq!(get_max_min(0.3, 0.2, 0.8), (0.8, 0.2));
+        // c < mi.
+        assert_eq!(get_max_min(0.3, 0.8, 0.1), (0.8, 0.1));
+    }
 }

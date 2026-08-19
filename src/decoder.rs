@@ -4762,4 +4762,25 @@ mod tests {
         assert_eq!(b, MouseButton(MOUSE_WHEEL_UP.0));
         assert!(!mot); // motion not reported for wheel
     }
+
+    /// CSI simple-key and window-op error paths.
+    #[test]
+    fn test_csi_simple_key_and_window_errors() {
+        // CSI u with an id != 1 -> UnknownCsi.
+        let mut p = EventDecoder::default();
+        let (_n, ev) = p.parse_csi(b"\x1b[2;5A");
+        assert!(matches!(ev, Some(DecodedEvent::UnknownCsi(_))));
+        // ~ with an out-of-range param.
+        let mut p = EventDecoder::default();
+        let (_n, ev) = p.parse_csi(b"\x1b[9~");
+        assert!(matches!(ev, Some(DecodedEvent::UnknownCsi(_))));
+        // CSI t with a missing param.
+        let mut p = EventDecoder::default();
+        let (_n, ev) = p.parse_csi(b"\x1b[t");
+        assert!(matches!(ev, Some(DecodedEvent::UnknownCsi(_))));
+        // Invalid final byte (outside 0x40..=0x7e).
+        let mut p = EventDecoder::default();
+        let (_n, ev) = p.parse_csi(b"\x1b[31\x01");
+        assert!(matches!(ev, Some(DecodedEvent::UnknownCsi(_))));
+    }
 }

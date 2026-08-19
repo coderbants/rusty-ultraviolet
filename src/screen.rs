@@ -306,4 +306,50 @@ mod tests {
         clear_area(&mut sb, rect(0, 0, 1, 1));
         assert_eq!(sb.cell_at(0, 0).unwrap().content, " ");
     }
+
+    /// The fill/clear fallback paths for a screen that does not downcast.
+    #[test]
+    fn test_screen_fallback_paths() {
+        // A wrapper screen that delegates but returns None from as_any_mut.
+        struct Wrapper(Buffer);
+        impl Screen for Wrapper {
+            fn bounds(&self) -> Rectangle {
+                self.0.bounds()
+            }
+            fn cell_at(&self, x: usize, y: usize) -> Option<&Cell> {
+                self.0.cell_at(x, y)
+            }
+            fn set_cell(&mut self, x: usize, y: usize, c: Option<&Cell>) {
+                self.0.set_cell(x, y, c)
+            }
+            fn width_method(&self) -> WidthMethod {
+                WidthMethod::WcWidth
+            }
+            fn as_any_mut(&mut self) -> Option<&mut dyn Any> {
+                None
+            }
+        }
+        let mut w = Wrapper(new_buffer(3, 2));
+        // fill falls through to fill_area.
+        fill(&mut w, Some(&Cell::new("Z")));
+        assert_eq!(w.0.cell_at(2, 1).unwrap().content, "Z");
+        // clear falls through to fill(None).
+        clear(&mut w);
+        assert_eq!(w.0.cell_at(0, 0).unwrap().content, " ");
+        // fill_area with a wide cell steps by its width.
+        let mut w2 = Wrapper(new_buffer(6, 1));
+        let wide = Cell {
+            content: "界".to_string(),
+            width: 2,
+            ..Cell::default()
+        };
+        fill_area(&mut w2, Some(&wide), rect(0, 0, 6, 1));
+        assert_eq!(w2.0.cell_at(0, 0).unwrap().content, "界");
+        assert_eq!(w2.0.cell_at(2, 0).unwrap().content, "界");
+        // clear_area falls through to fill_area(None).
+        let mut w3 = Wrapper(new_buffer(3, 1));
+        w3.0.set_cell(1, 0, Some(&Cell::new("X")));
+        clear_area(&mut w3, rect(0, 0, 3, 1));
+        assert_eq!(w3.0.cell_at(1, 0).unwrap().content, " ");
+    }
 }

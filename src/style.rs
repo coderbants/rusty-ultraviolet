@@ -466,4 +466,65 @@ mod tests {
         };
         assert_eq!(style_diff(&from, &to), "\x1b[38;2;1;2;3m");
     }
+
+    /// Style::string with all attributes and underline styles.
+    #[test]
+    fn test_style_string_all_attrs() {
+        // All attributes together.
+        let s = Style {
+            attrs: Attr::BOLD.0
+                | Attr::FAINT.0
+                | Attr::ITALIC.0
+                | Attr::BLINK.0
+                | Attr::RAPID_BLINK.0
+                | Attr::REVERSE.0
+                | Attr::CONCEAL.0
+                | Attr::STRIKETHROUGH.0,
+            ..Style::default()
+        };
+        assert!(s.string().contains("1"));
+        // Each attribute individually.
+        let cases: &[(Attr, &str)] = &[
+            (Attr::BOLD, "1"),
+            (Attr::FAINT, "2"),
+            (Attr::ITALIC, "3"),
+            (Attr::BLINK, "5"),
+            (Attr::RAPID_BLINK, "5"),
+            (Attr::REVERSE, "7"),
+            (Attr::STRIKETHROUGH, "9"),
+        ];
+        for (attr, code) in cases {
+            let s = Style {
+                attrs: attr.0,
+                ..Style::default()
+            };
+            assert!(s.string().contains(code), "{attr:?} -> {code}");
+        }
+        // Underline styles.
+        let cases: &[(Underline, &str)] = &[
+            (Underline::Single, "4"),
+            (Underline::Double, "21"),
+            (Underline::Curly, "4:3"),
+            (Underline::Dotted, "4:4"),
+            (Underline::Dashed, "4:5"),
+        ];
+        for (u, code) in cases {
+            let s = Style {
+                underline: *u,
+                ..Style::default()
+            };
+            assert!(s.string().contains(code), "{u:?} -> {code}");
+        }
+        // Colors flow through.
+        let s = Style {
+            fg: Some(Color::Basic(1)),
+            bg: Some(Color::Basic(2)),
+            underline_color: Some(Color::Basic(3)),
+            ..Style::default()
+        };
+        let out = s.string();
+        assert!(out.contains("31"));
+        assert!(out.contains("42"));
+        assert!(out.contains("53"));
+    }
 }

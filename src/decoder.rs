@@ -4592,4 +4592,29 @@ mod tests {
         assert_eq!(hex_nibble(b'z'), None);
         assert_eq!(hex_nibble(b'9'), Some(9));
     }
+
+    /// OSC terminator edge cases: ignored/cancelled/empty.
+    #[test]
+    fn test_osc_terminator_edges() {
+        // OSC terminated by 0x18 (CAN) -> Ignored.
+        let mut p = EventDecoder::default();
+        let (_n, ev) = p.parse_osc(b"\x1b]52;c;abc\x18");
+        assert!(matches!(ev, Some(DecodedEvent::Ignored(_))));
+        // OSC terminated by 0x1A (SUB) -> Ignored.
+        let mut p = EventDecoder::default();
+        let (_n, ev) = p.parse_osc(b"\x1b]52;c;abc\x1a");
+        assert!(matches!(ev, Some(DecodedEvent::Ignored(_))));
+        // OSC with a bare ESC (no backslash) -> cancelled -> Ignored.
+        let mut p = EventDecoder::default();
+        let (_n, ev) = p.parse_osc(b"\x1b]52;c;abc\x1bX");
+        assert!(matches!(ev, Some(DecodedEvent::Ignored(_))));
+        // OSC 52 with no ';' -> empty Clipboard.
+        let mut p = EventDecoder::default();
+        let (_n, ev) = p.parse_osc(b"\x1b]52\x07");
+        assert!(matches!(&ev, Some(DecodedEvent::Clipboard { content, .. }) if content.is_empty()));
+        // OSC with a non-numeric command and no data -> Unknown.
+        let mut p = EventDecoder::default();
+        let (_n, ev) = p.parse_osc(b"\x1b];foo\x07");
+        assert!(matches!(ev, Some(DecodedEvent::UnknownOsc(_))));
+    }
 }

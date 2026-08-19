@@ -1816,4 +1816,23 @@ mod tests {
         s.set_color_profile(ColorProfile::Ascii);
         assert_eq!(s.profile, ColorProfile::Ascii);
     }
+
+    /// request_grapheme_width queues the DECRQM request.
+    #[test]
+    fn test_request_grapheme_width() {
+        let (mut s, _) = test_screen();
+        s.buf.clear();
+        s.request_grapheme_width();
+        assert!(!s.buf.is_empty());
+    }
+
+    /// TerminalScreen as a Screen.
+    #[test]
+    fn test_terminal_screen_screen_impl() {
+        let (mut s, _) = test_screen();
+        let scr: &mut dyn crate::buffer::Screen = &mut s;
+        let _b = scr.bounds();
+        assert_eq!(scr.width_method(), WidthMethod::WcWidth);
+        assert!(scr.cell_at(0, 0).is_none());
+    }
 }

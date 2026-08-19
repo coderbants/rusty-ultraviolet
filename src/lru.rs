@@ -149,4 +149,25 @@ mod tests {
         let result = std::panic::catch_unwind(|| new::<i64, i64>(-1));
         assert!(result.is_err());
     }
+
+    /// len/is_empty and duplicate-key behavior.
+    #[test]
+    fn test_lru_len_and_duplicate() {
+        let mut cache: Lru<i64, String> = new(3);
+        assert!(cache.is_empty());
+        cache.add(1, "a".to_string());
+        cache.add(2, "b".to_string());
+        cache.add(3, "c".to_string());
+        assert_eq!(cache.len(), 3);
+        assert!(!cache.is_empty());
+        // Re-adding an existing key does not evict and updates value.
+        let evicted = cache.add(2, "bb".to_string());
+        assert!(!evicted);
+        assert_eq!(cache.len(), 3);
+        assert_eq!(cache.get(&2).unwrap(), "bb");
+        // Adding a fourth key evicts the least-recently-used.
+        cache.add(4, "d".to_string());
+        assert_eq!(cache.len(), 3);
+        assert!(cache.get(&1).is_none());
+    }
 }

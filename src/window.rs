@@ -364,4 +364,23 @@ mod tests {
         assert!(!pos(5, 8).in_rect(r));
         assert_eq!(rect(-2, -3, 4, 5).min, (0, 0));
     }
+
+    /// Window fill/clear/draw/clone and negative-size panic.
+    #[test]
+    fn test_window_fill_draw_clone() {
+        let w = new_window(5, 3, None);
+        w.fill(Some(&Cell::new("X")));
+        assert_eq!(w.cell_at(0, 0).unwrap().content, "X");
+        assert_eq!(w.cell_at(4, 2).unwrap().content, "X");
+        w.clear();
+        assert_eq!(w.cell_at(0, 0).unwrap().content, " ");
+        // Window Debug formatting.
+        let _ = format!("{:?}", w);
+        // clone_window copies content.
+        let cw = w.clone_window();
+        assert_eq!(cw.bounds.max.0, 5);
+        // Negative size panics.
+        let r = std::panic::catch_unwind(|| new_window(0, 0, None).clone_window());
+        assert!(r.is_ok());
+    }
 }

@@ -1653,4 +1653,41 @@ mod tests {
         src.draw(&mut dst, rect(1, 1, 2, 1));
         assert_eq!(dst.cell_at(1, 1).unwrap().content, "A");
     }
+
+    /// Overwriting a wide cell's leading cell clears its placeholders.
+    #[test]
+    fn test_line_set_overwrite_wide_leading() {
+        let mut l = Line(vec![empty_cell(); 4]);
+        l.set(
+            0,
+            Cell {
+                content: "界".to_string(),
+                width: 2,
+                ..Cell::default()
+            },
+        );
+        assert_eq!(l[1].width, 0);
+        // Overwrite the leading wide cell: clears the placeholder.
+        l.set(
+            0,
+            Cell {
+                content: "x".to_string(),
+                width: 1,
+                ..Cell::default()
+            },
+        );
+        assert_eq!(l[0].content, "x");
+        assert_eq!(l[0].width, 1);
+        assert_eq!(l[1].content, " ");
+        assert_eq!(l[1].width, 1);
+    }
+
+    /// Buffer::string joins lines.
+    #[test]
+    fn test_buffer_string() {
+        let mut b = new_buffer(3, 2);
+        b.set_cell(0, 0, Some(&Cell::new("a")));
+        b.set_cell(0, 1, Some(&Cell::new("b")));
+        assert_eq!(b.string(), "a\nb");
+    }
 }

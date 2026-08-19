@@ -3320,4 +3320,34 @@ mod tests {
         r.flush(&mut out).unwrap();
         assert!(!out.is_empty());
     }
+
+    /// Adding many leading blanks triggers the erase-line-left optimization.
+    #[test]
+    fn test_renderer_erase_line_left() {
+        let mut r = new_terminal_renderer(&env());
+        r.set_fullscreen(true);
+        let mut nb = crate::new_render_buffer(10, 1);
+        let space = empty_cell();
+        for x in 0..10 {
+            nb.set_cell(x, 0, Some(&space));
+        }
+        for (i, c) in "ABCDE".chars().enumerate() {
+            nb.set_cell(i, 0, Some(&Cell::new(&c.to_string())));
+        }
+        let mut out = Vec::new();
+        r.render(&mut nb, &mut out);
+        r.flush(&mut out).unwrap();
+        out.clear();
+        // Shift content right with many leading blanks.
+        let mut nb2 = crate::new_render_buffer(10, 1);
+        for x in 0..10 {
+            nb2.set_cell(x, 0, Some(&space));
+        }
+        for (i, c) in "CDE".chars().enumerate() {
+            nb2.set_cell(i + 5, 0, Some(&Cell::new(&c.to_string())));
+        }
+        r.render(&mut nb2, &mut out);
+        r.flush(&mut out).unwrap();
+        assert!(!out.is_empty());
+    }
 }

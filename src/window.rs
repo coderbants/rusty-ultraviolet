@@ -383,4 +383,48 @@ mod tests {
         let r = std::panic::catch_unwind(|| new_window(0, 0, None).clone_window());
         assert!(r.is_ok());
     }
+
+    /// Window as a Screen via Rc::get_mut.
+    #[test]
+    fn test_window_screen_impl() {
+        let mut w = new_window(5, 3, None);
+        let wm = Rc::get_mut(&mut w).unwrap();
+        // Screen trait: bounds, cell_at, set_cell, width_method.
+        let scr: &mut dyn crate::buffer::Screen = wm;
+        let b = scr.bounds();
+        assert_eq!((b.dx(), b.dy()), (5, 3));
+        assert_eq!(
+            scr.width_method(),
+            rusty_x_ansi::method::WidthMethod::WcWidth
+        );
+        // The Window Screen impl does not expose cells directly.
+        assert!(scr.cell_at(0, 0).is_none());
+        scr.set_cell(2, 1, Some(&Cell::new("X")));
+        drop(scr);
+        assert_eq!(w.cell_at(2, 1).unwrap().content, "X");
+    }
+
+    /// Window::draw draws its buffer onto another screen.
+    #[test]
+    fn test_window_draw() {
+        let src = new_window(3, 1, None);
+        src.set_cell(0, 0, Cell::new("A"));
+        let mut dst = new_window(5, 2, None);
+        let dm = Rc::get_mut(&mut dst).unwrap();
+        src.draw(dm, crate::screen::rect(1, 0, 3, 1));
+        assert_eq!(dst.cell_at(1, 0).unwrap().content, "A");
+    }
+
+    /// new_window with a parent (view of a parent).
+    #[test]
+    fn test_window_new_with_parent() {
+        let parent = new_window(20, 10, None);
+        let sub = parent.new_window(2, 2, 4, 4);
+        assert!(sub.has_parent());
+        assert!(Rc::ptr_eq(sub.parent().unwrap(), &parent));
+        // Sub-window has its own buffer.
+        sub.set_cell(0, 0, Cell::new("S"));
+        assert_eq!(parent.cell_at(0, 0).unwrap().content, " ");
+        assert_eq!(sub.cell_at(0, 0).unwrap().content, "S");
+    }
 }

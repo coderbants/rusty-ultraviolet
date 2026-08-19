@@ -672,4 +672,22 @@ mod tests {
         assert_eq_f64(10.0, s.val(p3));
         assert_eq_f64(100.0, s.val(container));
     }
+
+    #[test]
+    fn test_constraint_op_and_error_display() {
+        let c = Constraint::new_constraint(Op::EQ, 1.0, &[]);
+        assert_eq!(c.op(), Op::EQ);
+        let c = Constraint::new_constraint(Op::GTE, 1.0, &[]);
+        assert_eq!(c.op(), Op::GTE);
+        let c = Constraint::new_constraint(Op::LTE, 1.0, &[]);
+        assert_eq!(c.op(), Op::LTE);
+        assert_eq!(
+            SolverError::Unsatisfiable.to_string(),
+            "casso: constraint is unsatisfiable"
+        );
+        assert_eq!(
+            SolverError::BadTerm.to_string(),
+            "casso: term references a nil symbol"
+        );
+    }
 }

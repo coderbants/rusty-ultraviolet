@@ -388,19 +388,20 @@ mod tests {
     #[test]
     fn test_window_screen_impl() {
         let mut w = new_window(5, 3, None);
-        let wm = Rc::get_mut(&mut w).unwrap();
-        // Screen trait: bounds, cell_at, set_cell, width_method.
-        let scr: &mut dyn crate::buffer::Screen = wm;
-        let b = scr.bounds();
-        assert_eq!((b.dx(), b.dy()), (5, 3));
-        assert_eq!(
-            scr.width_method(),
-            rusty_x_ansi::method::WidthMethod::WcWidth
-        );
-        // The Window Screen impl does not expose cells directly.
-        assert!(scr.cell_at(0, 0).is_none());
-        scr.set_cell(2, 1, Some(&Cell::new("X")));
-        drop(scr);
+        {
+            let wm = Rc::get_mut(&mut w).unwrap();
+            // Screen trait: bounds, cell_at, set_cell, width_method.
+            let scr: &mut dyn crate::buffer::Screen = wm;
+            let b = scr.bounds();
+            assert_eq!((b.dx(), b.dy()), (5, 3));
+            assert_eq!(
+                scr.width_method(),
+                rusty_x_ansi::method::WidthMethod::WcWidth
+            );
+            // The Window Screen impl does not expose cells directly.
+            assert!(scr.cell_at(0, 0).is_none());
+            scr.set_cell(2, 1, Some(&Cell::new("X")));
+        }
         assert_eq!(w.cell_at(2, 1).unwrap().content, "X");
     }
 

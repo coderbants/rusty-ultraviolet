@@ -3140,4 +3140,27 @@ mod tests {
         r.flush(&mut out).unwrap();
         assert!(!out.is_empty());
     }
+
+    /// Repeated characters with REP support (kitty caps).
+    #[test]
+    fn test_renderer_repeat_character() {
+        let mut env = env();
+        env.0.push("TERM=kitty".to_string());
+        let mut r = new_terminal_renderer(&env);
+        r.set_fullscreen(true);
+        let mut nb = crate::new_render_buffer(20, 2);
+        let space = empty_cell();
+        for y in 0..2 {
+            for x in 0..20 {
+                nb.set_cell(x, y, Some(&space));
+            }
+        }
+        for x in 0..10 {
+            nb.set_cell(x, 0, Some(&Cell::new("*")));
+        }
+        let mut out = Vec::new();
+        r.render(&mut nb, &mut out);
+        r.flush(&mut out).unwrap();
+        assert!(!out.is_empty());
+    }
 }

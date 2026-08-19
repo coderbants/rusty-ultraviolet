@@ -3054,4 +3054,90 @@ mod tests {
         r.flush(&mut out).unwrap();
         assert!(String::from_utf8_lossy(&out).contains("l"));
     }
+
+    /// Multi-line scroll in fullscreen triggers the hard-scroll optimizer.
+    #[test]
+    fn test_renderer_scroll_multiline() {
+        let mut r = new_terminal_renderer(&env());
+        r.set_fullscreen(true);
+        let mut nb = crate::new_render_buffer(5, 5);
+        for y in 0..5 {
+            for x in 0..5 {
+                nb.set_cell(
+                    x,
+                    y,
+                    Some(&Cell::new(&((b'A' + y as u8) as char).to_string())),
+                );
+            }
+        }
+        let mut out = Vec::new();
+        r.render(&mut nb, &mut out);
+        r.flush(&mut out).unwrap();
+        out.clear();
+        // Shift content up by two rows.
+        let mut nb2 = crate::new_render_buffer(5, 5);
+        for y in 0..3 {
+            for x in 0..5 {
+                nb2.set_cell(
+                    x,
+                    y,
+                    Some(&Cell::new(&((b'A' + y as u8 + 2) as char).to_string())),
+                );
+            }
+        }
+        for y in 3..5 {
+            for x in 0..5 {
+                nb2.set_cell(
+                    x,
+                    y,
+                    Some(&Cell::new(&((b'X' + y as u8) as char).to_string())),
+                );
+            }
+        }
+        r.render(&mut nb2, &mut out);
+        r.flush(&mut out).unwrap();
+        assert!(!out.is_empty());
+    }
+
+    /// Inserting a line in the middle of a fullscreen buffer.
+    #[test]
+    fn test_renderer_insert_line_middle() {
+        let mut r = new_terminal_renderer(&env());
+        r.set_fullscreen(true);
+        let mut nb = crate::new_render_buffer(5, 4);
+        for y in 0..4 {
+            for x in 0..5 {
+                nb.set_cell(
+                    x,
+                    y,
+                    Some(&Cell::new(&((b'A' + y as u8) as char).to_string())),
+                );
+            }
+        }
+        let mut out = Vec::new();
+        r.render(&mut nb, &mut out);
+        r.flush(&mut out).unwrap();
+        out.clear();
+        // Insert a blank line at row 1.
+        let mut nb2 = crate::new_render_buffer(5, 4);
+        let space = empty_cell();
+        for x in 0..5 {
+            nb2.set_cell(x, 0, Some(&Cell::new("A")));
+        }
+        for x in 0..5 {
+            nb2.set_cell(x, 1, Some(&space));
+        }
+        for y in 2..4 {
+            for x in 0..5 {
+                nb2.set_cell(
+                    x,
+                    y,
+                    Some(&Cell::new(&((b'A' + y as u8 - 1) as char).to_string())),
+                );
+            }
+        }
+        r.render(&mut nb2, &mut out);
+        r.flush(&mut out).unwrap();
+        assert!(!out.is_empty());
+    }
 }

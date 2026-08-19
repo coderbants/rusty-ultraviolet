@@ -141,3 +141,44 @@ fn test_renderer_output() {
         }
     }
 }
+
+/// Ported from upstream `TestRendererWideCellReanchor`: a wide-cell line is
+/// re-anchored once (not per-cell), and grapheme mode skips the re-anchor.
+#[test]
+fn test_renderer_wide_cell_reanchor() {
+    let render = |grapheme: bool| -> String {
+        let mut buf: Vec<u8> = Vec::new();
+        let env = Environ(vec![
+            "TERM=xterm-256color".to_string(),
+            "COLORTERM=truecolor".to_string(),
+        ]);
+        let mut s = TerminalRenderer::new_without_writer(&env);
+        s.set_fullscreen_public(true);
+        s.set_grapheme_width_public(grapheme);
+        s.save_cursor_public();
+        s.erase_public();
+
+        let mut scr = new_screen_buffer(10, 1);
+        buf.clear();
+        let ss = new_styled_string("世界");
+        let area = scr.bounds();
+        ss.draw(&mut scr, area);
+        s.render_public(&mut scr.render_buffer);
+        s.flush_into(&mut buf);
+        String::from_utf8_lossy(&buf).to_string()
+    };
+
+    let out = render(false);
+    let reanchors = out.matches("\x1b[5G").count();
+    assert_eq!(
+        reanchors, 1,
+        "non-grapheme line with wide cells: want 1 re-anchor, got {reanchors} in {out:?}"
+    );
+
+    let gout = render(true);
+    let reanchors = gout.matches("\x1b[5G").count();
+    assert_eq!(
+        reanchors, 0,
+        "grapheme-mode line should not re-anchor, got {reanchors} in {gout:?}"
+    );
+}

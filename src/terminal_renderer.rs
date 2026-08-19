@@ -3263,4 +3263,40 @@ mod tests {
         r.flush(&mut out).unwrap();
         assert!(!out.is_empty());
     }
+
+    /// Wide-cell insertion triggers the wide-cell shift handling.
+    #[test]
+    fn test_renderer_wide_cell_insert() {
+        let mut r = new_terminal_renderer(&env());
+        r.set_fullscreen(true);
+        let mut nb = crate::new_render_buffer(10, 1);
+        let space = empty_cell();
+        for x in 0..10 {
+            nb.set_cell(x, 0, Some(&space));
+        }
+        // Initial: a + wide 界 + bc
+        nb.set_cell(0, 0, Some(&Cell::new("a")));
+        nb.set_cell(1, 0, Some(&Cell::new("界")));
+        nb.set_cell(2, 0, Some(&Cell::default())); // wide placeholder
+        nb.set_cell(3, 0, Some(&Cell::new("b")));
+        nb.set_cell(4, 0, Some(&Cell::new("c")));
+        let mut out = Vec::new();
+        r.render(&mut nb, &mut out);
+        r.flush(&mut out).unwrap();
+        out.clear();
+        // Insert X before the wide cell: a X 界 bc
+        let mut nb2 = crate::new_render_buffer(10, 1);
+        for x in 0..10 {
+            nb2.set_cell(x, 0, Some(&space));
+        }
+        nb2.set_cell(0, 0, Some(&Cell::new("a")));
+        nb2.set_cell(1, 0, Some(&Cell::new("X")));
+        nb2.set_cell(2, 0, Some(&Cell::new("界")));
+        nb2.set_cell(3, 0, Some(&Cell::default()));
+        nb2.set_cell(4, 0, Some(&Cell::new("b")));
+        nb2.set_cell(5, 0, Some(&Cell::new("c")));
+        r.render(&mut nb2, &mut out);
+        r.flush(&mut out).unwrap();
+        assert!(!out.is_empty());
+    }
 }

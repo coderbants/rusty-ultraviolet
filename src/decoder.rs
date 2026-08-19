@@ -4709,4 +4709,57 @@ mod tests {
             other => panic!("{other:?}"),
         }
     }
+
+    /// parse_xterm_modify_other_keys via CSI 27;mod;code~.
+    #[test]
+    fn test_xterm_modify_other_keys_direct() {
+        // C0 control codes.
+        let cases: &[(i32, u32)] = &[
+            (0x08, KEY_BACKSPACE),
+            (0x09, KEY_TAB),
+            (0x0D, KEY_ENTER),
+            (0x1B, KEY_ESCAPE),
+            (0x7F, KEY_BACKSPACE),
+        ];
+        for &(code, want) in cases {
+            let ev = parse_xterm_modify_other_keys(&[27, 1, code]);
+            assert!(
+                matches!(&ev, DecodedEvent::KeyPress(k) if k.code == want),
+                "code {code}"
+            );
+        }
+        // A printable code with shift modifier sets text.
+        let ev = parse_xterm_modify_other_keys(&[27, 2, b'a' as i32]);
+        assert!(matches!(&ev, DecodedEvent::KeyPress(k)
+                if k.code == b'a' as u32 && k.mod_ == MOD_SHIFT && k.text == "a"));
+    }
+
+    /// parse_mouse_button modifier and button variants.
+    #[test]
+    fn test_parse_mouse_button() {
+        use rusty_x_ansi::mouse::MouseButton;
+        // Left click, no modifiers.
+        let (m, b, rel, mot) = parse_mouse_button(0);
+        assert_eq!(m, KeyMod(0));
+        assert_eq!(b, MouseButton(MOUSE_LEFT.0));
+        assert!(!rel);
+        assert!(!mot);
+        // Alt/ctrl/shift modifiers.
+        let (m, _, _, _) = parse_mouse_button(0b0000_1000 | 0b0001_0000 | 0b0000_0100);
+        assert_eq!(m, KeyMod(MOD_ALT.0 | MOD_CTRL.0 | MOD_SHIFT.0));
+        // Release (bits 3) -> is_release with MOUSE_NONE.
+        let (_, b, rel, _) = parse_mouse_button(0b0000_0011);
+        assert!(rel);
+        assert_eq!(b, MouseButton(MOUSE_NONE.0));
+        // Motion bit set.
+        let (_, _, _, mot) = parse_mouse_button(0b0010_0000);
+        assert!(mot);
+        // Additional button (BIT_ADD).
+        let (_, b, _, _) = parse_mouse_button(0b1000_0000);
+        assert_eq!(b, MouseButton(MOUSE_BACKWARD.0));
+        // Wheel.
+        let (_, b, _, mot) = parse_mouse_button(0b0100_0000);
+        assert_eq!(b, MouseButton(MOUSE_WHEEL_UP.0));
+        assert!(!mot); // motion not reported for wheel
+    }
 }

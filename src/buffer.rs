@@ -1608,4 +1608,49 @@ mod tests {
         l2.set(5, Cell::new("z"));
         assert_eq!(l2[1].content, " ");
     }
+
+    /// Insert/delete area boundary conditions (out-of-bounds, n==0).
+    #[test]
+    fn test_area_boundary_conditions() {
+        let area = rect(1, 1, 3, 3);
+        // n == 0 is a no-op.
+        let mut b = new_render_buffer(5, 5);
+        b.set_cell(2, 2, Some(&Cell::new("X")));
+        b.insert_line_area(2, 0, None, area);
+        b.delete_line_area(2, 0, None, area);
+        b.insert_cell_area(2, 2, 0, None, area);
+        b.delete_cell_area(2, 2, 0, None, area);
+        assert_eq!(b.cell_at(2, 2).unwrap().content, "X");
+        // y outside the area is a no-op.
+        let mut b = new_render_buffer(5, 5);
+        b.set_cell(2, 2, Some(&Cell::new("X")));
+        b.insert_line_area(5, 1, None, area);
+        b.delete_line_area(5, 1, None, area);
+        b.insert_cell_area(2, 4, 1, None, area);
+        b.delete_cell_area(2, 4, 1, None, area);
+        assert_eq!(b.cell_at(2, 2).unwrap().content, "X");
+        // x outside the area for cell ops is a no-op.
+        let mut b = new_render_buffer(5, 5);
+        b.set_cell(2, 2, Some(&Cell::new("X")));
+        b.insert_cell_area(4, 2, 1, None, area);
+        b.delete_cell_area(4, 2, 1, None, area);
+        assert_eq!(b.cell_at(2, 2).unwrap().content, "X");
+    }
+
+    /// ScreenBuffer clear/fill/draw wrappers.
+    #[test]
+    fn test_screen_buffer_wrappers() {
+        let mut sb = new_screen_buffer(4, 2);
+        sb.set_cell(0, 0, Some(&Cell::new("X")));
+        sb.clear();
+        assert_eq!(sb.cell_at(0, 0).unwrap().content, " ");
+        sb.fill(Some(&Cell::new("Z")));
+        assert_eq!(sb.cell_at(3, 1).unwrap().content, "Z");
+        // draw onto another buffer via the ScreenBuffer's draw.
+        let mut dst = new_buffer(5, 3);
+        let mut src = new_screen_buffer(2, 1);
+        src.set_cell(0, 0, Some(&Cell::new("A")));
+        src.draw(&mut dst, rect(1, 1, 2, 1));
+        assert_eq!(dst.cell_at(1, 1).unwrap().content, "A");
+    }
 }

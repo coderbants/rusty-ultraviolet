@@ -4617,4 +4617,25 @@ mod tests {
         let (_n, ev) = p.parse_osc(b"\x1b];foo\x07");
         assert!(matches!(ev, Some(DecodedEvent::UnknownOsc(_))));
     }
+
+    /// DCS/APC alt-key shortcuts (len-2 inputs).
+    #[test]
+    fn test_dcs_apc_alt_shortcuts() {
+        // DCS: ESC P -> alt+shift+p.
+        let mut p = EventDecoder::default();
+        let (n, ev) = p.parse_dcs(b"\x1bP");
+        assert_eq!(n, 2);
+        assert!(matches!(&ev, Some(DecodedEvent::KeyPress(k))
+            if k.code == b'p' as u32 && k.mod_ == KeyMod(MOD_SHIFT.0 | MOD_ALT.0)));
+        // APC: ESC _ -> alt+_.
+        let mut p = EventDecoder::default();
+        let (n, ev) = p.parse_apc(b"\x1b_");
+        assert_eq!(n, 2);
+        assert!(matches!(&ev, Some(DecodedEvent::KeyPress(k))
+            if k.mod_ == MOD_ALT));
+        // DCS unknown data -> UnknownDcs.
+        let mut p = EventDecoder::default();
+        let (_n, ev) = p.parse_dcs(b"\x1bPdata\x1b\\");
+        assert!(matches!(ev, Some(DecodedEvent::UnknownDcs(_))));
+    }
 }

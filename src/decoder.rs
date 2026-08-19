@@ -4557,4 +4557,39 @@ mod tests {
         let (_n, ev) = p.parse_csi(b"\x1b[4;1t");
         assert!(matches!(&ev, Some(DecodedEvent::WindowOp { op: 4, .. })));
     }
+
+    /// parse_apc_data variants.
+    #[test]
+    fn test_parse_apc_data() {
+        // Empty -> None.
+        assert_eq!(parse_apc_data(b""), None);
+        // Unknown command -> None.
+        assert_eq!(parse_apc_data(b"Zabc"), None);
+        // Kitty graphics with payload.
+        assert_eq!(
+            parse_apc_data(b"Gf=100;AAAA"),
+            Some(DecodedEvent::KittyGraphics {
+                options: b"f=100".to_vec(),
+                payload: b"AAAA".to_vec(),
+            })
+        );
+        // Kitty graphics without a payload.
+        assert_eq!(
+            parse_apc_data(b"Gf=100"),
+            Some(DecodedEvent::KittyGraphics {
+                options: b"f=100".to_vec(),
+                payload: Vec::new(),
+            })
+        );
+    }
+
+    /// hex_decode/nibble edge cases.
+    #[test]
+    fn test_hex_decode_edges() {
+        assert_eq!(hex_decode(b"a"), None);
+        assert_eq!(hex_decode(b"61"), Some(vec![0x61]));
+        assert_eq!(hex_nibble(b'A'), Some(10));
+        assert_eq!(hex_nibble(b'z'), None);
+        assert_eq!(hex_nibble(b'9'), Some(9));
+    }
 }

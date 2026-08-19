@@ -774,4 +774,52 @@ mod tests {
         read_style(Params(&[4]), &mut style);
         assert_eq!(style.underline, Underline::Single);
     }
+
+    /// draw_at with an off-screen origin clips correctly.
+    #[test]
+    fn test_draw_at_offscreen() {
+        let mut b = crate::new_buffer(10, 3);
+        let ss = new_styled_string("Hello");
+        ss.draw_at(&mut b, -2, 0, 10, 3);
+        // With origin -2, 'H' is at x=-2, so the first visible cell is 'l'.
+        assert_eq!(b.cell_at(0, 0).unwrap().content, "l");
+        assert_eq!(b.cell_at(1, 0).unwrap().content, "l");
+        assert_eq!(b.cell_at(2, 0).unwrap().content, "o");
+    }
+
+    /// CR in the text resets the x position to the bounds start.
+    #[test]
+    fn test_draw_cr_sequence() {
+        let mut b = crate::new_buffer(10, 2);
+        let ss = new_styled_string("AB\rCD");
+        ss.draw(
+            &mut b,
+            Rectangle {
+                min: (0, 0),
+                max: (10, 2),
+            },
+        );
+        // After \r, C overwrites A.
+        assert_eq!(b.cell_at(0, 0).unwrap().content, "C");
+        assert_eq!(b.cell_at(1, 0).unwrap().content, "D");
+    }
+
+    /// Wrap=false truncates with the tail.
+    #[test]
+    fn test_draw_no_wrap_tail() {
+        let mut b = crate::new_buffer(4, 1);
+        let mut ss = new_styled_string("Hello World");
+        ss.wrap = false;
+        ss.tail = "…".to_string();
+        ss.draw(
+            &mut b,
+            Rectangle {
+                min: (0, 0),
+                max: (4, 1),
+            },
+        );
+        assert_eq!(b.cell_at(0, 0).unwrap().content, "H");
+        // The string is truncated to fit and the tail is appended.
+        assert_eq!(b.cell_at(3, 0).unwrap().content, "…");
+    }
 }

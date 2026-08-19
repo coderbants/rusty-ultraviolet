@@ -4638,4 +4638,38 @@ mod tests {
         let (_n, ev) = p.parse_dcs(b"\x1bPdata\x1b\\");
         assert!(matches!(ev, Some(DecodedEvent::UnknownDcs(_))));
     }
+
+    /// Keypad operator keys get their text via parse_kitty_keyboard.
+    #[test]
+    fn test_kitty_keypad_operators() {
+        let cases: &[(u32, &str)] = &[
+            (KEY_KP_MULTIPLY, "*"),
+            (KEY_KP_PLUS, "+"),
+            (KEY_KP_MINUS, "-"),
+            (KEY_KP_DECIMAL, "."),
+            (KEY_KP_DIVIDE, "/"),
+            (KEY_KP_SEP, ","),
+        ];
+        for &(code, want) in cases {
+            let ev = parse_kitty_keyboard(&[code as i32, 1]);
+            assert!(
+                matches!(&ev, DecodedEvent::KeyPress(k) if k.code == code && k.text == want),
+                "code {code}"
+            );
+        }
+    }
+
+    /// Kitty keyboard shifted-key sub-parameter (sud 1).
+    #[test]
+    fn test_kitty_shifted_subparam() {
+        // Params [code|HAS_MORE, shifted] triggers sud 1.
+        let ev = parse_kitty_keyboard(&[b'a' as i32 | HAS_MORE_FLAG, b'A' as i32]);
+        match &ev {
+            DecodedEvent::KeyPress(k) => {
+                assert_eq!(k.code, b'a' as u32);
+                assert_eq!(k.shifted_code, b'A' as u32);
+            }
+            other => panic!("{other:?}"),
+        }
+    }
 }

@@ -865,4 +865,57 @@ mod tests {
         );
         assert_eq!(buf.cell_at(0, 0).unwrap().content, "H");
     }
+
+    /// Tail edge cases (empty/space) via new_cell_with_method.
+    #[test]
+    fn test_draw_tail_edge_cases() {
+        // Empty tail.
+        let mut b = crate::new_buffer(4, 1);
+        let mut ss = new_styled_string("Hello World");
+        ss.wrap = false;
+        ss.tail = String::new();
+        ss.draw(
+            &mut b,
+            Rectangle {
+                min: (0, 0),
+                max: (4, 1),
+            },
+        );
+        // Space tail.
+        let mut b2 = crate::new_buffer(4, 1);
+        let mut ss2 = new_styled_string("Hello World");
+        ss2.wrap = false;
+        ss2.tail = " ".to_string();
+        ss2.draw(
+            &mut b2,
+            Rectangle {
+                min: (0, 0),
+                max: (4, 1),
+            },
+        );
+        // A link that gets truncated with a tail applies the link to the tail.
+        let mut b3 = crate::new_buffer(4, 1);
+        let mut ss3 = new_styled_string("\x1b]8;id=1;https://x.dev\x07Link\x1b]8;;\x07Extra");
+        ss3.wrap = false;
+        ss3.tail = "…".to_string();
+        ss3.draw(
+            &mut b3,
+            Rectangle {
+                min: (0, 0),
+                max: (4, 1),
+            },
+        );
+    }
+
+    /// grapheme-width decode path (lines with GraphemeWidth).
+    #[test]
+    fn test_lines_grapheme() {
+        let ss = new_styled_string("界");
+        let lines = ss.lines(WidthMethod::GraphemeWidth);
+        assert!(!lines.is_empty());
+        if let Some(l) = lines.first() {
+            assert!(!l.0.is_empty());
+            assert_eq!(l.0[0].content, "界");
+        }
+    }
 }

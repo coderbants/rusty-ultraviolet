@@ -4493,4 +4493,68 @@ mod tests {
         // Unknown final byte produces a default key.
         assert_eq!(key_press_from_cmd(b'x' as i32).0.code, 0);
     }
+
+    /// CSI win32 input mode (params before the `_` final byte).
+    #[test]
+    fn test_csi_win32_parsed() {
+        let mut p = EventDecoder::default();
+        // 6 params before `_` reaches the win32 branch.
+        let (n, ev) = p.parse_csi(b"\x1b[1;2;3;4;5;6_");
+        assert_eq!(n, 14);
+        assert!(ev.is_some());
+        // Wrong param count -> UnknownCsi.
+        let mut p = EventDecoder::default();
+        let (_n, ev) = p.parse_csi(b"\x1b[1;2;3_");
+        assert!(matches!(ev, Some(DecodedEvent::UnknownCsi(_))));
+    }
+
+    /// DECRPM and F3 error/edge branches.
+    #[test]
+    fn test_csi_decrm_f3_edges() {
+        // DECRPM with '?' prefix missing mode -> UnknownCsi.
+        let mut p = EventDecoder::default();
+        let (_n, ev) = p.parse_csi(b"\x1b[?;1$y");
+        assert!(matches!(ev, Some(DecodedEvent::UnknownCsi(_))));
+        // DECRPM without '?' prefix missing value.
+        let mut p = EventDecoder::default();
+        let (_n, ev) = p.parse_csi(b"\x1b[5;y");
+        assert!(matches!(ev, Some(DecodedEvent::UnknownCsi(_))));
+        // F3 (CSI R) with params_len > 2.
+        let mut p = EventDecoder::default();
+        let (_n, ev) = p.parse_csi(b"\x1b[1;2;3R");
+        assert!(matches!(ev, Some(DecodedEvent::UnknownCsi(_))));
+        // F3 with a modifier (CSI 1 ; <mod> R) -> Multi with a modified key.
+        let mut p = EventDecoder::default();
+        let (_n, ev) = p.parse_csi(b"\x1b[1;2R");
+        assert!(matches!(&ev, Some(DecodedEvent::Multi(_))));
+    }
+
+    /// Pixel/cell size reports with the right param count.
+    #[test]
+    fn test_csi_size_reports() {
+        // Pixel size with 3 params.
+        let mut p = EventDecoder::default();
+        let (_n, ev) = p.parse_csi(b"\x1b[4;24;80t");
+        assert!(matches!(
+            &ev,
+            Some(DecodedEvent::PixelSize(Size {
+                width: 80,
+                height: 24
+            }))
+        ));
+        // Cell size with 3 params.
+        let mut p = EventDecoder::default();
+        let (_n, ev) = p.parse_csi(b"\x1b[6;24;80t");
+        assert!(matches!(
+            &ev,
+            Some(DecodedEvent::CellSize(Size {
+                width: 80,
+                height: 24
+            }))
+        ));
+        // Wrong param count produces a WindowOp.
+        let mut p = EventDecoder::default();
+        let (_n, ev) = p.parse_csi(b"\x1b[4;1t");
+        assert!(matches!(&ev, Some(DecodedEvent::WindowOp { op: 4, .. })));
+    }
 }

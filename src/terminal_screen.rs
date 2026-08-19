@@ -1791,4 +1791,29 @@ mod tests {
         assert_eq!(env.lookup_env("C"), None);
         assert_eq!(env.getenv("C"), "");
     }
+
+    /// enable_grapheme_width and set_color_profile.
+    #[test]
+    fn test_enable_grapheme_width_and_color_profile() {
+        let (mut s, w) = test_screen();
+        assert!(!s.width_method_override);
+        // enable_grapheme_width sets the method and writes the mode sequence.
+        s.enable_grapheme_width();
+        assert_eq!(s.width_method(), WidthMethod::GraphemeWidth);
+        // The mode sequence is flushed to the writer.
+        assert!(w.borrow().windows(8).any(|w| w == b"\x1b[?2027h"));
+        // set_grapheme_width_enabled applies without writing.
+        s.buf.clear();
+        s.set_grapheme_width_enabled();
+        assert_eq!(s.width_method(), WidthMethod::GraphemeWidth);
+        assert!(s.buf.is_empty());
+        // Once overridden, enable_grapheme_width is a no-op.
+        let (mut s2, _) = test_screen();
+        s2.set_width_method(WidthMethod::WcWidth);
+        s2.enable_grapheme_width();
+        assert_eq!(s2.width_method(), WidthMethod::WcWidth);
+        // set_color_profile updates the profile.
+        s.set_color_profile(ColorProfile::Ascii);
+        assert_eq!(s.profile, ColorProfile::Ascii);
+    }
 }

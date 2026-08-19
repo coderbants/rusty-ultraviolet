@@ -4690,4 +4690,23 @@ mod tests {
         let ev = parse_kitty_keyboard(&[b'a' as i32 | HAS_MORE_FLAG, b'Q' as i32, 2]);
         assert!(matches!(&ev, DecodedEvent::KeyPress(k) if k.text == "Q"));
     }
+
+    /// Kitty keyboard shifted+base sub-param (sud 2).
+    #[test]
+    fn test_kitty_shifted_base() {
+        // Params [code|HAS_MORE, shifted|HAS_MORE, base] triggers sud 2.
+        let ev = parse_kitty_keyboard(&[
+            b'a' as i32 | HAS_MORE_FLAG,
+            b'A' as i32 | HAS_MORE_FLAG,
+            b'q' as i32,
+        ]);
+        match &ev {
+            DecodedEvent::KeyPress(k) => {
+                assert_eq!(k.code, b'a' as u32);
+                // The sud 2 branch sets base_code from the base sub-param.
+                assert_eq!(k.base_code, b'q' as u32);
+            }
+            other => panic!("{other:?}"),
+        }
+    }
 }

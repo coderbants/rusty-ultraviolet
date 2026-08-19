@@ -1157,4 +1157,33 @@ mod tests {
         };
         assert_eq!(k.keystroke(), "a");
     }
+
+    /// keystroke with meta/hyper/super modifiers.
+    #[test]
+    fn test_keystroke_all_modifiers() {
+        use super::*;
+        let k = Key {
+            code: b'a' as u32,
+            text: "a".to_string(),
+            mod_: KeyMod(
+                MOD_META.0 | MOD_HYPER.0 | MOD_SUPER.0 | MOD_ALT.0 | MOD_CTRL.0 | MOD_SHIFT.0,
+            ),
+            ..Key::default()
+        };
+        let s = k.keystroke();
+        assert!(s.contains("meta+"));
+        assert!(s.contains("hyper+"));
+        assert!(s.contains("super+"));
+        assert!(s.contains("alt+"));
+        assert!(s.contains("ctrl+"));
+        assert!(s.contains("shift+"));
+        assert!(s.contains("a"));
+        // Left/right modifier keys are not prefixed.
+        let k = Key {
+            code: KEY_LEFT_CTRL,
+            mod_: MOD_CTRL,
+            ..Key::default()
+        };
+        assert_eq!(k.keystroke(), "leftctrl");
+    }
 }

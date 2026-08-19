@@ -3480,4 +3480,93 @@ mod tests {
         r.flush(&mut out).unwrap();
         assert!(!out.is_empty());
     }
+
+    /// Exercise scroll_up and scroll_down with different Capabilities (SU, SD, ICH, non-fullscreen, margins).
+    #[test]
+    fn test_renderer_scroll_branches_and_caps() {
+        // Direct test of scroll_up and scroll_down internal methods
+        let mut r = TerminalRenderer::new_without_writer(&env());
+        r.caps.set(Capabilities::ALL);
+        let nb = crate::new_render_buffer(10, 10);
+        let blank = Cell::default();
+
+        // scroll_up: n == 1 && bot == max_y (delete_line(1))
+        assert!(r.scroll_up(&nb, 1, 2, 9, 0, 9, &blank));
+        // scroll_up: top == min_y && bot == max_y with SU
+        assert!(r.scroll_up(&nb, 2, 0, 9, 0, 9, &blank));
+        // scroll_up without SU capability (fallback to newlines)
+        r.caps.reset(Capabilities::SU);
+        assert!(r.scroll_up(&nb, 2, 0, 9, 0, 9, &blank));
+        // scroll_up: bot == max_y with n > 1 (delete_line(n))
+        assert!(r.scroll_up(&nb, 3, 2, 9, 0, 9, &blank));
+        // scroll_up with bot != max_y (returns false)
+        assert!(!r.scroll_up(&nb, 2, 2, 6, 0, 9, &blank));
+
+        // scroll_down: n == 1 && top == min_y && bot == max_y (REVERSE_INDEX)
+        assert!(r.scroll_down(&nb, 1, 0, 9, 0, 9, &blank));
+        // scroll_down: n == 1 && bot == max_y (insert_line(1))
+        assert!(r.scroll_down(&nb, 1, 2, 9, 0, 9, &blank));
+        // scroll_down: top == min_y && bot == max_y with SD
+        r.caps.set(Capabilities::SD);
+        assert!(r.scroll_down(&nb, 2, 0, 9, 0, 9, &blank));
+        // scroll_down without SD (fallback to REVERSE_INDEX repeat)
+        r.caps.reset(Capabilities::SD);
+        assert!(r.scroll_down(&nb, 2, 0, 9, 0, 9, &blank));
+        // scroll_down: bot == max_y with n > 1 (insert_line(n))
+        assert!(r.scroll_down(&nb, 3, 2, 9, 0, 9, &blank));
+        // scroll_down with bot != max_y (returns false)
+        assert!(!r.scroll_down(&nb, 2, 2, 6, 0, 9, &blank));
+
+        // scroll_idl direct test
+        assert!(r.scroll_idl(&nb, 2, 1, 3, &blank));
+        assert!(!r.scroll_idl(&nb, -1, 1, 3, &blank));
+
+        // scrolln with non-zero start (triggers set_top_bottom_margins and scroll_idl)
+        assert!(r.scrolln(&nb, 2, 2, 7, 9));
+        assert!(r.scrolln(&nb, -2, 2, 7, 9));
+    }
+
+    /// Exercise wide-cell insert/delete branches in transform_line.
+    #[test]
+    fn test_renderer_wide_cell_insert_delete_branches() {
+        let mut r = new_terminal_renderer(&env());
+
+        // Frame 1: line with a wide cell at pos 0
+        let mut nb1 = crate::new_render_buffer(10, 2);
+        let wide = Cell {
+            content: "界".to_string(),
+            width: 2,
+            ..Cell::default()
+        };
+        let wide_placeholder = Cell {
+            width: 0,
+            ..Cell::default()
+        };
+        nb1.set_cell(0, 0, Some(&wide));
+        nb1.set_cell(1, 0, Some(&wide_placeholder));
+        nb1.set_cell(2, 0, Some(&Cell::new("A")));
+        nb1.set_cell(3, 0, Some(&Cell::new("B")));
+        let mut out = Vec::new();
+        r.render(&mut nb1, &mut out);
+        r.flush(&mut out).unwrap();
+        out.clear();
+
+        // Frame 2: Insert cells at the start pushing the wide cell right
+        let mut nb2 = crate::new_render_buffer(10, 2);
+        nb2.set_cell(0, 0, Some(&wide));
+        nb2.set_cell(1, 0, Some(&wide_placeholder));
+        nb2.set_cell(2, 0, Some(&Cell::new("X")));
+        nb2.set_cell(3, 0, Some(&Cell::new("A")));
+        nb2.set_cell(4, 0, Some(&Cell::new("B")));
+        r.render(&mut nb2, &mut out);
+        r.flush(&mut out).unwrap();
+        out.clear();
+
+        // Frame 3: Delete cells triggering dch_cost branch
+        let mut nb3 = crate::new_render_buffer(10, 2);
+        nb3.set_cell(0, 0, Some(&Cell::new("A")));
+        nb3.set_cell(1, 0, Some(&Cell::new("B")));
+        r.render(&mut nb3, &mut out);
+        r.flush(&mut out).unwrap();
+    }
 }

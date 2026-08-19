@@ -351,5 +351,22 @@ mod tests {
         w3.0.set_cell(1, 0, Some(&Cell::new("X")));
         clear_area(&mut w3, rect(0, 0, 3, 1));
         assert_eq!(w3.0.cell_at(1, 0).unwrap().content, " ");
+
+        // &mut dyn Screen forwarding impl
+        let mut b4 = new_buffer(3, 3);
+        let scr_ref: &mut dyn Screen = &mut b4;
+        let dyn_ref = &mut *scr_ref;
+        assert_eq!(dyn_ref.bounds(), rect(0, 0, 3, 3));
+        assert_eq!(dyn_ref.width_method(), WidthMethod::WcWidth);
+        assert!(dyn_ref.as_any_mut().is_some());
+        dyn_ref.set_cell(1, 1, Some(&Cell::new("Q")));
+        assert_eq!(dyn_ref.cell_at(1, 1).unwrap().content, "Q");
+
+        // clone_area on a screen with wide cell and zero/empty cells
+        let mut b5 = new_buffer(4, 2);
+        b5.set_cell(0, 0, Some(&wide));
+        b5.set_cell(2, 0, Some(&Cell::default())); // zero cell
+        let cloned = clone_area(&b5, rect(0, 0, 4, 2));
+        assert_eq!(cloned.cell_at(0, 0).unwrap().content, "界");
     }
 }

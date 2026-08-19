@@ -614,5 +614,11 @@ mod tests {
             };
             assert_eq!(style_diff(&from, &to), format!("\x1b[{code}m"), "{u:?}");
         }
+
+        // Style::default() string and styled
+        let s = Style::default();
+        assert_eq!(s.string(), "\x1b[m");
+        assert_eq!(s.styled("hello"), "hello");
+        assert_eq!(style_diff(&s, &s), "");
     }
 }

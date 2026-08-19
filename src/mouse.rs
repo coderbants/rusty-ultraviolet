@@ -157,6 +157,13 @@ mod tests {
             mod_: KeyMod(MOD_CTRL.0 | MOD_ALT.0 | MOD_SHIFT.0),
         };
         assert_eq!(m.string(), "ctrl+alt+shift+right");
+        let m = Mouse {
+            x: 1,
+            y: 2,
+            button: MouseButton(255),
+            mod_: KeyMod::default(),
+        };
+        assert_eq!(m.string(), "unknown");
     }
 
     #[test]

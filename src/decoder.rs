@@ -4783,4 +4783,33 @@ mod tests {
         let (_n, ev) = p.parse_csi(b"\x1b[31\x01");
         assert!(matches!(ev, Some(DecodedEvent::UnknownCsi(_))));
     }
+
+    /// ST-terminated sequences (OSC, APC, PM, SOS) cancellation and 8-bit DCS paths.
+    #[test]
+    fn test_st_terminated_and_dcs_edges() {
+        let mut p = EventDecoder::default();
+        // CAN / SUB byte in ST sequence -> Ignored
+        let (_n, ev) = p.parse_osc(b"\x1b]0;Title\x18");
+        assert!(matches!(ev, Some(DecodedEvent::Ignored(_))));
+
+        // Incomplete ESC sequence ending with ESC (cancelled)
+        let (_n, ev) = p.parse_osc(b"\x1b]0;Title\x1b");
+        assert!(matches!(ev, Some(DecodedEvent::Ignored(_))));
+
+        // 8-bit DCS intro (0x90) with ST (0x9C)
+        let (_n, ev) = p.parse_dcs(b"\x900+r63;66\x9c");
+        assert!(matches!(ev, Some(DecodedEvent::UnknownDcs(_))));
+
+        // APC 8-bit intro (0x9F) with 7-bit ST
+        let (_n, ev) = p.parse_apc(b"\x9fG=a\x1b\\");
+        assert!(matches!(ev, Some(DecodedEvent::KittyGraphics { .. })));
+
+        // Unknown PM (0x9E)
+        let (_n, ev) = p.parse_st_terminated(0x9e, b'^', None, b"\x9eHello\x9c");
+        assert!(matches!(ev, Some(DecodedEvent::UnknownPm(_))));
+
+        // Unknown SOS (0x98)
+        let (_n, ev) = p.parse_st_terminated(0x98, b'X', None, b"\x98Hello\x9c");
+        assert!(matches!(ev, Some(DecodedEvent::UnknownSos(_))));
+    }
 }

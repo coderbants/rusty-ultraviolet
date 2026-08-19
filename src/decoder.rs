@@ -4447,4 +4447,50 @@ mod tests {
         let (_n, ev) = p.parse_csi(b"\x1b[48;1;2t");
         assert!(matches!(&ev, Some(DecodedEvent::WindowOp { op: 48, .. })));
     }
+
+    /// from_kitty_mod modifier combinations.
+    #[test]
+    fn test_from_kitty_mod() {
+        assert_eq!(from_kitty_mod(0), KeyMod(0));
+        assert_eq!(from_kitty_mod(KITTY_SHIFT), MOD_SHIFT);
+        assert_eq!(from_kitty_mod(KITTY_ALT), MOD_ALT);
+        assert_eq!(from_kitty_mod(KITTY_CTRL), MOD_CTRL);
+        assert_eq!(from_kitty_mod(KITTY_SUPER), MOD_SUPER);
+        assert_eq!(from_kitty_mod(KITTY_HYPER), MOD_HYPER);
+        assert_eq!(from_kitty_mod(KITTY_META), MOD_META);
+        assert_eq!(from_kitty_mod(KITTY_CAPS_LOCK), MOD_CAPS_LOCK);
+        assert_eq!(from_kitty_mod(KITTY_NUM_LOCK), MOD_NUM_LOCK);
+        assert_eq!(
+            from_kitty_mod(KITTY_SHIFT | KITTY_CTRL | KITTY_ALT),
+            KeyMod(MOD_SHIFT.0 | MOD_CTRL.0 | MOD_ALT.0)
+        );
+    }
+
+    /// has_more helper.
+    #[test]
+    fn test_has_more_helper() {
+        assert!(has_more(&[1 | HAS_MORE_FLAG], 0));
+        assert!(!has_more(&[1], 0));
+        assert!(!has_more(&[], 0));
+        assert!(!has_more(&[1], 5));
+    }
+
+    /// key_press_from_cmd for every final byte.
+    #[test]
+    fn test_key_press_from_cmd() {
+        assert_eq!(key_press_from_cmd(b'a' as i32).0.code, KEY_UP);
+        assert_eq!(key_press_from_cmd(b'd' as i32).0.code, KEY_UP + 3);
+        assert_eq!(key_press_from_cmd(b'A' as i32).0.code, KEY_UP);
+        assert_eq!(key_press_from_cmd(b'D' as i32).0.code, KEY_UP + 3);
+        assert_eq!(key_press_from_cmd(b'E' as i32).0.code, KEY_BEGIN);
+        assert_eq!(key_press_from_cmd(b'F' as i32).0.code, KEY_END);
+        assert_eq!(key_press_from_cmd(b'H' as i32).0.code, KEY_HOME);
+        assert_eq!(key_press_from_cmd(b'P' as i32).0.code, KEY_F1);
+        assert_eq!(key_press_from_cmd(b'S' as i32).0.code, KEY_F4);
+        assert_eq!(key_press_from_cmd(b'Z' as i32).0.code, KEY_TAB);
+        assert_eq!(key_press_from_cmd(b'a' as i32).0.mod_, MOD_SHIFT);
+        assert_eq!(key_press_from_cmd(b'Z' as i32).0.mod_, MOD_SHIFT);
+        // Unknown final byte produces a default key.
+        assert_eq!(key_press_from_cmd(b'x' as i32).0.code, 0);
+    }
 }

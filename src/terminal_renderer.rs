@@ -3392,4 +3392,48 @@ mod tests {
         r.flush(&mut out).unwrap();
         assert!(!out.is_empty());
     }
+
+    /// A clean block shift (all rows move up) triggers the hard scroll.
+    #[test]
+    fn test_renderer_hard_scroll_block() {
+        let mut r = new_terminal_renderer(&env());
+        r.set_fullscreen(true);
+        let mut nb = crate::new_render_buffer(5, 5);
+        for y in 0..5 {
+            for x in 0..5 {
+                nb.set_cell(
+                    x,
+                    y,
+                    Some(&Cell::new(&((b'A' + y as u8) as char).to_string())),
+                );
+            }
+        }
+        let mut out = Vec::new();
+        r.render(&mut nb, &mut out);
+        r.flush(&mut out).unwrap();
+        out.clear();
+        // Shift the whole block up by 2: ABCDE -> CDEFG.
+        let mut nb2 = crate::new_render_buffer(5, 5);
+        for y in 0..3 {
+            for x in 0..5 {
+                nb2.set_cell(
+                    x,
+                    y,
+                    Some(&Cell::new(&((b'A' + y as u8 + 2) as char).to_string())),
+                );
+            }
+        }
+        for y in 3..5 {
+            for x in 0..5 {
+                nb2.set_cell(
+                    x,
+                    y,
+                    Some(&Cell::new(&((b'E' + y as u8) as char).to_string())),
+                );
+            }
+        }
+        r.render(&mut nb2, &mut out);
+        r.flush(&mut out).unwrap();
+        assert!(!out.is_empty());
+    }
 }

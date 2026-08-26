@@ -1,7 +1,7 @@
 //! Cleanroom Rust port of upstream Go source files: `poll.go`, `poll_bsd.go`, `poll_linux.go`, `poll_select.go`, `poll_solaris.go`, `poll_windows.go`, `poll_fallback.go`, `poll_default.go`
 //! Upstream Target Tag / Version: `v0.0.0-20260703014108-f5a850f9c2b7`
 //!
-//! <public-docs>
+//! <user-docs>
 //! A poll reader that reads data from an underlying reader using different
 //! native poll APIs depending on the operating system.
 //!
@@ -26,7 +26,13 @@
 //! The cancellation pipe is the Rust equivalent of the upstream cancel
 //! signal pipe (kqueue/epoll/select readers) and of the channel-based cancel
 //! (fallback reader).
-//! </public-docs>
+//! On non-Unix targets the file-backed entry point requires a `Send` reader and
+//! delegates to the deterministic fallback implementation.
+//! </user-docs>
+//!
+//! Internal maintainer note: keep the platform-specific trait bounds on the
+//! public constructors. The fallback owns its reader on a background thread;
+//! the Unix poller does not need that bound.
 
 use std::io::Read;
 use std::sync::{Arc, Condvar};
@@ -77,15 +83,18 @@ pub trait PollReader: Read {
 /// On Unix this uses the POSIX `poll(2)` API (see the module docs for the
 /// mapping from the upstream epoll/kqueue/select split). On other platforms
 /// it returns a fallback reader.
+#[cfg(unix)]
 pub fn new_poll_reader<R: File + 'static>(reader: R) -> Result<Box<dyn PollReader>, PollError> {
-    #[cfg(unix)]
-    {
-        new_poll_reader_unix(Box::new(reader))
-    }
-    #[cfg(not(unix))]
-    {
-        new_fallback_reader(Box::new(reader))
-    }
+    new_poll_reader_unix(Box::new(reader))
+}
+
+/// Creates a fallback-backed poll reader for a file reader on non-Unix
+/// platforms.
+#[cfg(not(unix))]
+pub fn new_poll_reader<R: File + Send + 'static>(
+    reader: R,
+) -> Result<Box<dyn PollReader>, PollError> {
+    new_fallback_reader(Box::new(reader))
 }
 
 /// newFallbackReader creates a new fallback [PollReader] for the given

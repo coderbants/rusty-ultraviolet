@@ -47,13 +47,13 @@ tests, examples, docs, and support files). The full repo history is checked out 
 | `terminal_other.go` | `src/terminal.rs` | Other-platform terminal behaviour |
 | `tty.go` | `src/tty.rs` — **Ported** | OpenTTY/Suspend/NotifyWinch (self-pipe + signal handlers) | TTY abstraction |
 | `tty_unix.go` | `src/tty.rs` — **Ported** | Unix /dev/tty + SIGTSTP/SIGWINCH | Unix TTY implementation |
-| `tty_windows.go` | `src/tty.rs` — Deferred (Windows) | Windows TTY implementation |
+| `tty_windows.go` | `src/tty.rs` — Deferred (Windows) | Native Windows TTY implementation remains deferred; non-Unix stubs are compile-safe and return an explicit unsupported error |
 | `tty_other.go` | `src/tty.rs` — **Ported** | Non-Unix stubs | Other-platform TTY implementation |
 | `winch.go` | `src/winch.rs` — **Ported** | SizeNotifier | Window-change (SIGWINCH) notifications |
 | `winch_unix.go` | `src/winch.rs` — **Ported** | Unix SIGWINCH + TIOCGWINSZ | Unix window-change implementation |
 | `winch_other.go` | `src/winch.rs` — **Ported** | Non-Unix stubs | Other-platform window-change implementation |
 | `cancelreader_other.go` | `src/cancelreader.rs` — **Ported** | new_cancel_reader → poll reader | Cancellable reader (non-Windows) |
-| `cancelreader_windows.go` | `src/cancelreader.rs` — Deferred (Windows) | Cancellable reader (Windows) |
+| `cancelreader_windows.go` | `src/cancelreader.rs` — Deferred (Windows) | Native Windows cancellable reader remains deferred; the unsupported stub is compile-safe with a stable error |
 
 ## Test Files (`*_test.go` -> `tests/` or module tests)
 
@@ -187,4 +187,3 @@ Per the multi-version rule this second pin is published as a separate crate vers
 | `terminal*`, `tty*`, `winch*`, `cancelreader*` | In progress |
 | `examples/*` | In progress (PTY harness in place) |
 | Second pin (20260703) | In progress: `poll`, `console`, `window`, `casso`, `lru`, `layout` subpackage, `screen_context` ported & verified; `terminal_screen`, `uv.go` facade, second-pin tests/examples pending |
-

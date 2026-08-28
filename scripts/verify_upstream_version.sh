@@ -23,12 +23,6 @@ crate_version="$(grep -m1 '^version' Cargo.toml | sed 's/.*"\(.*\)".*/\1/')"
 upstream="$(grep -m1 'Upstream Target Tag / Version:' src/lib.rs | sed -n 's/.*`\([^`]*\)`.*/\1/p' | tr -d ' ')"
 
 if [ -z "${upstream}" ]; then
-  if [ ! -d upstream-go ]; then
-    # No tracked upstream at all (e.g. the original test harness): the
-    # upstream-mirror policy does not apply.
-    echo "OK: no upstream tracked (original crate); version policy not applicable"
-    exit 0
-  fi
   echo "ERROR: could not read the tracked upstream version from src/lib.rs" >&2
   exit 1
 fi
@@ -55,7 +49,8 @@ if [ "$#" -ge 1 ]; then
       fi
       ;;
     *)
-      echo "WARN: '${tag}' is not a v* tag; skipping the tag check (crate version was still verified)." >&2
+      echo "ERROR: release tag '${tag}' is not a v* tag." >&2
+      fail=1
       ;;
   esac
 fi

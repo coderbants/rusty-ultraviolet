@@ -12,7 +12,7 @@ workflow.
 
 ## Development setup
 
-- A recent stable Rust toolchain (`rustup default stable`).
+- Rust 1.98.0, selected automatically by the checked-in `rust-toolchain.toml`.
 - Go (for the upstream parity scripts and the pinned `upstream-go/` checkout).
 - No other system dependencies; there are no C build steps.
 
@@ -59,6 +59,7 @@ cargo test --all-targets
    ```sh
    cargo test --all-targets
    ./scripts/verify_mapping.sh   # upstream file accounting
+   ./scripts/test-release-guards.sh
    cargo doc --no-deps           # rustdoc coverage
    ```
 
@@ -68,26 +69,17 @@ cargo test --all-targets
 ## Releases
 
 - Upstream ultraviolet has no tagged releases (pseudo-version pins), so no GitHub release
-  is required for pins; crates.io publishes use the `v*` tag or `dev` push workflow.
-- Pushing a `v*` tag runs tests and attempts the crates.io publish (non-fatal without a
+  is required for pins. A release is not created until upstream provides a compatible
+  release version and tag.
+- Pushing a matching `v*` tag runs tests and attempts the crates.io publish (non-fatal without a
   registry token); `dev` branch pushes run tests only.
 
 ## Versioning
 
-Every release that matches an upstream version uses the upstream `MAJOR.MINOR.PATCH` plus a
-fourth dot-separated iteration number that internally tracks which deployed release of this
-port it is for that upstream version:
-
-- `v0.1.0.0` — first port release of a given upstream pin
-- `v0.1.0.1` — a hotfix iteration for that pin (bug fix released without an upstream
-  version bump)
-
-The iteration increments whenever we publish a new release of our port without an upstream
-version bump (e.g. a bug fix that upstream has not yet released). The git tag and GitHub
-release carry the full four-part version. `Cargo.toml` keeps the upstream `X.Y.Z`, since
-crates.io only accepts `MAJOR.MINOR.PATCH`; iteration hotfixes publish under the same
-`X.Y.Z` on crates.io, replacing the previous deployment (iterations are only used for bug
-fixes, so the contents differ only in fixes).
+Every release uses the tracked upstream version exactly, including the full pseudo-version
+when upstream has no tagged release. There is no fourth-part iteration or republishing of an
+existing crates.io version. Wait for upstream to provide a compatible release version before
+creating a release tag.
 
 ## Contribution guidelines
 

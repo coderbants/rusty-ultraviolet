@@ -20,9 +20,10 @@ jobs:
     name: Version Change Required
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           fetch-depth: 0
+          persist-credentials: false
       - name: Verify version matches upstream
         run: scripts/verify_upstream_version.sh
   gate:
@@ -30,9 +31,12 @@ jobs:
     runs-on: ubuntu-latest
     needs: version-bump
     steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772
+        with:
+          toolchain: 1.98.0
           components: clippy, rustfmt
       - name: Configure shared Cargo cache
         run: |
@@ -51,49 +55,56 @@ jobs:
           } >> "$GITHUB_ENV"
       - name: Test shared Cargo cache env
         run: scripts/test-cargo-env.sh
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5
         with:
           go-version: 'stable'
       - name: Fetch upstream Go source (pinned)
         run: |
-          git clone --quiet https://github.com/charmbracelet/ultraviolet.git upstream-go
-          cd upstream-go && git checkout --quiet f5a850f9c2b7ed4def3807fe12d0b5e76d345bdc
+          git clone --quiet --no-tags https://github.com/charmbracelet/ultraviolet.git upstream-go
+          cd upstream-go
+          git checkout --quiet f5a850f9c2b7ed4def3807fe12d0b5e76d345bdc
       - name: Fetch sibling rusty-bubbletea (pinned)
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: coderbants/rusty-bubbletea
           path: siblings/rusty-bubbletea
-          ref: dev
+          ref: df1c3b83ae4fe61b57de8194b487732db342468e
+          persist-credentials: false
       - name: Fetch sibling rusty-bubbles (pinned)
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: coderbants/rusty-bubbles
           path: siblings/rusty-bubbles
-          ref: dev
+          ref: 2a88f46cb8179388adb1951adb0f4fdbdcd633c0
+          persist-credentials: false
       - name: Fetch sibling rusty-colorprofile (pinned)
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: coderbants/rusty-colorprofile
           path: siblings/rusty-colorprofile
-          ref: dev
+          ref: 2d505e7821f72f133c17d6cc7afd314e03eddb66
+          persist-credentials: false
       - name: Fetch sibling rusty-lipgloss (pinned)
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: coderbants/rusty-lipgloss
           path: siblings/rusty-lipgloss
-          ref: dev
+          ref: 685b25da2af226b6ab2b9ce70f149eb9e4fb54ee
+          persist-credentials: false
       - name: Fetch sibling rusty-testkit (pinned)
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: coderbants/rusty-testkit
           path: siblings/rusty-testkit
-          ref: dev
+          ref: 163cf16399662da7bf2b17fb6637b466c6402fb2
+          persist-credentials: false
       - name: Fetch sibling rusty-x-ansi (pinned)
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: coderbants/rusty-x-ansi
           path: siblings/rusty-x-ansi
-          ref: dev
+          ref: 971128e8566ad37991cd9cc50ff4f4c8a4b09c29
+          persist-credentials: false
       - name: Place sibling crates
         run: |
           mkdir -p ../siblings && true
@@ -118,15 +129,19 @@ jobs:
 
       - name: verify_mapping
         run: ./scripts/verify_mapping.sh
+      - name: test_release_guards
+        run: ./scripts/test-release-guards.sh
   coverage:
     name: Coverage
     runs-on: ubuntu-latest
     needs: gate
-    permissions:
-      contents: write
     steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772
+        with:
+          toolchain: 1.98.0
       - name: Configure shared Cargo cache
         run: |
           # The runner image pre-sets CARGO_HOME=$HOME/.cargo; drop the
@@ -142,41 +157,47 @@ jobs:
             echo "CARGO_INSTALL_ROOT=$CARGO_INSTALL_ROOT"
           } >> "$GITHUB_ENV"
       - name: Fetch sibling rusty-bubbletea (pinned)
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: coderbants/rusty-bubbletea
           path: siblings/rusty-bubbletea
-          ref: dev
+          ref: df1c3b83ae4fe61b57de8194b487732db342468e
+          persist-credentials: false
       - name: Fetch sibling rusty-bubbles (pinned)
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: coderbants/rusty-bubbles
           path: siblings/rusty-bubbles
-          ref: dev
+          ref: 2a88f46cb8179388adb1951adb0f4fdbdcd633c0
+          persist-credentials: false
       - name: Fetch sibling rusty-colorprofile (pinned)
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: coderbants/rusty-colorprofile
           path: siblings/rusty-colorprofile
-          ref: dev
+          ref: 2d505e7821f72f133c17d6cc7afd314e03eddb66
+          persist-credentials: false
       - name: Fetch sibling rusty-lipgloss (pinned)
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: coderbants/rusty-lipgloss
           path: siblings/rusty-lipgloss
-          ref: dev
+          ref: 685b25da2af226b6ab2b9ce70f149eb9e4fb54ee
+          persist-credentials: false
       - name: Fetch sibling rusty-testkit (pinned)
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: coderbants/rusty-testkit
           path: siblings/rusty-testkit
-          ref: dev
+          ref: 163cf16399662da7bf2b17fb6637b466c6402fb2
+          persist-credentials: false
       - name: Fetch sibling rusty-x-ansi (pinned)
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: coderbants/rusty-x-ansi
           path: siblings/rusty-x-ansi
-          ref: dev
+          ref: 971128e8566ad37991cd9cc50ff4f4c8a4b09c29
+          persist-credentials: false
       - name: Place sibling crates
         run: |
           mkdir -p ../siblings && true
@@ -187,13 +208,42 @@ jobs:
           mv siblings/rusty-testkit ../rusty-testkit
           mv siblings/rusty-x-ansi ../rusty-x-ansi
       - name: Install cargo-tarpaulin
-        uses: taiki-e/install-action@cargo-tarpaulin
+        uses: taiki-e/install-action@94f54106ddd448427843411da73d6b8a35ae69b3
       - name: Generate code coverage
         run: |
-          cargo tarpaulin --all-features --out xml --output-dir target/tarpaulin -- --test-threads=1 2>&1 | tee /tmp/tarpaulin.log
+          set -o pipefail
+          # PTY-driven example tests are exercised by the gate above but are
+          # not deterministic under instrumentation. Measure the library only
+          # so coverage does not execute the interactive test target.
+          cargo tarpaulin --all-features --lib --out xml --output-dir target/tarpaulin -- --test-threads=1 2>&1 | tee /tmp/tarpaulin.log
 
+      - name: Upload coverage report
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: coverage-report
+          path: target/tarpaulin/cobertura.xml
+          if-no-files-found: error
+          retention-days: 1
+  coverage-badge:
+    name: Update coverage badge
+    runs-on: ubuntu-latest
+    needs: coverage
+    if: github.event_name == 'push' && github.ref == 'refs/heads/dev'
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: dev
+          persist-credentials: false
+      - name: Download coverage report
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: coverage-report
+          path: target/tarpaulin
       - name: Write coverage badge in place
-        if: github.event_name == 'push' && github.ref == 'refs/heads/dev'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           raw="$(grep -oE 'line-rate="[0-9.]+' target/tarpaulin/cobertura.xml | head -1 | grep -oE '[0-9.]+')"
           pct="$(awk -v r="$raw" 'BEGIN { printf "%.1f", r * 100 }')"
@@ -208,13 +258,17 @@ jobs:
             *) color="red" ;;
           esac
           curl -sS "https://img.shields.io/badge/coverage-${pct}%25-${color}.svg" -o coverage.svg
-          # Commit the badge in place only when it changed (git diff ignores
-          # untracked files, so use status), so the push cannot re-trigger CI
-          # indefinitely.
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          if [ -n "$(git status --porcelain -- coverage.svg)" ]; then
-            git add coverage.svg
-            git commit -q -m "docs: update coverage badge ($pct%)"
-            git push -q origin HEAD:dev
+          content="$(base64 -w 0 coverage.svg)"
+          existing_sha="$(gh api "repos/${GITHUB_REPOSITORY}/contents/coverage.svg?ref=dev" --jq .sha 2>/dev/null || true)"
+          if [ -n "$existing_sha" ]; then
+            gh api --method PUT "repos/${GITHUB_REPOSITORY}/contents/coverage.svg" \
+              --field message="docs: update coverage badge ($pct%)" \
+              --field content="$content" \
+              --field branch=dev \
+              --field sha="$existing_sha"
+          else
+            gh api --method PUT "repos/${GITHUB_REPOSITORY}/contents/coverage.svg" \
+              --field message="docs: update coverage badge ($pct%)" \
+              --field content="$content" \
+              --field branch=dev
           fi

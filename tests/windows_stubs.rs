@@ -1,13 +1,13 @@
 //! Focused regression coverage for the non-Unix terminal-operation stubs.
 //!
 //! The Windows implementation is intentionally deferred. These tests keep
-//! the fallback API compile-safe and verify that unavailable operations expose
-//! stable, explicit platform errors.
+//! the non-Unix API compile-safe and verify that unavailable operations expose
+//! stable, explicit platform errors without starting an uninterruptible
+//! fallback reader.
 
 #![cfg(not(unix))]
 
 use std::io::Cursor;
-use std::time::Duration;
 
 use rusty_ultraviolet::tty::{open_tty, suspend};
 use rusty_ultraviolet::{new_cancel_reader, new_poll_reader, FdFile, PollError};
@@ -40,9 +40,10 @@ fn cancel_reader_stub_reports_stable_error_text() {
 }
 
 #[test]
-fn file_backed_poll_reader_uses_the_non_unix_fallback() {
-    let mut reader = new_poll_reader(FdFile::stdin_file()).expect("fallback reader is available");
-    assert!(!reader
-        .poll(Some(Duration::from_millis(50)))
-        .expect("fallback polling should not fail"));
+fn file_backed_poll_reader_reports_unsupported_until_native_impl() {
+    let result = new_poll_reader(FdFile::stdin_file());
+    assert!(matches!(
+        result,
+        Err(PollError::Io(message)) if message == "platform not supported"
+    ));
 }

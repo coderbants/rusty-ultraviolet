@@ -20,14 +20,17 @@
 //! available on every platform the upstream split covers and provides the
 //! same "wait for readability with a timeout, interruptible by a cancel
 //! pipe" contract. The kqueue `/dev/tty` special case is unnecessary because
-//! `poll(2)` works on TTYs. On non-Unix platforms the fallback stub
-//! (`poll_fallback.go`) is used.
+//! `poll(2)` works on TTYs. On non-Unix platforms the file-backed constructor
+//! returns a stable unsupported error until native console polling exists.
+//! Callers that explicitly need a reader without a file descriptor may still
+//! use [`new_fallback_reader`].
 //!
 //! The cancellation pipe is the Rust equivalent of the upstream cancel
 //! signal pipe (kqueue/epoll/select readers) and of the channel-based cancel
 //! (fallback reader).
-//! On non-Unix targets the file-backed entry point requires a `Send` reader and
-//! delegates to the deterministic fallback implementation.
+//! On non-Unix targets the file-backed entry point returns an unsupported
+//! error rather than starting a detached reader thread. The generic fallback
+//! remains available through [`new_fallback_reader`].
 //! </user-docs>
 //!
 //! Internal maintainer note: keep the platform-specific trait bounds on the
@@ -82,19 +85,17 @@ pub trait PollReader: Read {
 ///
 /// On Unix this uses the POSIX `poll(2)` API (see the module docs for the
 /// mapping from the upstream epoll/kqueue/select split). On other platforms
-/// it returns a fallback reader.
+/// it returns a stable unsupported error until native console polling exists.
 #[cfg(unix)]
 pub fn new_poll_reader<R: File + 'static>(reader: R) -> Result<Box<dyn PollReader>, PollError> {
     new_poll_reader_unix(Box::new(reader))
 }
 
-/// Creates a fallback-backed poll reader for a file reader on non-Unix
-/// platforms.
+/// Reports that file-backed polling is unavailable on non-Unix platforms.
 #[cfg(not(unix))]
-pub fn new_poll_reader<R: File + Send + 'static>(
-    reader: R,
-) -> Result<Box<dyn PollReader>, PollError> {
-    new_fallback_reader(Box::new(reader))
+pub fn new_poll_reader<R: File + 'static>(reader: R) -> Result<Box<dyn PollReader>, PollError> {
+    let _ = reader;
+    Err(PollError::Io("platform not supported".to_string()))
 }
 
 /// newFallbackReader creates a new fallback [PollReader] for the given

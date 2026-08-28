@@ -15,7 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@1.98.0
       - name: Verify version and tag match upstream
         run: scripts/verify_upstream_version.sh "$GITHUB_REF_NAME"
       - name: Configure shared Cargo cache

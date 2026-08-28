@@ -12,7 +12,7 @@ workflow.
 
 ## Development setup
 
-- A recent stable Rust toolchain (`rustup default stable`).
+- Rust 1.98.0, selected automatically by the checked-in `rust-toolchain.toml`.
 - Go (for the upstream parity scripts and the pinned `upstream-go/` checkout).
 - No other system dependencies; there are no C build steps.
 

@@ -31,7 +31,7 @@ jobs:
     needs: version-bump
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@1.98.0
         with:
           components: clippy, rustfmt
       - name: Configure shared Cargo cache
@@ -126,7 +126,7 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@1.98.0
       - name: Configure shared Cargo cache
         run: |
           # The runner image pre-sets CARGO_HOME=$HOME/.cargo; drop the

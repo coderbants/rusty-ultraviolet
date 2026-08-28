@@ -47,13 +47,13 @@ tests, examples, docs, and support files). The full repo history is checked out 
 | `terminal_other.go` | `src/terminal.rs` | Other-platform terminal behaviour |
 | `tty.go` | `src/tty.rs` — **Ported** | OpenTTY/Suspend/NotifyWinch (self-pipe + signal handlers) | TTY abstraction |
 | `tty_unix.go` | `src/tty.rs` — **Ported** | Unix /dev/tty + SIGTSTP/SIGWINCH | Unix TTY implementation |
-| `tty_windows.go` | `src/tty.rs` — Deferred (Windows) | Windows TTY implementation |
+| `tty_windows.go` | `src/tty.rs` — Deferred (Windows) | Native Windows TTY implementation remains deferred; non-Unix stubs are compile-safe and return an explicit unsupported error |
 | `tty_other.go` | `src/tty.rs` — **Ported** | Non-Unix stubs | Other-platform TTY implementation |
 | `winch.go` | `src/winch.rs` — **Ported** | SizeNotifier | Window-change (SIGWINCH) notifications |
 | `winch_unix.go` | `src/winch.rs` — **Ported** | Unix SIGWINCH + TIOCGWINSZ | Unix window-change implementation |
 | `winch_other.go` | `src/winch.rs` — **Ported** | Non-Unix stubs | Other-platform window-change implementation |
 | `cancelreader_other.go` | `src/cancelreader.rs` — **Ported** | new_cancel_reader → poll reader | Cancellable reader (non-Windows) |
-| `cancelreader_windows.go` | `src/cancelreader.rs` — Deferred (Windows) | Cancellable reader (Windows) |
+| `cancelreader_windows.go` | `src/cancelreader.rs` — Deferred (Windows) | Native Windows cancellable reader remains deferred; the unsupported stub is compile-safe with a stable error |
 
 ## Test Files (`*_test.go` -> `tests/` or module tests)
 
@@ -137,7 +137,8 @@ Per the multi-version rule this second pin is published as a separate crate vers
 
 | Upstream Go File | Rust Equivalent / Status | Notes / Description |
 | :--- | :--- | :--- |
-| `poll.go`, `poll_bsd.go`, `poll_linux.go`, `poll_select.go`, `poll_solaris.go`, `poll_windows.go`, `poll_fallback.go`, `poll_default.go` | `src/poll.rs` — **Ported** | `PollReader` trait + platform selection. Upstream: linux→epoll, bsd→kqueue (+`/dev/tty`→select), solaris→select, windows→conReader, other→fallback. Port unifies the epoll/kqueue/select variants into one POSIX `libc::poll` + self-pipe implementation on Unix; non-Unix uses the fallback stub. The kqueue `/dev/tty` special-case is unnecessary under `poll(2)`. |
+| `poll.go`, `poll_bsd.go`, `poll_linux.go`, `poll_select.go`, `poll_solaris.go`, `poll_fallback.go`, `poll_default.go` | `src/poll.rs` — **Ported** | `PollReader` trait + platform selection. The port unifies the epoll/kqueue/select variants into one POSIX `libc::poll` + self-pipe implementation on Unix. The generic `new_fallback_reader` remains available for explicit use on readers without file descriptors; file-backed polling reports an unsupported error elsewhere until a native implementation exists. The kqueue `/dev/tty` special-case is unnecessary under `poll(2)`. |
+| `poll_windows.go` | `src/poll.rs` — Deferred (Windows) | Upstream's native Windows `conReader` remains deferred; the file-backed constructor is compile-safe and returns a stable unsupported error without starting the generic fallback reader. |
 | `window.go` | `src/window.rs` — **Ported** | `Window` over a shared `Rc<RefCell<Buffer>>` (buffer sharing for views); also hosts root-package geometry `Position`/`pos`/`rect` (from `buffer.go`). Mutating methods take `&mut self` (callers use `Rc::get_mut`). Negative coordinates clamp to 0 (usize `Rectangle`). Pending: implement the ported `Screen`/`Drawable` interfaces for `Window` once the integrator's `uv.go` port defines them; delegate `clone_area` to `Buffer` if `buffer.rs` gains it. |
 | `console.go`, `console_unix.go`, `console_windows.go` | `src/console.rs` — **Ported** | `Console` I/O abstraction, `File` trait, `Winsize`, `RawState`. Build-tag split (`TTY`/`WinCon`) via type aliases. Raw mode (`tcgetattr`/`cfmakeraw`/`tcsetattr`) and `TIOCGWINSZ` implemented directly on `libc` (upstream uses `charmbracelet/x/term`, which is not a dependency). Std streams exposed as `FdFile` (fd-based Read/Write); `TTY`/`WinCon` names kept as aliases for API parity. |
 | `internal/casso/math.go`, `internal/casso/solver.go` | `src/casso.rs` — **Ported** | Cassowary constraint solver (port of `lithdew/casso`). Exact deterministic port: `Symbol` counter (note: Go's `atomic.AddUint64` returns the new value — mirrored with `fetch_add + 1`), `Solver::add`/`val`, priorities as `f64`. Go map iteration is order-independent for these cases; verified against Go on 4900 layout splits. Divergence: on solver error the marker symbol is not returned (Go returns `(marker, err)`); callers discard it. |
@@ -187,4 +188,3 @@ Per the multi-version rule this second pin is published as a separate crate vers
 | `terminal*`, `tty*`, `winch*`, `cancelreader*` | In progress |
 | `examples/*` | In progress (PTY harness in place) |
 | Second pin (20260703) | In progress: `poll`, `console`, `window`, `casso`, `lru`, `layout` subpackage, `screen_context` ported & verified; `terminal_screen`, `uv.go` facade, second-pin tests/examples pending |
-

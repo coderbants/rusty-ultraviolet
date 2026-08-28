@@ -3,26 +3,38 @@
 //!
 //! Also covers (same upstream module): `tty_unix.go`, `tty_other.go`
 //!
-//! <public-docs>
+//! <user-docs>
 //! Terminal helpers: opening the controlling TTY, suspending the process
 //! group, and window-size-change signal notification.
 //!
 //! NOTE: upstream uses `os/signal.Notify`; the port uses a self-pipe fed by
 //! the signal handlers and delivers notifications through channels.
-//! </public-docs>
+//! On non-Unix targets the Unix-only operations return an explicit unsupported
+//! platform error while retaining a compilable public API.
+//! </user-docs>
+//!
+//! Internal maintainer note: the self-pipe implementation is Unix-only. Keep
+//! platform-specific descriptor imports and signal state behind the same cfg
+//! boundary as the implementation that consumes them.
 
 #[cfg(not(unix))]
 use crate::err_platform_not_supported;
 use std::io;
+#[cfg(unix)]
 use std::os::fd::{AsRawFd, FromRawFd, OwnedFd};
-use std::sync::mpsc::{channel, Receiver, Sender};
+use std::sync::mpsc::Receiver;
+#[cfg(unix)]
+use std::sync::mpsc::{channel, Sender};
+#[cfg(unix)]
 use std::sync::OnceLock;
 
 /// The self-pipe write end used by the signal handlers. Bytes written here
 /// wake the reader thread, which forwards them as notifications.
+#[cfg(unix)]
 static PIPE_WRITE: OnceLock<std::os::fd::OwnedFd> = OnceLock::new();
 
 /// Opens the self-pipe (and its reader thread) on first use.
+#[cfg(unix)]
 fn ensure_signal_pipe() -> io::Result<std::os::fd::OwnedFd> {
     if let Some(fd) = PIPE_WRITE.get() {
         return Ok(unsafe { OwnedFd::from_raw_fd(libc::dup(fd.as_raw_fd())) });
@@ -98,7 +110,7 @@ pub fn open_tty() -> io::Result<(OwnedFd, OwnedFd)> {
 
 /// OpenTTY opens the terminal's input and output file descriptors.
 #[cfg(not(unix))]
-pub fn open_tty() -> io::Result<(OwnedFd, OwnedFd)> {
+pub fn open_tty() -> io::Result<(std::fs::File, std::fs::File)> {
     Err(err_platform_not_supported())
 }
 
@@ -141,9 +153,9 @@ pub fn suspend() -> io::Result<()> {
 }
 
 /// NotifyWinch sets up a channel to receive window size change signals.
+#[cfg(unix)]
 pub fn notify_winch() -> io::Result<Receiver<()>> {
     let _pipe = ensure_signal_pipe()?;
-    #[cfg(unix)]
     unsafe {
         let handler = signal_handler as extern "C" fn(libc::c_int);
         libc::signal(libc::SIGWINCH, handler as usize);
@@ -158,14 +170,38 @@ pub fn notify_winch() -> io::Result<Receiver<()>> {
     Ok(rx)
 }
 
+/// NotifyWinch is unavailable on non-Unix targets until a native signal
+/// notification implementation is provided.
+#[cfg(not(unix))]
+pub fn notify_winch() -> io::Result<Receiver<()>> {
+    Err(err_platform_not_supported())
+}
+
+#[cfg(unix)]
 static WINCH_SUBSCRIBERS: OnceLock<std::sync::Mutex<Vec<Sender<()>>>> = OnceLock::new();
 
 /// Forwards a signal byte to all winch subscribers. Called by the reader
 /// thread when byte 1 (SIGWINCH) arrives.
+#[cfg(unix)]
 pub(crate) fn forward_winch() {
     if let Some(subs) = WINCH_SUBSCRIBERS.get() {
         for tx in subs.lock().unwrap().iter() {
             let _ = tx.send(());
         }
+    }
+}
+
+#[cfg(all(test, not(unix)))]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn non_unix_tty_operations_report_unsupported() {
+        assert_eq!(open_tty().unwrap_err().kind(), io::ErrorKind::Unsupported);
+        assert_eq!(suspend().unwrap_err().kind(), io::ErrorKind::Unsupported);
+        assert_eq!(
+            notify_winch().unwrap_err().kind(),
+            io::ErrorKind::Unsupported
+        );
     }
 }

@@ -1,7 +1,7 @@
 //! Cleanroom Rust port of upstream Go source files: `poll.go`, `poll_bsd.go`, `poll_linux.go`, `poll_select.go`, `poll_solaris.go`, `poll_windows.go`, `poll_fallback.go`, `poll_default.go`
 //! Upstream Target Tag / Version: `v0.0.0-20260703014108-f5a850f9c2b7`
 //!
-//! <public-docs>
+//! <user-docs>
 //! A poll reader that reads data from an underlying reader using different
 //! native poll APIs depending on the operating system.
 //!
@@ -20,13 +20,22 @@
 //! available on every platform the upstream split covers and provides the
 //! same "wait for readability with a timeout, interruptible by a cancel
 //! pipe" contract. The kqueue `/dev/tty` special case is unnecessary because
-//! `poll(2)` works on TTYs. On non-Unix platforms the fallback stub
-//! (`poll_fallback.go`) is used.
+//! `poll(2)` works on TTYs. On non-Unix platforms the file-backed constructor
+//! returns a stable unsupported error until native console polling exists.
+//! Callers that explicitly need a reader without a file descriptor may still
+//! use [`new_fallback_reader`].
 //!
 //! The cancellation pipe is the Rust equivalent of the upstream cancel
 //! signal pipe (kqueue/epoll/select readers) and of the channel-based cancel
 //! (fallback reader).
-//! </public-docs>
+//! On non-Unix targets the file-backed entry point returns an unsupported
+//! error rather than starting a detached reader thread. The generic fallback
+//! remains available through [`new_fallback_reader`].
+//! </user-docs>
+//!
+//! Internal maintainer note: keep the platform-specific trait bounds on the
+//! public constructors. The fallback owns its reader on a background thread;
+//! the Unix poller does not need that bound.
 
 use std::io::Read;
 use std::sync::{Arc, Condvar};
@@ -76,16 +85,24 @@ pub trait PollReader: Read {
 ///
 /// On Unix this uses the POSIX `poll(2)` API (see the module docs for the
 /// mapping from the upstream epoll/kqueue/select split). On other platforms
-/// it returns a fallback reader.
+/// it returns a stable unsupported error until native console polling exists.
+#[cfg(unix)]
 pub fn new_poll_reader<R: File + 'static>(reader: R) -> Result<Box<dyn PollReader>, PollError> {
-    #[cfg(unix)]
-    {
-        new_poll_reader_unix(Box::new(reader))
-    }
-    #[cfg(not(unix))]
-    {
-        new_fallback_reader(Box::new(reader))
-    }
+    new_poll_reader_unix(Box::new(reader))
+}
+
+/// Reports that file-backed polling is unavailable on non-Unix platforms.
+#[cfg(not(unix))]
+pub fn new_poll_reader<R: File + 'static>(reader: R) -> Result<Box<dyn PollReader>, PollError> {
+    unsupported_file_polling(reader)
+}
+
+#[cfg(any(not(unix), test))]
+fn unsupported_file_polling<R: File + 'static>(
+    reader: R,
+) -> Result<Box<dyn PollReader>, PollError> {
+    let _ = reader;
+    Err(PollError::Io("platform not supported".to_string()))
 }
 
 /// newFallbackReader creates a new fallback [PollReader] for the given
@@ -429,6 +446,44 @@ impl PollReader for FallbackReader {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[derive(Debug)]
+    struct TestFile;
+
+    impl Read for TestFile {
+        fn read(&mut self, _buf: &mut [u8]) -> std::io::Result<usize> {
+            Ok(0)
+        }
+    }
+
+    impl std::io::Write for TestFile {
+        fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+            Ok(buf.len())
+        }
+
+        fn flush(&mut self) -> std::io::Result<()> {
+            Ok(())
+        }
+    }
+
+    impl crate::console::File for TestFile {
+        fn fd(&self) -> usize {
+            0
+        }
+
+        fn name(&self) -> &str {
+            "test-file"
+        }
+    }
+
+    #[test]
+    fn unsupported_file_polling_error_is_stable() {
+        let result = unsupported_file_polling(TestFile);
+        assert!(matches!(
+            result,
+            Err(PollError::Io(message)) if message == "platform not supported"
+        ));
+    }
 
     #[test]
     fn test_reader_non_file() {

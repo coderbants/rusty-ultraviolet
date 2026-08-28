@@ -193,6 +193,7 @@ jobs:
           cargo tarpaulin --all-features --out xml --output-dir target/tarpaulin -- --test-threads=1 2>&1 | tee /tmp/tarpaulin.log
 
       - name: Write coverage badge in place
+        if: github.event_name == 'push' && github.ref == 'refs/heads/dev'
         run: |
           raw="$(grep -oE 'line-rate="[0-9.]+' target/tarpaulin/cobertura.xml | head -1 | grep -oE '[0-9.]+')"
           pct="$(awk -v r="$raw" 'BEGIN { printf "%.1f", r * 100 }')"
@@ -215,5 +216,5 @@ jobs:
           if [ -n "$(git status --porcelain -- coverage.svg)" ]; then
             git add coverage.svg
             git commit -q -m "docs: update coverage badge ($pct%)"
-            git push -q origin dev
+            git push -q origin HEAD:dev
           fi

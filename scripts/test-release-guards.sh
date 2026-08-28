@@ -2,7 +2,9 @@
 
 # Regression checks for the release and CI trust boundaries. These checks are
 # intentionally static and fast so every gate can prove that workflow changes
-# did not reintroduce mutable dependencies or accidental write access.
+# did not reintroduce mutable dependencies or accidental write access. Keep
+# the implementation on GitHub-hosted runner core tools; ripgrep is not
+# guaranteed to be installed there.
 
 set -euo pipefail
 
@@ -25,18 +27,23 @@ check_pinned_action() {
     if [[ ! "${ref}" =~ ^[0-9a-f]{40}$ ]]; then
       report "${action} must use a full immutable commit SHA: ${line}"
     fi
-  done < <(rg -n "uses: ${action}@" .github/workflows)
+  done < <(grep -nE "uses: ${action}@" .github/workflows/*.yml)
 }
 
 check_pinned_action "actions/checkout"
 check_pinned_action "actions/setup-go"
 check_pinned_action "taiki-e/install-action"
 
-if rg -n 'workflow_dispatch' .github/workflows/publish.yml; then
+if grep -n 'workflow_dispatch' .github/workflows/publish.yml >/dev/null; then
   report "publish workflow must not expose a manual dispatch path"
 fi
 
-if rg -n -U 'repository: coderbants/rusty-[^\n]*\n(?:[^\n]*\n){0,4}[[:space:]]+ref: dev' .github/workflows/ci.yml .github/workflows/publish.yml; then
+if awk '
+  /repository: coderbants\/rusty-/ { sibling=1; next }
+  sibling && /ref: dev/ { bad=1 }
+  sibling && /^      - name:/ { sibling=0 }
+  END { exit bad ? 0 : 1 }
+' .github/workflows/ci.yml .github/workflows/publish.yml; then
   report "sibling dependency checkouts must use immutable commit refs"
 fi
 
@@ -52,11 +59,11 @@ case "${coverage_job}" in
     ;;
 esac
 
-if ! rg -n 'needs: coverage' .github/workflows/ci.yml; then
+if ! grep -n 'needs: coverage' .github/workflows/ci.yml >/dev/null; then
   report "coverage badge publication must depend on the read-only coverage job"
 fi
 
-if ! rg -n 'uses: actions/(upload|download)-artifact@[0-9a-f]{40}' .github/workflows/ci.yml; then
+if ! grep -nE 'uses: actions/(upload|download)-artifact@[0-9a-f]{40}' .github/workflows/ci.yml >/dev/null; then
   report "coverage must exchange its report through immutable artifact actions"
 fi
 

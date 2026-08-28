@@ -94,6 +94,13 @@ pub fn new_poll_reader<R: File + 'static>(reader: R) -> Result<Box<dyn PollReade
 /// Reports that file-backed polling is unavailable on non-Unix platforms.
 #[cfg(not(unix))]
 pub fn new_poll_reader<R: File + 'static>(reader: R) -> Result<Box<dyn PollReader>, PollError> {
+    unsupported_file_polling(reader)
+}
+
+#[cfg(any(not(unix), test))]
+fn unsupported_file_polling<R: File + 'static>(
+    reader: R,
+) -> Result<Box<dyn PollReader>, PollError> {
     let _ = reader;
     Err(PollError::Io("platform not supported".to_string()))
 }
@@ -439,6 +446,44 @@ impl PollReader for FallbackReader {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[derive(Debug)]
+    struct TestFile;
+
+    impl Read for TestFile {
+        fn read(&mut self, _buf: &mut [u8]) -> std::io::Result<usize> {
+            Ok(0)
+        }
+    }
+
+    impl std::io::Write for TestFile {
+        fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+            Ok(buf.len())
+        }
+
+        fn flush(&mut self) -> std::io::Result<()> {
+            Ok(())
+        }
+    }
+
+    impl crate::console::File for TestFile {
+        fn fd(&self) -> usize {
+            0
+        }
+
+        fn name(&self) -> &str {
+            "test-file"
+        }
+    }
+
+    #[test]
+    fn unsupported_file_polling_error_is_stable() {
+        let result = unsupported_file_polling(TestFile);
+        assert!(matches!(
+            result,
+            Err(PollError::Io(message)) if message == "platform not supported"
+        ));
+    }
 
     #[test]
     fn test_reader_non_file() {

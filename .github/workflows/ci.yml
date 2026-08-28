@@ -258,11 +258,17 @@ jobs:
             *) color="red" ;;
           esac
           curl -sS "https://img.shields.io/badge/coverage-${pct}%25-${color}.svg" -o coverage.svg
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          if [ -n "$(git status --porcelain -- coverage.svg)" ]; then
-            git add coverage.svg
-            git commit -q -m "docs: update coverage badge ($pct%)"
-            git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
-            git push -q origin HEAD:dev
+          content="$(base64 -w 0 coverage.svg)"
+          existing_sha="$(gh api "repos/${GITHUB_REPOSITORY}/contents/coverage.svg?ref=dev" --jq .sha 2>/dev/null || true)"
+          if [ -n "$existing_sha" ]; then
+            gh api --method PUT "repos/${GITHUB_REPOSITORY}/contents/coverage.svg" \
+              --field message="docs: update coverage badge ($pct%)" \
+              --field content="$content" \
+              --field branch=dev \
+              --field sha="$existing_sha"
+          else
+            gh api --method PUT "repos/${GITHUB_REPOSITORY}/contents/coverage.svg" \
+              --field message="docs: update coverage badge ($pct%)" \
+              --field content="$content" \
+              --field branch=dev
           fi

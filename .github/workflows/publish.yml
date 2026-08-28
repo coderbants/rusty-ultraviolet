@@ -152,7 +152,7 @@ jobs:
             # registry, but ultraviolet's dev-dependency on lipgloss and
             # lipgloss's dependency on ultraviolet form a cycle; the full
             # gates (build, clippy, tests) already ran above.
-            cargo publish --token "${CARGO_REGISTRY_TOKEN}" --no-verify --allow-dirty
+            cargo publish --no-verify --allow-dirty
             git checkout -- Cargo.toml
           else
             echo "No CARGO_REGISTRY_TOKEN secret; skipping crates.io publish."

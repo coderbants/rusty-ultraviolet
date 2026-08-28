@@ -67,6 +67,14 @@ if ! grep -nE 'uses: actions/(upload|download)-artifact@[0-9a-f]{40}' .github/wo
   report "coverage must exchange its report through immutable artifact actions"
 fi
 
+if grep -nE 'x-access-token:|git (remote set-url|push).*(GH_TOKEN|\$\{GH_TOKEN\})|cargo publish.*--token' .github/workflows/ci.yml .github/workflows/publish.yml >/dev/null; then
+  report "workflow credentials must not be embedded in URLs or command-line arguments"
+fi
+
+if ! grep -n 'gh api --method PUT' .github/workflows/ci.yml >/dev/null; then
+  report "coverage badge updates must use the GitHub API credential channel"
+fi
+
 if ! scripts/verify_upstream_version.sh >/dev/null; then
   report "the tracked upstream version must pass the release-version guard"
 fi

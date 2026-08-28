@@ -195,9 +195,9 @@ jobs:
         run: |
           set -o pipefail
           # PTY-driven example tests are exercised by the gate above but are
-          # not deterministic under instrumentation, so keep them out of the
-          # line-coverage measurement.
-          cargo tarpaulin --all-features --exclude-files tests/interactive.rs --out xml --output-dir target/tarpaulin -- --test-threads=1 2>&1 | tee /tmp/tarpaulin.log
+          # not deterministic under instrumentation. Measure the library only
+          # so coverage does not execute the interactive test target.
+          cargo tarpaulin --all-features --lib --out xml --output-dir target/tarpaulin -- --test-threads=1 2>&1 | tee /tmp/tarpaulin.log
 
       - name: Write coverage badge in place
         if: github.event_name == 'push' && github.ref == 'refs/heads/dev'

@@ -188,3 +188,7 @@ Per the multi-version rule this second pin is published as a separate crate vers
 | `terminal*`, `tty*`, `winch*`, `cancelreader*` | In progress |
 | `examples/*` | In progress (PTY harness in place) |
 | Second pin (20260703) | In progress: `poll`, `console`, `window`, `casso`, `lru`, `layout` subpackage, `screen_context` ported & verified; `terminal_screen`, `uv.go` facade, second-pin tests/examples pending |
+
+## Windows PTY Test Boundary
+
+The PTY-driven interactive example suite in `tests/interactive.rs` is intentionally compiled only on Unix, where the `rusty-testkit` PTY harness is supported. Windows all-target runs still compile and execute `tests/windows_stubs.rs` and the non-Unix production stubs; native Windows TTY, polling, and cancellation remain deferred as marked above.

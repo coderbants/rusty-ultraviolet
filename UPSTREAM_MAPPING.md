@@ -202,11 +202,17 @@ above.
 
 ## Cargo Source Portability
 
-Runtime Rusty dependencies use direct `version` plus sibling `path`
-declarations. Cargo retains the version requirements for publication while
-using the same checked-out sibling sources in both standalone and downstream
-consumer graphs. A dependency crate's `[patch.crates-io]` table is not
-transitive, so root-only patches must not be used to establish source identity
-for these runtime dependencies. `scripts/test-dependency-sources.sh` constructs
-a downstream consumer and verifies that both runtime crates resolve exactly
-once from the expected sibling paths.
+Runtime Rusty dependencies use registry version requirements without mandatory
+sibling `path` declarations. This preserves exact Git and bare-checkout
+consumers when the Charming sibling family is not present. Ultraviolet's root
+`[patch.crates-io]` table aligns standalone development with adjacent sibling
+sources, but Cargo intentionally does not propagate that patch to a downstream
+root. A downstream workspace that combines sibling path checkouts therefore
+owns the matching root patch for its complete graph.
+
+`scripts/test-dependency-sources.sh` proves both supported topologies. It first
+copies Ultraviolet into an isolated directory with no siblings and compiles a
+consumer across the public `rusty-x-ansi` type boundary using registry sources.
+It then constructs a sibling-family consumer whose root patch selects the
+adjacent sources, compiles the same type boundary, and verifies that each
+runtime crate resolves exactly once from the expected sibling path.

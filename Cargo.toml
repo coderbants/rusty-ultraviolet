@@ -8,8 +8,8 @@ description = "Cleanroom Rust port of Charmbracelet's Ultraviolet (pin v0.0.0-20
 license = "MIT"
 
 [dependencies]
-rusty-colorprofile = { version = "0.4.3", path = "../rusty-colorprofile" }
-rusty-x-ansi = { version = "0.11.7", path = "../rusty-x-ansi" }
+rusty-colorprofile = "0.4.3"
+rusty-x-ansi = "0.11.7"
 unicode-segmentation = "1.10.1"
 unicode-width = "0.1"
 libc = "0.2"
@@ -19,6 +19,10 @@ rusty-lipgloss = { version = "2.0.5", path = "../rusty-lipgloss" }
 
 [target.'cfg(unix)'.dev-dependencies]
 rusty-testkit = { version = "0.1.1", path = "../rusty-testkit" }
+
+[patch.crates-io]
+rusty-colorprofile = { path = "../rusty-colorprofile" }
+rusty-x-ansi = { path = "../rusty-x-ansi" }
 
 [lib]
 name = "rusty_ultraviolet"

@@ -1,15 +1,47 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Regression guard for downstream Cargo source identity. A dependency crate's
-# [patch.crates-io] table is ignored by its consumers, so this test must resolve
-# Ultraviolet from a separate root package rather than inspect Ultraviolet's own
-# workspace graph.
+# Regression guard for both supported downstream Cargo source topologies. A
+# dependency crate's [patch.crates-io] table is ignored by its consumers, so the
+# consuming root must choose either the registry graph or one coherent sibling
+# path graph.
 
 repo_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 repo_root_cargo="$(cygpath -m "$repo_root" 2>/dev/null || printf '%s' "$repo_root")"
-consumer_root="$(mktemp -d)"
-trap 'rm -rf "$consumer_root"' EXIT
+probe_root="$(mktemp -d)"
+trap 'rm -rf "$probe_root"' EXIT
+cp "$repo_root/rust-toolchain.toml" "$probe_root/rust-toolchain.toml"
+
+isolated_ultraviolet="$probe_root/rusty-ultraviolet"
+bare_consumer="$probe_root/bare-consumer"
+mkdir -p "$isolated_ultraviolet" "$bare_consumer/src"
+cp "$repo_root/Cargo.toml" "$isolated_ultraviolet/Cargo.toml"
+cp -R "$repo_root/src" "$isolated_ultraviolet/src"
+
+isolated_ultraviolet_cargo="$(cygpath -m "$isolated_ultraviolet" 2>/dev/null || printf '%s' "$isolated_ultraviolet")"
+printf '%s\n' \
+  '[package]' \
+  'name = "ultraviolet-bare-checkout-probe"' \
+  'version = "0.0.0"' \
+  'edition = "2021"' \
+  '' \
+  '[dependencies]' \
+  "rusty-ultraviolet = { path = \"$isolated_ultraviolet_cargo\" }" \
+  'rusty-x-ansi = "0.11.7"' \
+  > "$bare_consumer/Cargo.toml"
+printf '%s\n' \
+  'fn main() {' \
+  '    let method = rusty_x_ansi::method::WidthMethod::WcWidth;' \
+  '    let _window = rusty_ultraviolet::new_window(1, 1, Some(method));' \
+  '}' \
+  > "$bare_consumer/src/main.rs"
+
+cargo +1.98.0 check --manifest-path "$bare_consumer/Cargo.toml"
+
+consumer_root="$probe_root/family-consumer"
+mkdir -p "$consumer_root/src"
+sibling_root="$(dirname "$repo_root")"
+sibling_root_cargo="$(cygpath -m "$sibling_root" 2>/dev/null || printf '%s' "$sibling_root")"
 
 mkdir -p "$consumer_root/src"
 printf '%s\n' \
@@ -20,10 +52,24 @@ printf '%s\n' \
   '' \
   '[dependencies]' \
   "rusty-ultraviolet = { path = \"$repo_root_cargo\" }" \
+  "rusty-lipgloss = { path = \"$sibling_root_cargo/rusty-lipgloss\" }" \
+  'rusty-x-ansi = "0.11.7"' \
+  '' \
+  '[patch.crates-io]' \
+  "rusty-colorprofile = { path = \"$sibling_root_cargo/rusty-colorprofile\" }" \
+  "rusty-x-ansi = { path = \"$sibling_root_cargo/rusty-x-ansi\" }" \
   > "$consumer_root/Cargo.toml"
-printf '%s\n' 'fn main() {}' > "$consumer_root/src/main.rs"
+printf '%s\n' \
+  'fn main() {' \
+  '    let method = rusty_x_ansi::method::WidthMethod::WcWidth;' \
+  '    let _window = rusty_ultraviolet::new_window(1, 1, Some(method));' \
+  '    let _style = rusty_lipgloss::Style::new();' \
+  '}' \
+  > "$consumer_root/src/main.rs"
 
-cargo metadata \
+cargo +1.98.0 check --manifest-path "$consumer_root/Cargo.toml"
+
+cargo +1.98.0 metadata \
   --manifest-path "$consumer_root/Cargo.toml" \
   --format-version 1 \
   > "$consumer_root/metadata.json"
@@ -68,5 +114,5 @@ if (lipgloss.length !== 1 || lipgloss[0].kind !== "dev" || lipgloss[0].target !=
   throw new Error("rusty-lipgloss must remain available to cross-platform examples");
 }
 
-console.log("downstream runtime dependency sources are unified");
+console.log("bare-checkout and sibling-family dependency sources are coherent");
 JS

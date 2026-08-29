@@ -191,16 +191,28 @@ Per the multi-version rule this second pin is published as a separate crate vers
 
 ## Windows PTY Test Boundary
 
-The PTY-driven interactive example suite in `tests/interactive.rs` is intentionally compiled only on Unix, where the `rusty-testkit` PTY harness is supported. Windows all-target runs still compile and execute `tests/windows_stubs.rs` and the non-Unix production stubs; native Windows TTY, polling, and cancellation remain deferred as marked above.
+The PTY-driven interactive example suite in `tests/interactive.rs` and its
+`rusty-testkit` PTY dependency are intentionally compiled only on Unix, where
+the harness is supported. `rusty-lipgloss` remains a cross-platform development
+dependency because the advanced examples use it and its Windows portability is
+covered by its owning repository. Windows all-target runs compile those
+examples and execute `tests/windows_stubs.rs` plus the non-Unix production
+stubs; native Windows TTY, polling, and cancellation remain deferred as marked
+above.
 
 ## Cargo Source Portability
 
-Runtime Rusty dependencies use registry version requirements without sibling
-`path` overrides. This keeps an exact `rusty-ultraviolet` repository revision
-consumable as a Cargo Git dependency outside the Charming checkout family,
-including while a Rust-only portability fix waits for the mirrored upstream
-version to advance. When UV is the workspace root, its `[patch.crates-io]`
-entries unify those runtime crates with the sibling sources used by dev-only
-parity dependencies. Cargo ignores that dependency-level patch when another
-workspace consumes UV from Git, so external consumers still resolve the
-declared registry versions.
+Runtime Rusty dependencies use registry version requirements without mandatory
+sibling `path` declarations. This preserves exact Git and bare-checkout
+consumers when the Charming sibling family is not present. Ultraviolet's root
+`[patch.crates-io]` table aligns standalone development with adjacent sibling
+sources, but Cargo intentionally does not propagate that patch to a downstream
+root. A downstream workspace that combines sibling path checkouts therefore
+owns the matching root patch for its complete graph.
+
+`scripts/test-dependency-sources.sh` proves both supported topologies. It first
+copies Ultraviolet into an isolated directory with no siblings and compiles a
+consumer across the public `rusty-x-ansi` type boundary using registry sources.
+It then constructs a sibling-family consumer whose root patch selects the
+adjacent sources, compiles the same type boundary, and verifies that each
+runtime crate resolves exactly once from the expected sibling path.

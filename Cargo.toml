@@ -15,8 +15,10 @@ unicode-width = "0.1"
 libc = "0.2"
 
 [dev-dependencies]
-rusty-testkit = { version = "0.1.1", path = "../rusty-testkit" }
 rusty-lipgloss = { version = "2.0.5", path = "../rusty-lipgloss" }
+
+[target.'cfg(unix)'.dev-dependencies]
+rusty-testkit = { version = "0.1.1", path = "../rusty-testkit" }
 
 [patch.crates-io]
 rusty-colorprofile = { path = "../rusty-colorprofile" }

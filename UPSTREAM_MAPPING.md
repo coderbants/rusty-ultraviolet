@@ -199,5 +199,8 @@ Runtime Rusty dependencies use registry version requirements without sibling
 `path` overrides. This keeps an exact `rusty-ultraviolet` repository revision
 consumable as a Cargo Git dependency outside the Charming checkout family,
 including while a Rust-only portability fix waits for the mirrored upstream
-version to advance. Dev-only test harness dependencies retain sibling paths for
-the full-family parity workflow.
+version to advance. When UV is the workspace root, its `[patch.crates-io]`
+entries unify those runtime crates with the sibling sources used by dev-only
+parity dependencies. Cargo ignores that dependency-level patch when another
+workspace consumes UV from Git, so external consumers still resolve the
+declared registry versions.

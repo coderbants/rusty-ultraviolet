@@ -18,6 +18,10 @@ libc = "0.2"
 rusty-testkit = { version = "0.1.1", path = "../rusty-testkit" }
 rusty-lipgloss = { version = "2.0.5", path = "../rusty-lipgloss" }
 
+[patch.crates-io]
+rusty-colorprofile = { path = "../rusty-colorprofile" }
+rusty-x-ansi = { path = "../rusty-x-ansi" }
+
 [lib]
 name = "rusty_ultraviolet"
 path = "src/lib.rs"

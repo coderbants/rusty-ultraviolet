@@ -191,16 +191,22 @@ Per the multi-version rule this second pin is published as a separate crate vers
 
 ## Windows PTY Test Boundary
 
-The PTY-driven interactive example suite in `tests/interactive.rs` is intentionally compiled only on Unix, where the `rusty-testkit` PTY harness is supported. Windows all-target runs still compile and execute `tests/windows_stubs.rs` and the non-Unix production stubs; native Windows TTY, polling, and cancellation remain deferred as marked above.
+The PTY-driven interactive example suite in `tests/interactive.rs` and its
+`rusty-testkit` PTY dependency are intentionally compiled only on Unix, where
+the harness is supported. `rusty-lipgloss` remains a cross-platform development
+dependency because the advanced examples use it and its Windows portability is
+covered by its owning repository. Windows all-target runs compile those
+examples and execute `tests/windows_stubs.rs` plus the non-Unix production
+stubs; native Windows TTY, polling, and cancellation remain deferred as marked
+above.
 
 ## Cargo Source Portability
 
-Runtime Rusty dependencies use registry version requirements without sibling
-`path` overrides. This keeps an exact `rusty-ultraviolet` repository revision
-consumable as a Cargo Git dependency outside the Charming checkout family,
-including while a Rust-only portability fix waits for the mirrored upstream
-version to advance. When UV is the workspace root, its `[patch.crates-io]`
-entries unify those runtime crates with the sibling sources used by dev-only
-parity dependencies. Cargo ignores that dependency-level patch when another
-workspace consumes UV from Git, so external consumers still resolve the
-declared registry versions.
+Runtime Rusty dependencies use direct `version` plus sibling `path`
+declarations. Cargo retains the version requirements for publication while
+using the same checked-out sibling sources in both standalone and downstream
+consumer graphs. A dependency crate's `[patch.crates-io]` table is not
+transitive, so root-only patches must not be used to establish source identity
+for these runtime dependencies. `scripts/test-dependency-sources.sh` constructs
+a downstream consumer and verifies that both runtime crates resolve exactly
+once from the expected sibling paths.

@@ -192,3 +192,15 @@ Per the multi-version rule this second pin is published as a separate crate vers
 ## Windows PTY Test Boundary
 
 The PTY-driven interactive example suite in `tests/interactive.rs` is intentionally compiled only on Unix, where the `rusty-testkit` PTY harness is supported. Windows all-target runs still compile and execute `tests/windows_stubs.rs` and the non-Unix production stubs; native Windows TTY, polling, and cancellation remain deferred as marked above.
+
+## Cargo Source Portability
+
+Runtime Rusty dependencies use registry version requirements without sibling
+`path` overrides. This keeps an exact `rusty-ultraviolet` repository revision
+consumable as a Cargo Git dependency outside the Charming checkout family,
+including while a Rust-only portability fix waits for the mirrored upstream
+version to advance. When UV is the workspace root, its `[patch.crates-io]`
+entries unify those runtime crates with the sibling sources used by dev-only
+parity dependencies. Cargo ignores that dependency-level patch when another
+workspace consumes UV from Git, so external consumers still resolve the
+declared registry versions.

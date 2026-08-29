@@ -1,6 +1,9 @@
 //! Interactive integration tests for the ultraviolet examples, driven
 //! through a real pseudo-terminal: mouse clicks and drags, keyboard input,
 //! and assertions on the reconstructed on-screen state.
+//! These scenarios require Unix pseudo-terminals and are intentionally not built on Windows.
+
+#![cfg(unix)]
 
 use rusty_testkit::PtySession;
 
